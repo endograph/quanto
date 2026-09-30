@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>quanto favicon review</title>
+<style>
+  :root { --bg:#f6f6f4; --fg:#1a1a1a; --muted:#6b6b6b; --card:#fff; --line:#e3e3df; --accent:#e8632b; }
+  body { margin:0; font:15px/1.5 -apple-system, system-ui, sans-serif; background:var(--bg); color:var(--fg); padding:40px 48px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  p.lead { color:var(--muted); margin:0 0 32px; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap:24px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:20px 22px; }
+  .card h2 { font-size:16px; margin:0 0 2px; }
+  .card p { margin:0 0 16px; color:var(--muted); font-size:13.5px; }
+  .row { display:flex; align-items:center; gap:28px; }
+  .sizes { display:flex; align-items:flex-end; gap:18px; }
+  .size { display:flex; flex-direction:column; align-items:center; gap:6px; font-size:11px; color:var(--muted); }
+  .size svg { display:block; image-rendering:auto; }
+  .tab { margin-top:16px; display:inline-flex; align-items:center; gap:8px; background:#e9e9ea; border-radius:8px 8px 0 0; padding:7px 14px 7px 10px; font-size:12.5px; color:#333; border:1px solid #d5d5d7; border-bottom:none; }
+  .tab svg { width:16px; height:16px; }
+  .dark { background:#1c1c1e; border-color:#2c2c2e; color:#ddd; }
+  .dark .tab { background:#3a3a3c; border-color:#48484a; color:#eee; }
+  .toggle { margin-bottom:20px; font-size:13px; color:var(--muted); }
+</style>
+</head>
+<body>
+<h1>quanto favicon candidates</h1>
+<p class="lead">Six directions, each shown at 16 / 32 / 64 / 128px and in a mock browser tab. Toggle dark to check contrast.</p>
+<label class="toggle"><input type="checkbox" onchange="document.querySelectorAll('.card').forEach(c=>c.classList.toggle('dark',this.checked))"> Dark tabs</label>
+
+<div class="grid" id="grid"></div>
+
+<script>
+const marks = [
+  {
+    name: "1. Bracketed Q",
+    note: "Capital Q whose tail is a ruler tick. Letter at 16px, instrument at 32px.",
+    svg: `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <rect width="64" height="64" rx="14" fill="#1a1a1a"/>
+      <circle cx="32" cy="30" r="15" fill="none" stroke="#fff" stroke-width="7"/>
+      <line x1="38" y1="42" x2="46" y2="54" stroke="#e8632b" stroke-width="7" stroke-linecap="round"/>
+      <line x1="32" y1="48" x2="52" y2="48" stroke="#e8632b" stroke-width="4" stroke-linecap="round"/>
+    </svg>`
+  },
+  {
+    name: "2. Ruler ticks",
+    note: "Edge of a tape measure. No letter. One accent tick for identity.",
+    svg: `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <rect width="64" height="64" rx="14" fill="#1a1a1a"/>
+      <g stroke="#fff" stroke-width="5" stroke-linecap="round">
+        <line x1="14" y1="46" x2="14" y2="30"/>
+        <line x1="26" y1="46" x2="26" y2="36"/>
+        <line x1="50" y1="46" x2="50" y2="36"/>
+      </g>
+      <line x1="38" y1="46" x2="38" y2="18" stroke="#e8632b" stroke-width="5" stroke-linecap="round"/>
+      <line x1="10" y1="52" x2="54" y2="52" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+    </svg>`
+  },
+  {
+    name: "3. Prime marks",
+    note: "The ′ and ″ from feet and inches, straight from the README's 5'11\".",
+    svg: `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <rect width="64" height="64" rx="14" fill="#1a1a1a"/>
+      <g stroke="#fff" stroke-width="7" stroke-linecap="round">
+        <line x1="20" y1="16" x2="15" y2="42"/>
+        <line x1="40" y1="16" x2="35" y2="42"/>
+      </g>
+      <line x1="52" y1="16" x2="47" y2="42" stroke="#e8632b" stroke-width="7" stroke-linecap="round"/>
+    </svg>`
+  },
+  {
+    name: "4. Convergence",
+    note: "Three inputs merge into one typed value. Abstract, single-weight.",
+    svg: `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <rect width="64" height="64" rx="14" fill="#1a1a1a"/>
+      <g fill="none" stroke="#fff" stroke-width="5.5" stroke-linecap="round">
+        <path d="M12 18 C 26 18, 26 32, 36 32"/>
+        <path d="M12 32 L 36 32"/>
+        <path d="M12 46 C 26 46, 26 32, 36 32"/>
+      </g>
+      <line x1="36" y1="32" x2="54" y2="32" stroke="#e8632b" stroke-width="7" stroke-linecap="round"/>
+    </svg>`
+  },
+  {
+    name: "5. Gauge Q",
+    note: "Q's bowl as a dial, tail as the needle. Playful, unit-agnostic.",
+    svg: `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <rect width="64" height="64" rx="14" fill="#1a1a1a"/>
+      <path d="M14 40 A 20 20 0 1 1 50 40" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/>
+      <line x1="32" y1="36" x2="46" y2="52" stroke="#e8632b" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="32" cy="36" r="4.5" fill="#fff"/>
+    </svg>`
+  },
+  {
+    name: "6. Monospace tile",
+    note: "Lowercase q with a unit subscript. Reads as a dev tool.",
+    svg: `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+      <rect width="64" height="64" rx="14" fill="#1a1a1a"/>
+      <text x="14" y="46" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="40" font-weight="700" fill="#fff">q</text>
+      <text x="38" y="50" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="15" font-weight="700" fill="#e8632b">cm</text>
+    </svg>`
+  },
+];
+
+const sizes = [16, 32, 64, 128];
+const grid = document.getElementById('grid');
+for (const m of marks) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `
+    <h2>${m.name}</h2>
+    <p>${m.note}</p>
+    <div class="sizes">
+      ${sizes.map(s => `<div class="size">${m.svg.replace('<svg', `<svg width="${s}" height="${s}"`)}<span>${s}</span></div>`).join('')}
+    </div>
+    <div class="tab">${m.svg}<span>quanto — typed quantities</span></div>
+  `;
+  grid.appendChild(card);
+}
+</script>
+</body>
+</html>

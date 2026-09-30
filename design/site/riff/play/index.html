@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Try quanto's codecs: type something the way a person would and see the typed value.">
+<title>playground · quanto</title>
+<link rel="icon" href="../../../../favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../quanto.css">
+<style>
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font: 700 19px/1 var(--sans); letter-spacing: -0.05em; }
+  .brand .mark { width: 20px; height: auto; }
+  .brand .where { color: var(--muted); font: 400 13px/1 var(--mono); letter-spacing: 0; }
+  .ctx { display: flex; align-items: center; gap: 10px; font: 13px/1 var(--mono); color: var(--muted); }
+  .ctx select {
+    padding: 6px 26px 6px 10px;
+    border: 1px solid var(--line);
+    border-radius: 0;
+    background: var(--well) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 6'%3E%3Cpath fill='%23969696' d='M0 0h8L4 6z'/%3E%3C/svg%3E") no-repeat right 9px center / 8px 6px;
+    appearance: none;
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  main { width: min(1080px, 100%); margin: 0 auto; padding: 36px 28px 64px; flex: 1; }
+
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 22px; }
+  .tab {
+    --c: 4px;
+    position: relative;
+    isolation: isolate;
+    padding: 8px 14px;
+    border: 0;
+    background: none;
+    font: 14px/1 var(--mono);
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .tab:hover { color: var(--ink); }
+  .tab[aria-selected='true'] { color: var(--paper); filter: drop-shadow(3px 3px 0 var(--shade)); }
+  .tab[aria-selected='true']::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--ink); }
+
+  .slab > input { padding: 20px 22px; font-size: clamp(26px, 4.5vw, 40px); line-height: 1.2; }
+  .slab > input::placeholder { color: var(--shade); }
+
+  .chips { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; margin-top: 18px; font: 13px/1.5 var(--mono); }
+  .chips .overline { margin-right: 6px; }
+  .chip { padding: 3px 8px; border: 1px dashed transparent; background: none; cursor: pointer; }
+  .chip:hover { border-color: var(--shade); }
+  .chip.bad { color: var(--muted); }
+
+  .panes { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 0; margin-top: 44px; border-top: 1px solid var(--ink); }
+  .pane { padding: 22px 0 0; min-width: 0; }
+  .pane + .pane { padding-left: 32px; margin-left: 32px; border-left: 1px solid var(--line); }
+  .pane .overline { margin-bottom: 14px; }
+  .pane .overline code { text-transform: none; letter-spacing: 0; }
+
+  pre { margin: 0; font: 14px/1.75 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .j-p { color: var(--shade); }
+  .j-k { color: var(--muted); }
+  .j-n { font-weight: 600; }
+
+  .formatted { margin: 0; font: 600 clamp(28px, 4vw, 38px)/1.2 var(--mono); letter-spacing: -0.02em; overflow-wrap: anywhere; }
+  .roundtrip { margin: 10px 0 0; font: 12px/1.5 var(--mono); color: var(--muted); }
+  .roundtrip b { color: var(--ink); font-weight: 600; }
+
+  .issues { display: flex; flex-direction: column; gap: 14px; }
+  .issue p { margin: 6px 0 0; font-size: 14px; color: var(--muted); }
+  .issue .from { margin-left: 8px; font: 12px var(--mono); color: var(--muted); }
+
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; margin: 26px 0 0; font: 13px/1.5 var(--mono); }
+  dl + .overline { margin-top: 26px; }
+  dt { color: var(--muted); }
+  dd { margin: 0; }
+  .alts { margin-top: 26px; }
+  .alts p:not(.overline) { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
+
+  .code { margin-top: 44px; padding: 20px 22px; background: var(--well); border: 1px solid var(--line); }
+  .code .overline { margin-bottom: 12px; }
+  .code pre { font-size: 13px; }
+
+  footer { display: flex; justify-content: space-between; gap: 16px; padding: 20px 28px; color: var(--muted); font: 12px/1.5 var(--mono); }
+  kbd { padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px; font: 11px var(--mono); }
+
+  @media (max-width: 760px) {
+    header, main, footer { padding-left: 18px; padding-right: 18px; }
+    .panes { grid-template-columns: 1fr; }
+    .pane + .pane { padding-left: 0; margin-left: 0; border-left: 0; margin-top: 28px; border-top: 1px solid var(--line); }
+    .ctx .label { display: none; }
+    footer .keys { display: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <a class="brand" href="../index.html">
+    <svg class="mark" viewBox="10 4 44 58" aria-hidden="true">
+      <path class="shade" d="M30 6h6l2 2v6l-2 2h-6l-2-2V8zM30 22h6l2 2v10l-2 2H24l-2 2v6l2 2h14l2-2v-6l2-2h6l2 2v14l-4 4H16l-4-4V30l4-4h12v-2z"/>
+      <path class="face" d="M30 6h6l2 2v6l-2 2h-6l-2-2V8zM30 22h6l2 2v10l-2 2H24l-2 2v6l2 2h14l2-2v-6l2-2h6l2 2v14l-4 4H16l-4-4V30l4-4h12v-2z"/>
+    </svg>
+    quanto <span class="where">/ playground</span>
+  </a>
+  <label class="ctx"><span class="label">ctx.locale</span>
+    <select id="locale"></select>
+  </label>
+</header>
+
+<main>
+  <div class="tabs" role="tablist" id="tabs" aria-label="Codec"></div>
+
+  <div class="slab">
+    <input id="input" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Text to parse" placeholder="type it like a person would">
+  </div>
+  <div class="chips" id="chips"></div>
+
+  <div class="panes" aria-live="polite">
+    <section class="pane">
+      <p class="overline"><code id="parse-call">parse(text, ctx)</code></p>
+      <pre id="result"></pre>
+    </section>
+    <section class="pane" id="right"></section>
+  </div>
+
+  <div class="code">
+    <p class="overline">in your app</p>
+    <pre id="code"></pre>
+  </div>
+</main>
+
+<footer>
+  <span>An illustrative stand-in for the codecs. The library is pre-release.</span>
+  <span class="keys"><kbd>/</kbd> focus · <kbd>[</kbd> <kbd>]</kbd> switch codec</span>
+</footer>
+
+<script src="../mock.js"></script>
+<script>
+  const { codecs, locales } = window.quantoMock;
+  const $ = (id) => document.getElementById(id);
+
+  const EXAMPLES = {
+    length: [`5'11"`, '180cm', '1,8 m', '5 ft 11 in', '1.500 km', '6½ in', '70', '70 kg'],
+    mass: ['1 lb 4 oz', '81.6 kg', '11 st 4 lb', '500 g', '3 cups'],
+    duration: ['2h30m', '90 min', '1 week 2 days', '1m', '3 months'],
+    temperature: ['72°F', '22 °C', '295.15 K', '-40F', 'hot'],
+    money: ['$1,234.50', '€12,50', 'USD 12.99', '$1.2k', '¥500', '1,5 BHD', '$3.459', '12 XYZ'],
+    date: ['tomorrow', 'next fri', 'Oct 2, 2026', '03/04/2026', '13/04', '2. Okt. 2026', 'in 3 days', 'someday'],
+    merge: ['1m', '3/4', '180 lb', '€5', 'friday', 'hello'],
+  };
+  const LABELS = { merge: 'merge(…)' };
+  const IMPORTS = { merge: 'merge', length: 'length', mass: 'mass', duration: 'duration', temperature: 'temperature', money: 'money', date: 'date' };
+  const ids = Object.keys(EXAMPLES);
+
+  const params = new URLSearchParams(location.search);
+  const state = {
+    codec: ids.includes(params.get('codec')) ? params.get('codec') : 'length',
+    locale: locales.includes(params.get('locale')) ? params.get('locale') : 'en-US',
+  };
+  $('input').value = params.has('q') ? params.get('q') : EXAMPLES[state.codec][0];
+
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const span = (cls, s) => `<span class="${cls}">${esc(s)}</span>`;
+
+  // Renders a value as a JS object literal, one line when it's short.
+  function pretty(v, indent = '') {
+    if (v === null || typeof v !== 'object') return span(typeof v === 'string' ? 'j-s' : 'j-n', JSON.stringify(v));
+    const inner = indent + '  ';
+    const flat = (x) => x === null || typeof x !== 'object';
+    if (Array.isArray(v)) {
+      return `${span('j-p', '[')}\n${v.map((x) => inner + pretty(x, inner)).join(span('j-p', ',') + '\n')}\n${indent}${span('j-p', ']')}`;
+    }
+    const entries = Object.entries(v).filter(([, x]) => x !== undefined);
+    const one = entries.map(([k, x]) => `${k}: ${JSON.stringify(x)}`).join(', ');
+    if (entries.every(([, x]) => flat(x)) && one.length < 46) {
+      return `${span('j-p', '{ ')}${entries.map(([k, x]) => `${span('j-k', k)}${span('j-p', ': ')}${pretty(x)}`).join(span('j-p', ', '))}${span('j-p', ' }')}`;
+    }
+    return `${span('j-p', '{')}\n${entries.map(([k, x]) => `${inner}${span('j-k', k)}${span('j-p', ': ')}${pretty(x, inner)}`).join(span('j-p', ',') + '\n')}\n${indent}${span('j-p', '}')}`;
+  }
+
+  const str = (s) => (s.includes("'") ? JSON.stringify(s) : `'${s}'`);
+
+  function renderTabs() {
+    $('tabs').innerHTML = ids
+      .map((id) => `<button class="tab" role="tab" data-id="${id}" aria-selected="${id === state.codec}">${esc(LABELS[id] || id)}</button>`)
+      .join('');
+  }
+
+  function renderChips() {
+    const codec = codecs[state.codec];
+    $('chips').innerHTML =
+      `<span class="overline">try</span>` +
+      EXAMPLES[state.codec]
+        .map((t) => {
+          const ok = codec.parse(t, { locale: state.locale }).ok;
+          return `<button class="chip${ok ? '' : ' bad'}" data-text="${esc(t)}" title="${ok ? '' : 'produces an issue'}">${esc(t)}</button>`;
+        })
+        .join('');
+  }
+
+  function renderRight(codec, result, ctx) {
+    if (!result.ok) {
+      $('right').innerHTML =
+        `<p class="overline">issues</p><div class="issues">` +
+        result.issues
+          .map((i) => `<div class="issue"><span class="tag">${esc(i.code)}</span>${i.codec ? `<span class="from">${esc(i.codec)}</span>` : ''}<p>${esc(i.message)}</p></div>`)
+          .join('') +
+        `</div>`;
+      return;
+    }
+    const text = codec.format(result.value, ctx);
+    const back = codec.parse(text, ctx);
+    const trips = back.ok && codec.equal(back.value, result.value);
+    let html =
+      `<p class="overline"><code>format(value, ctx)</code></p>` +
+      `<p class="formatted">${esc(text)}</p>` +
+      `<p class="roundtrip">${trips ? '<b>✓</b> parse(format(value)) round-trips' : '✗ does not round-trip'}</p>`;
+
+    html += `<dl>${locales
+      .filter((l) => l !== state.locale)
+      .map((l) => `<dt>${l}</dt><dd>${esc(codec.format(result.value, { locale: l }))}</dd>`)
+      .join('')}</dl>`;
+
+    // Quantities also get a convert() table.
+    const tagged = state.codec === 'merge' ? result.value : { codec: state.codec, value: result.value };
+    const inner = codecs[tagged.codec];
+    if (inner.kind === 'quantity') {
+      const q = tagged.value;
+      html += `<p class="overline"><code>convert(${tagged.codec}(), value, unit)</code></p><dl>${Object.keys(inner.units)
+        .filter((u) => u !== q.unit)
+        .map((u) => `<dt>${u}</dt><dd>${esc(inner.format(inner.convert(q, u), ctx))}</dd>`)
+        .join('')}</dl>`;
+    }
+
+    if (result.alternatives) {
+      html +=
+        `<div class="alts"><p class="overline">alternatives</p><p>Other codecs that also parsed this. A UI can offer a choice instead of guessing.</p><dl>` +
+        result.alternatives.map((a) => `<dt>${esc(a.codec)}</dt><dd>${esc(codecs[a.codec].format(a.value, ctx))}</dd>`).join('') +
+        `</dl></div>`;
+    }
+    $('right').innerHTML = html;
+  }
+
+  function renderCode(text, result) {
+    const codec = codecs[state.codec];
+    const imports = state.codec === 'merge' ? 'merge, length, mass, duration, temperature, money, date' : IMPORTS[state.codec];
+    const from = state.codec === 'merge' ? `'quanto'` : `'quanto/codecs'`;
+    const lines = [`import { ${imports} } from ${from};`, ''];
+    lines.push(`const codec = ${codec.call};`);
+    lines.push(`const result = codec.parse(${str(text)}, { locale: '${state.locale}' });`);
+    if (result.implicits) lines.push(`// no ctx.now, so the machine clock is used and recorded in result.implicits`);
+    lines.push(`if (result.ok) save({ raw: ${str(text)}, value: result.value });`);
+    $('code').textContent = lines.join('\n');
+  }
+
+  function render() {
+    const text = $('input').value;
+    const ctx = { locale: state.locale };
+    const codec = codecs[state.codec];
+    const result = codec.parse(text, ctx);
+    $('parse-call').textContent = `${codec.call}.parse(${str(text)}, { locale: '${state.locale}' })`;
+    $('result').innerHTML = pretty(result);
+    renderRight(codec, result, ctx);
+    renderCode(text, result);
+
+    const url = new URL(location.href);
+    url.searchParams.set('codec', state.codec);
+    url.searchParams.set('q', text);
+    if (state.locale === 'en-US') url.searchParams.delete('locale');
+    else url.searchParams.set('locale', state.locale);
+    history.replaceState(null, '', url);
+  }
+
+  function selectCodec(id, keepText) {
+    state.codec = id;
+    if (!keepText) $('input').value = EXAMPLES[id][0];
+    renderTabs();
+    renderChips();
+    render();
+  }
+
+  $('locale').innerHTML = locales.map((l) => `<option${l === state.locale ? ' selected' : ''}>${l}</option>`).join('');
+  $('locale').onchange = (e) => { state.locale = e.target.value; renderChips(); render(); };
+  $('input').oninput = render;
+  $('tabs').onclick = (e) => { const b = e.target.closest('.tab'); if (b) selectCodec(b.dataset.id, false); };
+  $('chips').onclick = (e) => { const b = e.target.closest('.chip'); if (b) { $('input').value = b.dataset.text; render(); $('input').focus(); } };
+  document.addEventListener('keydown', (e) => {
+    const typing = document.activeElement === $('input');
+    if (e.key === '/' && !typing) { e.preventDefault(); $('input').select(); }
+    if ((e.key === '[' || e.key === ']') && !typing) {
+      const i = ids.indexOf(state.codec) + (e.key === ']' ? 1 : -1);
+      selectCodec(ids[(i + ids.length) % ids.length], false);
+    }
+  });
+
+  renderTabs();
+  renderChips();
+  render();
+  $('input').focus();
+</script>
+</body>
+</html>

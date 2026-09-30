@@ -1,0 +1,119 @@
+/* The favicon is the whole design system: three flat tones, 45° clipped
+   corners, and a hard gray shadow offset down and to the right. */
+
+:root {
+  color-scheme: light dark;
+  --paper: #f7f7f5;
+  --well: #ffffff;
+  --ink: #242424;
+  --shade: #969696;
+  --line: #e1e1dd;
+  --muted: #6b6b68;
+  --sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'Berkeley Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --c: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #1b1b1a;
+    --well: #121212;
+    --ink: #f7f7f5;
+    --shade: #5a5a58;
+    --line: #2f2f2d;
+    --muted: #a3a3a0;
+  }
+}
+
+* { box-sizing: border-box; }
+html { background: var(--paper); color: var(--ink); font: 16px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+body { margin: 0; min-height: 100svh; display: flex; flex-direction: column; }
+a { color: inherit; }
+button, input, select { font: inherit; color: inherit; }
+::selection { background: var(--ink); color: var(--paper); }
+:focus-visible { outline: 2px dashed var(--ink); outline-offset: 4px; }
+code, .mono { font-family: var(--mono); }
+
+/* The mark, drawn as two layers so it can move. */
+.mark { display: block; overflow: visible; }
+.mark .shade { fill: var(--shade); transform: translate(2px, 2px); }
+.mark .face { fill: var(--ink); transition: transform 90ms ease-out; }
+.mark.pressed .face { transform: translate(2px, 2px); }
+
+/* Clipped corners. */
+.chamfer,
+.btn::before,
+.tab[aria-selected='true']::before,
+.slab::before,
+.slab > input,
+.tag {
+  clip-path: polygon(
+    var(--c) 0, calc(100% - var(--c)) 0, 100% var(--c), 100% calc(100% - var(--c)),
+    calc(100% - var(--c)) 100%, var(--c) 100%, 0 calc(100% - var(--c)), 0 var(--c)
+  );
+}
+
+/* Arcade button: face on a hard shadow, pressed into it on click. */
+.btn {
+  --c: 4px;
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border: 0;
+  background: none;
+  color: var(--paper);
+  font: 500 15px/1 var(--mono);
+  text-decoration: none;
+  cursor: pointer;
+  filter: drop-shadow(3px 3px 0 var(--shade));
+  transition: transform 70ms ease-out, filter 70ms ease-out;
+}
+.btn::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--ink); }
+.btn:hover { transform: translate(-1px, -1px); filter: drop-shadow(4px 4px 0 var(--shade)); }
+.btn:active { transform: translate(3px, 3px); filter: drop-shadow(0 0 0 var(--shade)); }
+
+/* Inset field with an ink edge, sitting on the shadow. */
+.slab { --c: 8px; position: relative; filter: drop-shadow(5px 5px 0 var(--shade)); }
+.slab::before { content: ''; position: absolute; inset: 0; background: var(--ink); }
+.slab > input {
+  --c: 7px;
+  position: relative;
+  display: block;
+  width: calc(100% - 4px);
+  margin: 2px;
+  border: 0;
+  outline: 0;
+  background: var(--well);
+  font-family: var(--mono);
+}
+
+/* Small inverted label, used for issue codes and codec ids. */
+.tag {
+  --c: 3px;
+  display: inline-block;
+  padding: 2px 7px;
+  background: var(--ink);
+  color: var(--paper);
+  font: 500 12px/1.5 var(--mono);
+}
+
+.overline {
+  margin: 0;
+  font: 500 11px/1.5 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Pixel dots, on the favicon's 2-unit grid. */
+.grid-bg {
+  background-image: radial-gradient(var(--line) 1px, transparent 1.2px);
+  background-size: 16px 16px;
+  background-position: -8px -8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before { transition: none !important; animation: none !important; }
+}

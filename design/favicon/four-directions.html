@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Favicon directions for Quanto, including two brutalist inverted question marks, compared at actual sizes.">
+  <title>Quanto · Favicon directions</title>
+  <link id="favicon" rel="icon" type="image/svg+xml">
+  <style>
+    :root { color-scheme: light; --ink: #183c72; --shadow: #8a9db7; --paper: #faf7f0; --text: #202830; --muted: #65707a; --line: #dce0e3; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f0f2f4; color: var(--text); font: 16px/1.5 system-ui, sans-serif; }
+    main { max-width: 1200px; margin: auto; padding: 40px 32px 48px; }
+    header { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 28px; }
+    .eyebrow { margin: 0 0 6px; color: var(--ink); font: 12px/1.5 ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(26px, 4vw, 36px); letter-spacing: -.04em; font-weight: 650; }
+    header p:last-child { margin: 8px 0 0; color: var(--muted); }
+    .palette { display: flex; gap: 4px; padding: 4px; background: #e3e7eb; border-radius: 10px; flex-wrap: wrap; }
+    button { font: inherit; cursor: pointer; }
+    .palette button { border: 0; background: transparent; color: #43505d; padding: 8px 12px; border-radius: 7px; font-size: 14px; white-space: nowrap; }
+    .palette button[aria-pressed="true"] { background: white; color: #172c46; box-shadow: 0 1px 3px #14243b18; }
+    button:focus-visible { outline: 3px solid #3a7dc8; outline-offset: 3px; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; }
+    article { background: white; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+    .stage { height: 180px; background: var(--paper); color: var(--ink); display: flex; align-items: center; justify-content: center; position: relative; border-bottom: 1px solid #00000008; }
+    .stage > svg { width: 128px; height: 128px; }
+    .number { position: absolute; left: 22px; top: 18px; font: 12px ui-monospace, monospace; opacity: .6; }
+    .recommend { position: absolute; right: 18px; top: 14px; font-size: 12px; border: 1px solid currentColor; border-radius: 20px; padding: 3px 9px; }
+    .content { padding: 20px 22px 22px; }
+    h2 { font-size: 20px; letter-spacing: -.025em; margin: 0 0 5px; }
+    .description { color: var(--muted); margin: 0; min-height: 48px; font-size: 14px; }
+    .samples { display: flex; align-items: center; justify-content: space-between; margin: 20px 0; gap: 16px; }
+    .sizes { display: flex; align-items: end; gap: 24px; }
+    .size { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .size span { color: var(--muted); font: 12px ui-monospace, monospace; }
+    svg { display: block; flex-shrink: 0; }
+    .icon { color: var(--ink); }
+    .reversed { display: flex; align-items: center; justify-content: center; width: 64px; height: 64px; border-radius: 14px; background: var(--ink); color: var(--paper); }
+    .reversed svg { width: 40px; height: 40px; }
+    .browser { background: #e8ebef; border: 1px solid #dce0e6; border-radius: 9px; padding: 8px 8px 0; }
+    .tab { display: flex; align-items: center; gap: 9px; width: min(100%, 285px); border-radius: 7px 7px 0 0; background: white; padding: 9px 12px; color: #39424c; font-size: 12px; }
+    .tab svg { width: 16px; height: 16px; }
+    .tab .close { margin-left: auto; color: #76818c; }
+    .tab-preview { margin-top: 14px; border: 1px solid #d3dbe4; background: white; border-radius: 7px; color: #29476a; padding: 7px 10px; font-size: 13px; }
+    .tradeoff { margin: 14px 0 0; color: var(--muted); font-size: 13px; }
+    footer { color: var(--muted); margin-top: 24px; font-size: 13px; }
+    @media (max-width: 760px) { main { padding: 24px 16px; } header { align-items: start; flex-direction: column; gap: 18px; } .grid { grid-template-columns: 1fr; } .description { min-height: 0; } }
+    @media print { body { background: white; } main { padding: 0; } .palette, .tab-preview { display: none; } article { break-inside: avoid; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <p class="eyebrow">quanto / identity exploration</p>
+        <h1>Quanto favicon directions</h1>
+        <p>One precise value. A few ways to give it a face.</p>
+      </div>
+      <div class="palette" role="group" aria-label="Color palette">
+        <button aria-pressed="true" data-ink="#183c72" data-shadow="#8a9db7" data-paper="#faf7f0">Ink blue</button>
+        <button aria-pressed="false" data-ink="#202020" data-shadow="#929292" data-paper="#ffffff">Black & white</button>
+        <button aria-pressed="false" data-ink="#f5f7fb" data-shadow="#7091bc" data-paper="#18304e">Reversed</button>
+      </div>
+    </header>
+    <div class="grid" id="grid"></div>
+    <footer>Marks shown at 128px, then actual 16 / 32 / 64px sizes. Use “Preview in this tab” to try a real browser favicon.</footer>
+  </main>
+  <script>
+    const marks = [
+      {
+        name: 'Arcade ¿',
+        description: 'A heavy open hook with clipped corners and a hard shadow, offset down and right.',
+        tradeoff: 'The more open version. A little retro game character, with a readable hook at small sizes.',
+        shadow: true,
+        shape: '<path fill="currentColor" d="M30 6h6l2 2v6l-2 2h-6l-2-2V8zM30 22h6l2 2v10l-2 2H24l-2 2v6l2 2h14l2-2v-6l2-2h6l2 2v14l-4 4H16l-4-4V30l4-4h12v-2z"/>'
+      },
+      {
+        name: 'Arcade block ¿',
+        description: 'A chunkier carved block. Wider strokes, chamfered edges, and the same crisp offset shadow.',
+        tradeoff: 'More weight and a stronger game-block feel. The opening is tighter than the first version.',
+        shadow: true,
+        shape: '<path fill="currentColor" d="M28 4h8l2 2v8l-2 2h-8l-2-2V6zM28 22h8l2 2v12l-2 2H26l-2 2v4l2 2h10l2-2v-4l2-2h8l2 2v14l-4 4H16l-4-4V30l4-4h10v-2z"/>'
+      },
+      {
+        name: 'Measuring q',
+        description: 'A solid lowercase q with one ruler notch. The name and the idea of measurement in a single mark.',
+        tradeoff: 'The simplest identity. The notch becomes a subtle detail at 16px.',
+        shape: '<path fill="currentColor" fill-rule="evenodd" d="M32 8a22 22 0 1 0 11 41v10h11V30H43v1a11 11 0 1 1-11-12V8Z"/>'
+      },
+      {
+        name: 'Equals q',
+        description: 'Different expressions, the same value. A Q wraps an equals sign into a compact seal.',
+        tradeoff: 'The clearest link to equivalence. More detail competes for space at 16px.',
+        shape: '<circle cx="29" cy="28" r="20" fill="none" stroke="currentColor" stroke-width="8"/><path d="m43 43 12 12" stroke="currentColor" stroke-width="9" stroke-linecap="square"/><path d="M21 23h16M21 33h16" stroke="currentColor" stroke-width="5"/>'
+      },
+      {
+        name: 'Convergence',
+        description: 'Two human expressions resolve into one clean line. An abstract symbol for normalization.',
+        tradeoff: 'A strong small-size silhouette. It needs the Quanto name nearby to build recognition.',
+        shape: '<path d="M10 14h7c12 0 12 18 25 18h12M10 50h7c12 0 12-18 25-18" fill="none" stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>'
+      },
+      {
+        name: 'Dial Q',
+        description: 'A circular instrument with a pointer that becomes the Q’s tail. Precision with a little movement.',
+        tradeoff: 'An easy visual read. It may bring speed or dashboards to mind before conversion.',
+        shape: '<circle cx="29" cy="28" r="20" fill="none" stroke="currentColor" stroke-width="8"/><path d="m29 28 26 27" stroke="currentColor" stroke-width="8" stroke-linecap="round"/><circle cx="29" cy="28" r="5" fill="currentColor"/>'
+      }
+    ];
+    const renderMark = (mark, shadow = 'var(--shadow)') => `${mark.shadow ? `<g transform="translate(2 2)" style="color:${shadow}">${mark.shape}</g>` : ''}${mark.shape}`;
+    const svg = (mark, size, className = '') => `<svg class="${className}" width="${size}" height="${size}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${renderMark(mark)}</svg>`;
+    document.getElementById('grid').innerHTML = marks.map((mark, index) => `
+      <article>
+        <div class="stage"><span class="number">0${index + 1}</span>${mark.recommended ? '<span class="recommend">Starting pick</span>' : ''}${svg(mark, 128)}</div>
+        <div class="content">
+          <h2>${mark.name}</h2><p class="description">${mark.description}</p>
+          <div class="samples"><div class="sizes">${[16, 32, 64].map(size => `<div class="size">${svg(mark, size, 'icon')}<span>${size}px</span></div>`).join('')}</div><div class="reversed" title="Inverse color sample">${svg(mark, 40)}</div></div>
+          <div class="browser"><div class="tab">${svg(mark, 16, 'icon')}<span>quanto — typed values</span><span class="close">×</span></div></div>
+          <p class="tradeoff">${mark.tradeoff}</p>
+          <button class="tab-preview" data-mark="${index}">Preview in this tab<span class="sr-label" hidden> — ${mark.name}</span></button>
+        </div>
+      </article>`).join('');
+    let selectedMark = 0;
+    function updateFavicon() {
+      const ink = getComputedStyle(document.documentElement).getPropertyValue('--ink').trim();
+      const paper = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();
+      const shadow = getComputedStyle(document.documentElement).getPropertyValue('--shadow').trim();
+      const image = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" color="${ink}"><rect width="64" height="64" rx="${selectedMark < 2 ? 0 : 12}" fill="${paper}"/>${renderMark(marks[selectedMark], shadow)}</svg>`;
+      document.getElementById('favicon').href = 'data:image/svg+xml,' + encodeURIComponent(image);
+    }
+    document.querySelectorAll('.palette button').forEach(button => button.addEventListener('click', () => {
+      document.documentElement.style.setProperty('--ink', button.dataset.ink);
+      document.documentElement.style.setProperty('--paper', button.dataset.paper);
+      document.documentElement.style.setProperty('--shadow', button.dataset.shadow);
+      document.querySelectorAll('.palette button').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+      updateFavicon();
+    }));
+    document.querySelectorAll('.tab-preview').forEach(button => button.addEventListener('click', () => {
+      selectedMark = Number(button.dataset.mark);
+      document.title = 'Quanto · ' + marks[selectedMark].name;
+      document.querySelectorAll('.tab-preview').forEach(item => { item.textContent = item === button ? 'Previewing in this tab' : 'Preview in this tab'; });
+      updateFavicon();
+    }));
+    updateFavicon();
+  </script>
+</body>
+</html>

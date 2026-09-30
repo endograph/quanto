@@ -4,19 +4,34 @@
   "description": "Turn messy human text into well-typed values and back: lengths, weights, durations, money, dates and custom types.",
   "type": "module",
   "sideEffects": false,
-  "files": ["dist"],
+  "files": [
+    "dist",
+    "AUTHORING.md"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./types": {
-      "types": "./dist/types/index.d.ts",
-      "import": "./dist/types/index.js"
+    "./quantity": {
+      "types": "./dist/quantity/index.d.ts",
+      "import": "./dist/quantity/index.js"
+    },
+    "./money": {
+      "types": "./dist/money/index.d.ts",
+      "import": "./dist/money/index.js"
+    },
+    "./codecs": {
+      "types": "./dist/codecs/index.d.ts",
+      "import": "./dist/codecs/index.js"
     },
     "./formats": {
       "types": "./dist/formats/index.d.ts",
       "import": "./dist/formats/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing/index.js"
     },
     "./package.json": "./package.json"
   },
@@ -24,7 +39,8 @@
     "build": "tsdown",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "check": "bun run typecheck && bun run test"
   },
   "engines": {
     "node": ">=20"

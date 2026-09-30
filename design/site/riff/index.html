@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="quanto turns messy human text into well-typed values and back.">
+<title>quanto</title>
+<link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="quanto.css">
+<style>
+  body { align-items: center; }
+  main {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px 24px;
+    text-align: center;
+  }
+  .mark-button { margin: 0 0 36px; padding: 0; border: 0; background: none; cursor: pointer; }
+  .mark { width: clamp(131px, 19.6vw, 183px); height: auto; }
+  .mark-button:hover .face { transform: translate(-0.5px, -0.5px); }
+  .mark-button:hover .mark.pressed .face, .mark.pressed .face { transform: translate(2px, 2px); }
+  h1 { margin: 0; font: 700 clamp(40px, 7vw, 56px)/1 var(--sans); letter-spacing: -0.06em; }
+  .lede { margin: 14px 0 0; color: var(--muted); font-size: 17px; }
+
+  /* One example at a time, typed then parsed. Aligned on the arrow so nothing jumps. */
+  .ticker {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: baseline;
+    gap: 16px;
+    width: min(980px, 100%);
+    min-height: 1.6em;
+    margin: 56px 0 52px;
+    font: 15px/1.6 var(--mono);
+    text-decoration: none;
+  }
+  .ticker .raw { justify-self: end; white-space: pre; }
+  .ticker .raw::after {
+    content: '';
+    display: inline-block;
+    width: 0.55em;
+    height: 1.1em;
+    margin-left: 2px;
+    vertical-align: -0.2em;
+    background: var(--ink);
+    animation: blink 1s steps(1) infinite;
+  }
+  .ticker.done .raw::after { visibility: hidden; }
+  .ticker .arrow { color: var(--shade); }
+  .ticker .value { justify-self: start; text-align: left; white-space: nowrap; opacity: 0; transition: opacity 120ms; }
+  .ticker.done .value { opacity: 1; }
+  .ticker .codec { color: var(--muted); }
+  .ticker:hover .raw { text-decoration: underline; text-underline-offset: 5px; text-decoration-color: var(--shade); }
+  @keyframes blink { 50% { visibility: hidden; } }
+
+  footer {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 20px 28px;
+    color: var(--muted);
+    font: 12px/1.5 var(--mono);
+  }
+  footer nav { display: flex; gap: 20px; }
+  footer a { text-decoration: none; }
+  footer a:hover { color: var(--ink); }
+
+  @media (max-width: 640px) {
+    .ticker { grid-template-columns: 1fr; gap: 4px; text-align: center; }
+    .ticker .raw, .ticker .value { justify-self: center; text-align: center; white-space: normal; }
+    .ticker .codec { display: none; }
+    .ticker .arrow { transform: rotate(90deg); }
+    footer { flex-direction: column; align-items: center; }
+  }
+</style>
+</head>
+<body class="grid-bg">
+<main>
+  <button class="mark-button" id="mark-button" type="button" aria-label="quanto mark. Click to change the glyph.">
+    <svg class="mark" id="mark" viewBox="8 3 48 60" aria-hidden="true">
+      <path class="shade" d="M30 6h6l2 2v6l-2 2h-6l-2-2V8zM30 22h6l2 2v10l-2 2H24l-2 2v6l2 2h14l2-2v-6l2-2h6l2 2v14l-4 4H16l-4-4V30l4-4h12v-2z"/>
+      <path class="face" d="M30 6h6l2 2v6l-2 2h-6l-2-2V8zM30 22h6l2 2v10l-2 2H24l-2 2v6l2 2h14l2-2v-6l2-2h6l2 2v14l-4 4H16l-4-4V30l4-4h12v-2z"/>
+    </svg>
+  </button>
+  <h1>quanto</h1>
+  <p class="lede">A forgiving and flexible input parser and formatter.</p>
+
+  <a class="ticker" id="ticker" href="play/index.html" aria-label="Try an example in the playground">
+    <span class="raw" id="raw"></span>
+    <span class="arrow">→</span>
+    <span class="value"><code id="value"></code> <span class="codec" id="codec"></span></span>
+  </a>
+
+  <a class="btn" href="play/index.html">Open the playground <span aria-hidden="true">→</span></a>
+</main>
+<footer>
+  <span>pre-release · lengths, weights, durations, money, dates</span>
+  <nav>
+    <code>npm i quanto</code>
+    <a href="https://github.com/">GitHub</a>
+  </nav>
+</footer>
+
+<script src="mock.js"></script>
+<script>
+  const { codecs } = window.quantoMock;
+  const examples = [
+    ['length', `5'11"`],
+    ['money', '€12,50'],
+    ['duration', '2h30m'],
+    ['date', 'next fri'],
+    ['mass', '1 lb 4 oz'],
+    ['length', '1,8 m'],
+    ['temperature', '-40°F'],
+    ['money', '$1.2k'],
+  ];
+
+  // Compact one-line rendering of a value.
+  const show = (v) =>
+    typeof v === 'string'
+      ? JSON.stringify(v)
+      : `{ ${Object.entries(v).map(([k, x]) => `${k}: ${JSON.stringify(x)}`).join(', ')} }`;
+
+  const ticker = document.getElementById('ticker');
+  const raw = document.getElementById('raw');
+  const value = document.getElementById('value');
+  const codecLabel = document.getElementById('codec');
+  const mark = document.getElementById('mark');
+
+  // Clicking the mark cycles it through sibling glyphs drawn the same way:
+  // same grid, clipped corners and offset shadow as the favicon's ¿.
+  const GLYPHS = [
+    'M30 6h6l2 2v6l-2 2h-6l-2-2V8zM30 22h6l2 2v10l-2 2H24l-2 2v6l2 2h14l2-2v-6l2-2h6l2 2v14l-4 4H16l-4-4V30l4-4h12v-2z', // ¿
+    'M28 50L30 48L36 48L38 50L38 56L36 58L30 58L28 56ZM28 8L30 6L36 6L38 8L38 40L36 42L30 42L28 40Z', // !
+    'M28 11L26 13L19 13L17 15L17 34L19 36L37 36L39 38L39 41L37 43L27 43L25 41L25 40L23 38L19 38L17 40L17 49L19 51L26 51L28 53L28 55L30 57L34 57L36 55L36 53L38 51L45 51L47 49L47 30L45 28L27 28L25 26L25 23L27 21L37 21L39 23L39 24L41 26L45 26L47 24L47 15L45 13L38 13L36 11L36 9L34 7L30 7L28 9Z', // $
+    'M37 30L39 28L39 8L37 6L17 6L15 8L15 24L13 26L12 26L10 28L10 56L12 58L34 58L36 56L36 51.88L37.07 51.46L41.93 56.81L44.6 58L52.4 58L52.93 56.81L44.2 47.19L44.73 46L45.06 46L47 44.06L47 34L45 32L39 32L37 34L37 37.64L35.93 38.06L29.7 31.19L30.23 30ZM23 16L25 14L29 14L31 16L31 20L29 22L25 22L23 20ZM33.77 47.81L33.24 49L21 49L19 47L19 33.12L20.07 32.7Z', // &
+    'M12 20L14 18L18 18L20 16L20 10L22 8L26 8L28 10L28 16L30 18L34 18L36 16L36 10L38 8L42 8L44 10L44 16L46 18L50 18L52 20L52 24L50 26L46 26L44 28L44 36L46 38L50 38L52 40L52 44L50 46L46 46L44 48L44 54L42 56L38 56L36 54L36 48L34 46L30 46L28 48L28 54L26 56L22 56L20 54L20 48L18 46L14 46L12 44L12 40L14 38L18 38L20 36L20 28L18 26L14 26L12 24ZM30 26L28 28L28 36L30 38L34 38L36 36L36 28L34 26Z', // #
+    'M14 8L12 10L12 18L14 20L22 20L24 18L24 10L22 8ZM25.4 58L27.62 56.53L48.38 7.47L47.4 6L38.6 6L36.38 7.47L15.62 56.53L16.6 58ZM40 54L42 56L50 56L52 54L52 46L50 44L42 44L40 46Z', // %
+  ];
+  let glyph = 0;
+  const press = (swap) => {
+    mark.classList.add('pressed');
+    setTimeout(() => {
+      if (swap) swap();
+      mark.classList.remove('pressed');
+    }, 110);
+  };
+  document.getElementById('mark-button').addEventListener('click', () => {
+    press(() => {
+      glyph = (glyph + 1) % GLYPHS.length;
+      for (const path of mark.querySelectorAll('path')) path.setAttribute('d', GLYPHS[glyph]);
+    });
+  });
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  async function run() {
+    for (let i = 0; ; i = (i + 1) % examples.length) {
+      const [id, text] = examples[i];
+      const result = codecs[id].parse(text, { locale: 'en-US' });
+      ticker.href = `play/index.html?codec=${id}&q=${encodeURIComponent(text)}`;
+      ticker.classList.remove('done');
+      value.textContent = show(result.value);
+      codecLabel.textContent = `// ${id}`;
+      raw.textContent = '';
+      if (still) raw.textContent = text;
+      else for (const ch of text) { raw.textContent += ch; await wait(70 + Math.random() * 60); }
+      await wait(still ? 0 : 260);
+      ticker.classList.add('done');
+      press();
+      await wait(2400);
+    }
+  }
+  run();
+</script>
+</body>
+</html>
