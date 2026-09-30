@@ -1,0 +1,13 @@
+[
+  { "parse": "9-11pm", "value": { "start": "21:00:00", "end": "23:00:00" } },
+  { "parse": "9-5pm", "value": { "start": "09:00:00", "end": "17:00:00" } },
+  { "parse": "11-1pm", "value": { "start": "11:00:00", "end": "13:00:00" } },
+  { "parse": "9am-5pm", "value": { "start": "09:00:00", "end": "17:00:00" } },
+  { "parse": "9am-5", "value": { "start": "09:00:00", "end": "17:00:00" } },
+  { "parse": "9:30-11am", "value": { "start": "09:30:00", "end": "11:00:00" } },
+  { "parse": "10:00-14:00", "value": { "start": "10:00:00", "end": "14:00:00" } },
+  { "parse": "10:00 to 14:00", "value": { "start": "10:00:00", "end": "14:00:00" } },
+  { "parse": "9-5", "issues": ["unparseable"] },
+  { "format": { "start": "09:00:00", "end": "17:00:00" }, "text": "9:00 AM – 5:00 PM" },
+  { "format": { "start": "09:00:00", "end": "17:00:00" }, "ctx": { "locale": "de-DE" }, "text": "09:00 – 17:00" }
+]

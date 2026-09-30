@@ -25,6 +25,8 @@ export interface Locale {
   readonly dateOrder: DateOrder;
   /** Where a currency symbol goes: `$12.34` (prefix) or `12,34 €` (suffix). */
   readonly currencyPosition: 'prefix' | 'suffix';
+  /** The clock people use: `12` (3:00 PM) or `24` (15:00). */
+  readonly hourCycle: 12 | 24;
   /** ISO 4217 code of the region's currency, if it has one. */
   readonly currency: string | undefined;
   readonly measurementSystem: MeasurementSystem;
@@ -63,7 +65,7 @@ export function resolveLocale(tag: string): Locale {
   const tagRegion = canonical.split('-').find((p) => /^[A-Z]{2}$/.test(p));
   const region = tagRegion && REGIONS[tagRegion] ? tagRegion : (LIKELY_REGIONS[language] ?? 'US');
   const [currency, ...regionConventions] = REGIONS[region]!;
-  const [order, decimal, group, secondary, minGrouping, currencyPosition] = EXCEPTIONS[`${language}-${region}`] ?? regionConventions;
+  const [order, decimal, group, secondary, minGrouping, currencyPosition, hourCycle] = EXCEPTIONS[`${language}-${region}`] ?? regionConventions;
 
   const locale: Locale = {
     tag: canonical,
@@ -75,6 +77,7 @@ export function resolveLocale(tag: string): Locale {
     minimumGroupingDigits: minGrouping,
     dateOrder: order as DateOrder,
     currencyPosition: currencyPosition === 'prefix' ? 'prefix' : 'suffix',
+    hourCycle: hourCycle === '12' ? 12 : 24,
     currency: currency || undefined,
     measurementSystem: region === 'US' ? 'us' : region === 'GB' ? 'uk' : 'metric',
     names: NAMES[language] ?? NAMES.en!,

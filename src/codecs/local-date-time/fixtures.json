@@ -1,0 +1,29 @@
+[
+  { "parse": "2026-10-02T15:00", "value": "2026-10-02T15:00:00", "context": { "locale": "en-US" } },
+  { "parse": "2026-10-02T15:00:00", "value": "2026-10-02T15:00:00" },
+  { "parse": "2026-10-02 15:00", "value": "2026-10-02T15:00:00" },
+  { "parse": "2026-10-02T15:00:00.123", "value": "2026-10-02T15:00:00" },
+  { "parse": "Oct 2, 2026, 3:00 PM", "value": "2026-10-02T15:00:00" },
+  { "parse": "2 Oct 2026, 15:00", "ctx": { "locale": "en-GB" }, "value": "2026-10-02T15:00:00" },
+  { "parse": "10/2/2026 3:30 pm", "value": "2026-10-02T15:30:00" },
+  { "parse": "Oct 2 at 3pm", "ctx": { "now": "2026-09-30T14:02:11-04:00" }, "value": "2026-10-02T15:00:00" },
+  { "parse": "tomorrow 3pm", "ctx": { "now": "2026-09-30T14:02:11-04:00" }, "value": "2026-10-01T15:00:00", "context": { "locale": "en-US", "now": "2026-09-30T14:02:11-04:00" } },
+  { "parse": "3pm tomorrow", "ctx": { "now": "2026-09-30T14:02:11-04:00" }, "value": "2026-10-01T15:00:00" },
+  { "parse": "tomorrow at 3pm", "ctx": { "now": "2026-09-30T14:02:11-04:00" }, "value": "2026-10-01T15:00:00" },
+  { "parse": "tomorrow noon", "ctx": { "now": "2026-09-30T14:02:11-04:00" }, "value": "2026-10-01T12:00:00" },
+  { "parse": "fri 9am", "ctx": { "now": "2026-09-30T14:02:11-04:00" }, "value": "2026-10-02T09:00:00" },
+  { "parse": "3pm", "ctx": { "now": "2026-09-30T14:02:11-04:00" }, "value": "2026-09-30T15:00:00" },
+  { "parse": "now", "ctx": { "now": "2026-09-30T14:02:11-04:00" }, "value": "2026-09-30T14:02:11" },
+
+  { "parse": "", "issues": ["empty"] },
+  { "parse": "tomorrow", "ctx": { "now": "2026-09-30T14:02:11-04:00" }, "issues": ["unparseable"] },
+  { "parse": "Oct 2, 2026", "issues": ["unparseable"] },
+  { "parse": "2026-10-02T15:00:00Z", "issues": ["unparseable"] },
+  { "parse": "3pm +02:00", "ctx": { "now": "2026-09-30T14:02:11-04:00" }, "issues": ["unparseable"] },
+  { "parse": "abc", "issues": ["unparseable"] },
+
+  { "format": "2026-10-02T15:00:00", "text": "Oct 2, 2026, 3:00 PM" },
+  { "format": "2026-10-02T15:00:00", "ctx": { "locale": "en-GB" }, "text": "2 Oct 2026, 15:00" },
+  { "format": "2026-10-02T15:00:00", "ctx": { "locale": "sv-SE" }, "text": "2026-10-02 15:00" },
+  { "format": "2026-10-02T15:00:30", "ctx": { "locale": "de-DE" }, "text": "2 Oct 2026, 15:00:30" }
+]

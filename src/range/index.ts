@@ -5,7 +5,7 @@ import type { StandardSchemaV1 } from '../core/standard-schema';
 import type { Codec, CodecOptions, Ctx, Issue, ParseResult } from '../core/types';
 import { normalize } from '../primitives/normalize';
 import type { UnitDefinition } from '../codecs/quantity';
-import { factorOf, offsetOf } from '../codecs/quantity/convert';
+import { instantSeconds, rollIso } from '../codecs/calendar/civil';
 import { strategyFor } from './strategies';
 
 /** A range value: two values of the inner codec. */
@@ -37,12 +37,26 @@ function inOrder(codec: Codec<unknown>, start: unknown, end: unknown): boolean {
     const base = (q: unknown): number | undefined => {
       const { value, unit } = q as { value?: unknown; unit?: unknown };
       const def = typeof unit === 'string' && Object.hasOwn(units, unit) ? units[unit] : undefined;
-      return def && typeof value === 'number' ? value * factorOf(def.toBase) + offsetOf(def.toBase) : undefined;
+      if (!def || typeof value !== 'number') return undefined;
+      const t: unknown = def.toBase;
+      const b =
+        typeof t === 'function' ? (t as (v: number) => number)(value)
+        : typeof t === 'number' ? value * t
+        : value * (t as { factor: number }).factor + (t as { offset: number }).offset;
+      return Number.isFinite(b) ? b : undefined;
     };
     const a = base(start);
     const b = base(end);
     // Same tolerance as compare() in quanto/quantity: equal within drift counts as in order.
     if (a !== undefined && b !== undefined) return a <= b + 1e-9 * Math.max(Math.abs(a), Math.abs(b));
+  }
+  if (codec.kind === 'date' || codec.kind === 'time' || codec.kind === 'localDateTime') {
+    if (typeof start === 'string' && typeof end === 'string') return start <= end;
+  }
+  if (codec.kind === 'dateTime' && typeof start === 'string' && typeof end === 'string') {
+    const a = instantSeconds(start);
+    const b = instantSeconds(end);
+    if (a !== undefined && b !== undefined) return a <= b;
   }
   if (codec.kind === 'money') {
     const a = start as { minorUnits?: unknown; currency?: unknown };
@@ -71,8 +85,10 @@ export function range<T>(codec: Codec<T>, options?: CodecOptions<Range<T>>): Cod
 
     let firstIssues: readonly Issue[] | undefined;
     for (const [left, right] of candidates) {
-      let fallback: { start: T; end: T; contexts: [ParseResult<T>, ParseResult<T>] } | undefined;
-      for (const [l, r] of strategy(left, right, session.ctx)) {
+      // Parse every proposal, then prefer: in order as parsed; in order after rolling the end forward
+      // (Dec 30 - Jan 2, Oct 3 10pm-1am); and finally the first that parsed at all.
+      const parsed: Array<{ a: ParseResult<T> & { ok: true }; b: ParseResult<T> & { ok: true }; roll: 'day' | 'year' | undefined }> = [];
+      for (const { sides: [l, r], roll } of strategy(left, right, session.ctx)) {
         const a = codec.parse(l, ctx);
         if (!a.ok) {
           firstIssues ??= a.issues;
@@ -83,22 +99,31 @@ export function range<T>(codec: Codec<T>, options?: CodecOptions<Range<T>>): Cod
           firstIssues ??= b.issues;
           continue;
         }
-        if (inOrder(codec as Codec<unknown>, a.value, b.value)) {
-          fallback = { start: a.value, end: b.value, contexts: [a, b] };
-          break;
-        }
-        fallback ??= { start: a.value, end: b.value, contexts: [a, b] };
+        parsed.push({ a, b, roll });
       }
-      if (!fallback) continue;
+      if (parsed.length === 0) continue;
 
-      let value: Range<T> = { start: fallback.start, end: fallback.end };
+      let chosen: { start: T; end: T; a: ParseResult<T> & { ok: true }; b: ParseResult<T> & { ok: true } } | undefined;
+      const inOrderAsParsed = parsed.find((p) => inOrder(codec as Codec<unknown>, p.a.value, p.b.value));
+      if (inOrderAsParsed) chosen = { start: inOrderAsParsed.a.value, end: inOrderAsParsed.b.value, a: inOrderAsParsed.a, b: inOrderAsParsed.b };
+      for (const p of chosen ? [] : parsed) {
+        const rolled = p.roll && typeof p.b.value === 'string' ? rollIso(p.b.value, p.roll) : undefined;
+        if (rolled === undefined || !inOrder(codec as Codec<unknown>, p.a.value, rolled)) continue;
+        const validated = codec.schema['~standard'].validate(rolled);
+        if (validated instanceof Promise || validated.issues) continue;
+        chosen = { start: p.a.value, end: validated.value as T, a: p.a, b: p.b };
+        break;
+      }
+      const first = parsed[0]!;
+      chosen ??= { start: first.a.value, end: first.b.value, a: first.a, b: first.b };
+
+      let value: Range<T> = { start: chosen.start, end: chosen.end };
       if (userSchema) {
         const validated = runUserSchema(userSchema, value, id);
         if (!validated.ok) return validated;
         value = validated.value;
       }
-      const contexts = fallback.contexts.flatMap((r) => (r.ok ? [r.context] : []));
-      return { ok: true, value, context: mergeContexts(contexts) };
+      return { ok: true, value, context: mergeContexts([chosen.a.context, chosen.b.context]) };
     }
     return { ok: false, issues: firstIssues ?? [{ code: 'unparseable', message: `Couldn't understand "${text}" as a range.` }] };
   };

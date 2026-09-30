@@ -394,6 +394,31 @@ Values are ISO 8601 strings. They're JSON-native and parse losslessly into Tempo
 - **Yearless dates** (`4 Mar`, `13/04`) take the year of `ctx.now`, with the same machine default.
 - Month and weekday names come from bundled data for the locale's language, plus English in every locale, not from `Intl`, so results are identical on every runtime.
 
+### What the built-in grammar accepts
+
+The four codecs share one grammar, built for the common case. Anything it doesn't fully consume is `unparseable`; nothing is silently dropped except a weekday written next to an explicit date (`Fri, Oct 2` isn't checked against the date).
+
+- **ISO:** `2026-10-02`, `2026/10/02`, `2026-10-02T15:00`, `2026-10-02 15:00:30`, with an optional offset (`Z`, `+02:00`, `+0200`). Fractional seconds are dropped.
+- **Numeric dates:** `10/2/2026`, `2.10.26`, `13/04`, with `/`, `.` or `-`, in the region's order. A month over 12 swaps with the day (`13/04` is April 13 everywhere). Regions whose order is YMD read a year-last date as day/month (`03/04/2026` is 3 April in en-CA). Two-digit years fall in the 100 years centred on `now`'s year.
+- **Month names:** `Oct 2`, `October 2nd, 2026`, `2 Oct 2026`, `the 2nd of October`, `Sept 30`, `Oct. 2`, in the locale's language or English. A missing year is `now`'s year, even when that puts the date in the past (`Jan 5`, typed in September, is last January).
+- **Relative dates:** `today`, `tomorrow`, `yesterday`, `in 3 days`, `in a week`, `2 weeks ago`, and weekdays. `fri` and `this fri` are today if today is Friday, otherwise the coming Friday; `next fri` is the first Friday strictly after today; `last fri` is the most recent Friday before today.
+- **Times:** `3pm`, `3 p.m.`, `3p`, `3:30pm`, `15:00`, `15:00:30`, `noon`, `midnight`, `now`. `12am` is 00:00 and `12pm` is 12:00. A bare number (`3`) isn't a time.
+- **Combinations:** a date and a time in either order, with optional `at`, `on` and commas: `tomorrow 3pm`, `3pm tomorrow`, `Oct 2 at 15:00`, `Oct 2, 2026, 3:00 PM`, `fri 9am`.
+- **Offsets** (`dateTime()` only): `Z`, `UTC`, `GMT`, `±HH:MM`, `±HHMM`. `Z`, `UTC` and `GMT` store as `+00:00`.
+- **What each codec requires:** `date()` a date and no time; `time()` a time and no date; `localDateTime()` a time, with today's date if none is written, and no offset; `dateTime()` a time, today's date and `now`'s offset when missing. A date alone in a date-time field is unparseable rather than midnight.
+
+### Deliberately left out
+
+Write a custom codec for any of these:
+
+- Month and year arithmetic (`in 2 months`, `next year`) and week or month references (`next week`, `end of month`): they have no single common-sense answer.
+- `next fri` meaning Friday of next week.
+- Time zone names and abbreviations (`EST`, `Europe/Paris`), and DST: an input without an offset takes `now`'s offset, even for a date on the other side of a DST change.
+- Clock forms like `15h30`, `3.30pm` and `1500`, and fractional seconds in stored values.
+- Month-and-year without a day (`Oct 2026`), week numbers, ordinal dates, and non-Gregorian calendars.
+- Numbers written as words (`three pm`), except `a`/`an`/`one` in `in a day`.
+- Checking a written weekday against the date (`Mon, Oct 2`).
+
 ## Locales
 
 `ctx.locale` drives parsing, not just formatting. It's a BCP 47 tag; when it's missing, assume en-US.
@@ -408,6 +433,7 @@ Bundled data is keyed at its natural level, and each level resolves on its own. 
 | Currency | region | Every region |
 | Measurement system (`us`, `uk`, `metric`) | region: US → `us`, GB → `uk`, everything else → `metric` | Every region |
 | Currency symbol position (before or after the amount) | region, with language exceptions | Every region |
+| Hour cycle (12- or 24-hour clock) | region, with language exceptions | Every region |
 
 - Region data is small (about 250 regions, a few fields each), so it ships complete. Only the language data needs a supported list.
 - A tag without a region takes its language's likely region from a small bundled table (`de` → DE, `en` → US). An unknown language with no region resolves to US.
@@ -433,7 +459,8 @@ Default formatters use only bundled data, so they're deterministic and round-tri
 - Numbers use the region's bundled separators (`formatNumber`).
 - Quantities print the number and the unit's first alias: `71 in`, `1,8 m`. This works for custom unit tables without any extra data.
 - Money prints exactly the currency's minor digits, and the currency's symbol when that symbol parses back to the same currency under the same `ctx` and codec options, and the ISO code otherwise: `$12.34` for USD in en-US, but `12.34 USD` in en-CA, where `$` means CAD. The symbol goes where the locale puts it (bundled per region, like the separators): `$12.34`, `12,34 €`, `R$12,50`, with a space after a symbol that ends in a letter (`Rp 12,50`). ISO codes always follow the amount: `12.34 CHF`.
-- Dates use unambiguous forms built from bundled month names (`Oct 2, 2026`), never numeric day/month order. Languages without bundled names use English.
+- Dates use unambiguous forms: `Oct 2, 2026` in MDY regions, `2 Oct 2026` in DMY regions (bundled month names; English for languages without bundled names), and ISO `2026-10-02` in YMD regions. Never a numeric day/month order.
+- Times follow the region's hour cycle (bundled, like the separators): `3:00 PM` or `15:00`, with seconds only when they aren't zero. Date-times join the two (`Oct 2, 2026, 3:00 PM`; `2026-10-02 15:00` in YMD regions), and `dateTime()` adds the offset (`… -04:00`), so the instant survives a round trip.
 
 `quanto/formats` has ready-made formatters such as `feetInches`, plus opt-in `Intl` formatters for richer output (localized unit names, full currency styles). The `Intl` formatters are outside the determinism guarantee and are display-only: their output varies between ICU versions and isn't guaranteed to round-trip.
 
@@ -451,7 +478,7 @@ heightRange.parse('5-7 ft'); // { ok: true, value: { start: { value: 5, unit: 'f
 - **Inner codecs know nothing about ranges.** All range logic lives in the wrapper, even where that duplicates some lexing. There is no range-specific or partial-parse hook on codecs.
 - Parsing is **two passes**:
   1. **Split.** Separators: `-`, `–`, `—`, `to`, `until`, `through`. Hyphens also appear inside values (negative numbers, ISO dates `2026-10-03`), so the wrapper tries each candidate split.
-  2. **Complete and parse.** For each split, a strategy chosen from the inner codec's `kind` proposes textual completions of the two sides, in order of preference. The wrapper parses both sides of each with the inner codec and keeps the first completion where both succeed and `start <= end`. If none is in order, it keeps the first where both succeed. The last proposal is always the sides as typed.
+  2. **Complete and parse.** For each split, a strategy chosen from the inner codec's `kind` proposes textual completions of the two sides, in order of preference. The wrapper parses both sides of each with the inner codec and keeps the first completion where both succeed and `start <= end`. If none is in order, it keeps the first where both succeed. The last proposal is always the sides as typed. Date strategies can mark a proposal as rollable: if it parses out of order, the end moves forward a day or a year (checked against the inner codec's schema), since "the next day" can't be written back into text like `tomorrow`.
 - **Completion strategies are per family**, because each family has different shorthand. The rule throughout: a side borrows what it's missing from the other side, and when borrowing could go two ways, the reading that keeps `start <= end` wins.
   - `quantity`: a side with no unit borrows the other side's unit text. `5-7 ft` → 5 ft–7 ft; `5'10"-6'` needs nothing.
   - `money`: a side with no currency (symbol or code) borrows the other side's: `$10-20` → $10–$20, `10-20 EUR` → €10–€20. A side with no magnitude suffix borrows the other side's only if the result stays in order: `$10-20k` → $10k–$20k and `$1.5-2M` → $1.5M–$2M, but `$500-1k` → $500–$1,000.
@@ -460,7 +487,7 @@ heightRange.parse('5-7 ft'); // { ok: true, value: { start: { value: 5, unit: 'f
   - `localDateTime` and `dateTime`: a side with no date borrows the other side's, wherever the date was written: `Oct 3 3-5pm`, `tomorrow 3-5pm` and `3-5pm tomorrow` all put both times on one day. The times complete as in `time`. When both sides share a borrowed date and the end time is before the start time, the end moves to the next day: `Oct 3 10pm-1am` → Oct 3, 10pm–Oct 4, 1am. For `dateTime`, a side with no UTC offset borrows the other side's written offset, before falling back to `ctx.now`'s.
   - No `kind`, or a kind without a strategy: no completion. Both sides must be fully specified.
 - **Which split wins:** splits are tried left to right, and the first split with any completion where both sides parse provides the value. If none does, the result carries the issues of the first side that failed, which is the most specific failure (`5-7 kg` reports `unknown_unit`, from `5 kg`). Text with no separator is `unparseable`.
-- **Where ordering is knowable:** quantities of a codec with a unit table (compared in the base unit, with `compare`'s tolerance) and money in a single currency. Other values, including merged ones, count as in order.
+- **Where ordering is knowable:** quantities of a codec with a unit table (compared in the base unit, with `compare`'s tolerance), money in a single currency, dates, times and local date-times (as strings), and date-times (as instants). Other values, including merged ones, count as in order.
 - **Formatting** prints both sides in full, separated by ` – ` (an en dash with spaces): `5 ft – 7 ft`, `$10.00 – $20.00`. It reads back under the same `ctx`, even with negative values.
 - Ordering only picks between completions. It isn't enforced: `7-5 ft` parses as typed, and rejecting it is left to the user's schema, which can use `compare` from the operations subpaths.
 - Open-ended ranges (`5ft+`, `under 10 kg`) are deferred.
