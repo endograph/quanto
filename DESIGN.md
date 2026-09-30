@@ -269,7 +269,8 @@ TypeScript types (unit IDs, `Quantity<U>`) are inferred from the table's literal
 - **Unit IDs** are the stored identifiers. They only need to be unique within a table.
 - **Aliases are resolved within the codec's own table.** `1m` is one meter to a length codec and one minute to a duration codec. A unit from some other table (`70 kg` in a length field) is simply an `unknown_unit`. Users never see unit IDs.
 - **Alias matching is case-insensitive in every table**, after Unicode normalization. `3M` and `3m` are both meters; `Mb` and `MB` are both megabytes, since megabits are rare in practice. There is no case-sensitivity flag: a use case that needs one writes a custom codec. Two aliases in one table that collide under case-insensitive matching are a definition-time error.
-- **Affine units** (temperature, which has an offset) declare `toBase` as `{ factor, offset }`. Adding or subtracting absolute temperatures is refused.
+- **Affine units** (temperature, which has an offset) declare `toBase` as `{ factor, offset }`. Adding, subtracting or scaling absolute temperatures is refused; converting and comparing work.
+- **`subunit`** (optional) names the unit a trailing bare number takes after this one: `ft: { …, subunit: 'in' }` makes `5'11` read as 5 ft 11 in, and `m: { …, subunit: 'cm' }` makes `1m80` read as 180 cm. It's explicit rather than guessed from the table, and must name a smaller, non-affine unit.
 - `quantity()` checks at definition time that aliases are unique within the table and that `defaultUnit` and `canonicalUnit` name real units.
 
 ### Operations (`quanto/quantity`)
@@ -310,8 +311,15 @@ const height = length({
 - **`canonicalUnit`** narrows the value type to that unit (`Quantity<'in'>`) and turns unit-aware constraints into plain number checks that any validator can express. It is the recommended way to validate quantities.
 - Without `canonicalUnit`, cross-unit constraints are written as refinements that use quanto's math, e.g. `.refine((h) => compare(len, h, { value: 8, unit: 'ft' }) <= 0)`.
 - **Compound input** (`5'11"`, `5 ft 11 in`, `1 lb 4 oz`, `2h30m`) is summed into the **smallest** unit mentioned (71 in, 20 oz, 150 min), or into `canonicalUnit` if set. The smallest unit usually gives an exact integer, and it's what `canonicalUnit` users expect.
+  - Components go from larger to smaller units, without repeats; `11 in 5 ft` is unparseable. Affine units don't compound.
+  - Only the first component carries a sign, and it applies to the whole: `-5 ft 6 in` is -66 in.
+  - A trailing bare number takes the previous unit's `subunit`; without one it's unparseable.
+  - Conversions scale decimal factors to integers before dividing, so `5 ft 11 in` is exactly 71 in and 1 in is exactly 25.4 mm.
+- **Unit matching**: the longest alias wins (`miles` before `mi` before `m`), aliases may contain spaces and `/` (`fl oz`, `km/h`), and a word alias can't run into a following letter (`5 ms` is not `5 m` + `s`). A period after a word alias is skipped (`5 ft. 11 in.`). A word that matches no alias is `unknown_unit`; anything else left over is `unparseable`.
+- Default formatting prints at most 3 fraction digits, then the unit's first alias, separated by a space unless the alias is `'` or `"`.
 - Built-in quantity codecs: `length`, `mass`, `duration`, `temperature`, `volume`, `area`, `speed` (its own unit table, not derived), each exported alongside its unit table (`lengthUnits`, …).
-- `duration` covers fixed-length units only (ms through weeks). Calendar durations (months, years) are not quantities because they have no fixed length.
+- `duration` covers fixed-length units only (ms through weeks). Calendar durations (months, years) are not quantities because they have no fixed length. Clock notation (`1:30`) isn't accepted in v1.
+- `mass` has no `ton`: it means different masses in US, UK and metric use (`t`/`tonne` is the metric ton). `volume`'s customary units are US measures; UK imperial pints and gallons need a custom table.
 
 ## Money
 

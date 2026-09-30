@@ -21,6 +21,7 @@ export type {
 } from './core/types';
 export type { StandardSchemaV1 } from './core/standard-schema';
 export type { DateOrder, Locale, MeasurementSystem, Names } from './locale';
+export type { UnitDefinition, UnitTable } from './codecs/quantity';
 
 export { normalize } from './primitives/normalize';
 export { formatNumber, readNumber } from './primitives/number';

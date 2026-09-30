@@ -1,0 +1,34 @@
+[
+  { "parse": "60 mph", "value": { "value": 60, "unit": "mph" }, "context": { "locale": "en-US" } },
+  { "parse": "60mph", "value": { "value": 60, "unit": "mph" } },
+  { "parse": "60 MPH", "value": { "value": 60, "unit": "mph" } },
+  { "parse": "60 miles per hour", "value": { "value": 60, "unit": "mph" } },
+  { "parse": "100 km/h", "value": { "value": 100, "unit": "kmh" } },
+  { "parse": "100km/h", "value": { "value": 100, "unit": "kmh" } },
+  { "parse": "100 kph", "value": { "value": 100, "unit": "kmh" } },
+  { "parse": "100 kmh", "value": { "value": 100, "unit": "kmh" } },
+  { "parse": "100 kilometres per hour", "value": { "value": 100, "unit": "kmh" } },
+  { "parse": "12,5 km/h", "ctx": { "locale": "de-DE" }, "value": { "value": 12.5, "unit": "kmh" } },
+  { "parse": "10 m/s", "value": { "value": 10, "unit": "mps" } },
+  { "parse": "10 meters per second", "value": { "value": 10, "unit": "mps" } },
+  { "parse": "20 knots", "value": { "value": 20, "unit": "kn" } },
+  { "parse": "20 kts", "value": { "value": 20, "unit": "kn" } },
+
+  { "parse": "36 km/h", "options": { "canonicalUnit": "mps" }, "value": { "value": 10, "unit": "mps" } },
+  { "parse": "60 mph", "options": { "canonicalUnit": "kmh" }, "value": { "value": 96.56064, "unit": "kmh" } },
+  { "parse": "20 knots", "options": { "canonicalUnit": "kmh" }, "value": { "value": 37.04, "unit": "kmh" } },
+
+  { "parse": "60", "issues": ["missing_unit"] },
+  { "parse": "60", "options": { "defaultUnit": { "us": "mph", "uk": "mph", "metric": "kmh" } }, "ctx": { "locale": "en-GB" }, "value": { "value": 60, "unit": "mph" } },
+  { "parse": "60", "options": { "defaultUnit": { "us": "mph", "uk": "mph", "metric": "kmh" } }, "ctx": { "locale": "de-DE" }, "value": { "value": 60, "unit": "kmh" } },
+  { "parse": "60 km", "issues": ["unknown_unit"] },
+  { "parse": "5 km/h 60 mph", "issues": ["unparseable"] },
+  { "parse": "", "issues": ["empty"] },
+
+  { "format": { "value": 60, "unit": "mph" }, "text": "60 mph" },
+  { "format": { "value": 100, "unit": "kmh" }, "text": "100 km/h" },
+  { "format": { "value": 12.5, "unit": "kmh" }, "ctx": { "locale": "de-DE" }, "text": "12,5 km/h" },
+  { "format": { "value": 96.56064, "unit": "kmh" }, "text": "96.561 km/h" },
+  { "format": { "value": 10, "unit": "mps" }, "text": "10 m/s" },
+  { "format": { "value": 20, "unit": "kn" }, "text": "20 kn" }
+]

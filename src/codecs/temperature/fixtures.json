@@ -1,0 +1,42 @@
+[
+  { "parse": "20 °C", "value": { "value": 20, "unit": "C" }, "context": { "locale": "en-US" } },
+  { "parse": "20°C", "value": { "value": 20, "unit": "C" } },
+  { "parse": "20 ℃", "value": { "value": 20, "unit": "C" } },
+  { "parse": "20C", "value": { "value": 20, "unit": "C" } },
+  { "parse": "20 c", "value": { "value": 20, "unit": "C" } },
+  { "parse": "20 celsius", "value": { "value": 20, "unit": "C" } },
+  { "parse": "20 degrees celsius", "value": { "value": 20, "unit": "C" } },
+  { "parse": "20 deg C", "value": { "value": 20, "unit": "C" } },
+  { "parse": "20,5 °C", "ctx": { "locale": "de-DE" }, "value": { "value": 20.5, "unit": "C" } },
+  { "parse": "-5 °C", "value": { "value": -5, "unit": "C" } },
+  { "parse": "−5 °C", "value": { "value": -5, "unit": "C" } },
+  { "parse": "98.6 °F", "value": { "value": 98.6, "unit": "F" } },
+  { "parse": "98.6F", "value": { "value": 98.6, "unit": "F" } },
+  { "parse": "98.6 fahrenheit", "value": { "value": 98.6, "unit": "F" } },
+  { "parse": "-40 degrees F", "value": { "value": -40, "unit": "F" } },
+  { "parse": "300 K", "value": { "value": 300, "unit": "K" } },
+  { "parse": "300 kelvin", "value": { "value": 300, "unit": "K" } },
+
+  { "parse": "22", "options": { "defaultUnit": { "us": "F", "uk": "C", "metric": "C" } }, "ctx": { "locale": "en-GB" }, "value": { "value": 22, "unit": "C" } },
+  { "parse": "72", "options": { "defaultUnit": { "us": "F", "uk": "C", "metric": "C" } }, "ctx": { "locale": "en-US" }, "value": { "value": 72, "unit": "F" } },
+
+  { "parse": "98.6 °F", "options": { "canonicalUnit": "C" }, "value": { "value": 37, "unit": "C" } },
+  { "parse": "20 °C", "options": { "canonicalUnit": "F" }, "value": { "value": 68, "unit": "F" } },
+  { "parse": "-40 °C", "options": { "canonicalUnit": "F" }, "value": { "value": -40, "unit": "F" } },
+  { "parse": "0 K", "options": { "canonicalUnit": "C" }, "value": { "value": -273.15, "unit": "C" } },
+  { "parse": "0 °C", "options": { "canonicalUnit": "K" }, "value": { "value": 273.15, "unit": "K" } },
+
+  { "parse": "20", "issues": ["missing_unit"] },
+  { "parse": "20 degrees", "issues": ["unknown_unit"] },
+  { "parse": "20 °C 5 °F", "issues": ["unparseable"] },
+  { "parse": "20 °C 5", "issues": ["unparseable"] },
+  { "parse": "°C", "issues": ["unparseable"] },
+  { "parse": "", "issues": ["empty"] },
+
+  { "format": { "value": 20, "unit": "C" }, "text": "20 °C" },
+  { "format": { "value": 20.5, "unit": "C" }, "ctx": { "locale": "de-DE" }, "text": "20,5 °C" },
+  { "format": { "value": -5, "unit": "C" }, "text": "-5 °C" },
+  { "format": { "value": 98.6, "unit": "F" }, "text": "98.6 °F" },
+  { "format": { "value": 36.99999999999999, "unit": "C" }, "text": "37 °C" },
+  { "format": { "value": 300, "unit": "K" }, "text": "300 K" }
+]
