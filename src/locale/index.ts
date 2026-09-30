@@ -23,6 +23,8 @@ export interface Locale {
   /** Digits needed above the first group before grouping applies (1: `1,234`; 2: `1234` but `12.345`). */
   readonly minimumGroupingDigits: number;
   readonly dateOrder: DateOrder;
+  /** Where a currency symbol goes: `$12.34` (prefix) or `12,34 €` (suffix). */
+  readonly currencyPosition: 'prefix' | 'suffix';
   /** ISO 4217 code of the region's currency, if it has one. */
   readonly currency: string | undefined;
   readonly measurementSystem: MeasurementSystem;
@@ -61,7 +63,7 @@ export function resolveLocale(tag: string): Locale {
   const tagRegion = canonical.split('-').find((p) => /^[A-Z]{2}$/.test(p));
   const region = tagRegion && REGIONS[tagRegion] ? tagRegion : (LIKELY_REGIONS[language] ?? 'US');
   const [currency, ...regionConventions] = REGIONS[region]!;
-  const [order, decimal, group, secondary, minGrouping] = EXCEPTIONS[`${language}-${region}`] ?? regionConventions;
+  const [order, decimal, group, secondary, minGrouping, currencyPosition] = EXCEPTIONS[`${language}-${region}`] ?? regionConventions;
 
   const locale: Locale = {
     tag: canonical,
@@ -72,6 +74,7 @@ export function resolveLocale(tag: string): Locale {
     secondaryGroupSize: secondary,
     minimumGroupingDigits: minGrouping,
     dateOrder: order as DateOrder,
+    currencyPosition: currencyPosition === 'prefix' ? 'prefix' : 'suffix',
     currency: currency || undefined,
     measurementSystem: region === 'US' ? 'us' : region === 'GB' ? 'uk' : 'metric',
     names: NAMES[language] ?? NAMES.en!,

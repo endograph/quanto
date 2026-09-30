@@ -90,6 +90,7 @@ export type IssueCode =
   | 'unparseable' //      text could not be understood at all
   | 'missing_unit' //     a bare number, and the codec has no default unit
   | 'unknown_unit' //     a unit was written but isn't in the codec's unit table
+  | 'missing_currency' // a bare number, and the codec has no default currency
   | 'unknown_currency' // a currency was written but isn't known
   | 'excess_precision' // more decimals than the value allows ("$3.459")
   | 'invalid'; //         the user's schema rejected the value (or, server-side, the structural check did)

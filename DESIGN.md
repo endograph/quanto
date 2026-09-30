@@ -171,7 +171,8 @@ type IssueCode =
   | 'unparseable'       // text could not be understood at all
   | 'missing_unit'      // bare number and the codec has no defaultUnit
   | 'unknown_unit'      // a unit was written but isn't in the codec's unit table ("70 kg" in a length field)
-  | 'unknown_currency'
+  | 'missing_currency'  // bare number and the codec has no defaultCurrency
+  | 'unknown_currency'  // a currency was written but isn't known ("12 XYZ", "12 bananas")
   | 'excess_precision'  // "$3.459" for a two-decimal currency
   | 'invalid';          // the user's schema rejected the value (or, server-side, the codec's structural check did)
 
@@ -350,14 +351,20 @@ import { add, subtract, compare, scale, allocate, convert } from 'quanto/money';
 - `add`, `subtract` and `compare` require the same currency. Mismatches always throw at runtime, and are also a type error when both currencies are literal types (`Money<'USD'>` vs `Money<'EUR'>`). Values typed as plain `Money` are only checked at runtime.
 - `scale(m, factor, { rounding })` and `convert(m, 'EUR', { rate, rounding })` always round to a whole minor unit of the result currency. The caller must choose the rounding mode, because the right one depends on the domain (tax, invoicing, display). Modes use `Intl.NumberFormat`'s `roundingMode` names (`halfExpand`, `halfEven`, `trunc`, …).
 - `convert`'s `rate` is how many major units of the target currency one major unit of the source buys. Differing minor units (USD → JPY) are handled. quanto never fetches rates.
-- `allocate(m, ratios)` splits without losing a cent (e.g. $10 three ways → 334 / 333 / 333).
+- `allocate(m, ratios)` splits without losing a cent (e.g. $10 three ways → 334 / 333 / 333): each share gets its rounded-down part, and the remainder goes one minor unit at a time to shares with non-zero ratios, in order.
+- Before rounding, float noise below 15 significant digits is removed, so `scale` treats `1005 × 1.1` as exactly 1105.5.
+- `scale` and `convert` round to a whole minor unit only; the operations never produce fractional minor units.
 
 ### Parsing
 
 The codec is `money({ defaultCurrency?, schema?, format? })`.
 
-- Accepts `$12`, `12 USD`, `€12,50`, `12.50 eur`, `$1.2k`, `$3M`. Suffixes are case-insensitive: `3m` and `3M` both mean million in a money field.
-- Ambiguous symbols (`$` is used by USD, CAD, AUD, MXN…) resolve to the codec's `defaultCurrency` option, then to `ctx.locale`'s currency if that currency uses the symbol (`$` in en-CA → CAD, `$` in de-DE → USD), then to USD.
+- Accepts `$12`, `12 USD`, `USD 12`, `€12,50`, `12.50 eur`, `$1.2k`, `$3M`, `$1.5bn`, and names (`12 dollars`, `12 bucks`, `12 euros`, `12 quid`, `500 yen`). Suffixes (`k`, `m`, `b`/`bn`, `t`) are case-insensitive and attached to the number: `3m` and `3M` both mean million in a money field.
+- A currency can be written before the number, after it, or both, if they agree: `$12 CAD` is CAD, `€12 USD` is unparseable. Disambiguated symbols are accepted (`US$`, `C$`, `CA$`, `A$`, `NZ$`, `HK$`, `R$`, `CN¥`…).
+- A sign goes before the symbol or the number (`-$12`, `$-12`), not both.
+- A bare number takes `defaultCurrency`; without it, it's a `missing_currency` issue.
+- A three-letter word that isn't an ISO 4217 code, or any other word in a currency position, is `unknown_currency`.
+- Ambiguous symbols (`$` is used by USD, CAD, AUD, MXN…; `kr` by SEK, NOK, DKK, ISK; `¥` by JPY and CNY) resolve to the codec's `defaultCurrency` if that currency uses the symbol, then to `ctx.locale`'s currency if it does (`$` in en-CA → CAD, `$` in de-DE → USD), then to the symbol's first currency (USD, SEK, JPY).
 - Input with more precision than the currency allows (`$3.459`) is an `excess_precision` issue. Sub-minor-unit prices are deferred (see below).
 
 ## Dates and times
@@ -394,6 +401,7 @@ Bundled data is keyed at its natural level, and each level resolves on its own. 
 | Decimal and grouping separators, grouping pattern | region, with language exceptions (`fr-CA`, `de-CH`, …) | Every region |
 | Currency | region | Every region |
 | Measurement system (`us`, `uk`, `metric`) | region: US → `us`, GB → `uk`, everything else → `metric` | Every region |
+| Currency symbol position (before or after the amount) | region, with language exceptions | Every region |
 
 - Region data is small (about 250 regions, a few fields each), so it ships complete. Only the language data needs a supported list.
 - A tag without a region takes its language's likely region from a small bundled table (`de` → DE, `en` → US). An unknown language with no region resolves to US.
@@ -418,7 +426,7 @@ Default formatters use only bundled data, so they're deterministic and round-tri
 
 - Numbers use the region's bundled separators (`formatNumber`).
 - Quantities print the number and the unit's first alias: `71 in`, `1,8 m`. This works for custom unit tables without any extra data.
-- Money prints the currency's symbol when that symbol parses back to the same currency under the same `ctx`, and the ISO code otherwise: `$12.34` for USD in en-US, but `12.34 USD` in en-CA, where `$` means CAD.
+- Money prints exactly the currency's minor digits, and the currency's symbol when that symbol parses back to the same currency under the same `ctx` and codec options, and the ISO code otherwise: `$12.34` for USD in en-US, but `12.34 USD` in en-CA, where `$` means CAD. The symbol goes where the locale puts it (bundled per region, like the separators): `$12.34`, `12,34 €`, `R$12,50`, with a space after a symbol that ends in a letter (`Rp 12,50`). ISO codes always follow the amount: `12.34 CHF`.
 - Dates use unambiguous forms built from bundled month names (`Oct 2, 2026`), never numeric day/month order. Languages without bundled names use English.
 
 `quanto/formats` has ready-made formatters such as `feetInches`, plus opt-in `Intl` formatters for richer output (localized unit names, full currency styles). The `Intl` formatters are outside the determinism guarantee and are display-only: their output varies between ICU versions and isn't guaranteed to round-trip.

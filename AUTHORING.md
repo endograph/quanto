@@ -71,6 +71,7 @@ Don't use `Intl` in `parse` or default `format`: its output varies between runti
 | `unparseable` | The text can't be understood. |
 | `missing_unit` | A bare number, and the codec has no default unit. |
 | `unknown_unit` | A unit was written but isn't in the codec's table. |
+| `missing_currency` | A bare number, and the codec has no default currency. |
 | `unknown_currency` | A currency was written but isn't known. |
 | `excess_precision` | More decimals than the value allows (`$3.459`). |
 | `invalid` | Produced by `defineCodec` from the user's `schema`; you never return it. |
