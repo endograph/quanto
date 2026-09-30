@@ -1,9 +1,9 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
-// Tests run against source: `quanto` and its subpaths resolve to src/, for the core's tests and for the
-// packages in packages/*, which import quanto by name as their users do.
-const src = (path: string): string => fileURLToPath(new URL(`./src/${path}`, import.meta.url));
+// Tests run against source: `quanto` and its subpaths resolve to packages/quanto/src, for the core's own
+// tests and for other packages, which import quanto by name as their users do.
+const src = (path: string): string => fileURLToPath(new URL(`./packages/quanto/src/${path}`, import.meta.url));
 
 export default defineConfig({
   resolve: {
@@ -13,6 +13,6 @@ export default defineConfig({
     ],
   },
   test: {
-    include: ['src/**/*.test.ts', 'packages/*/src/**/*.test.ts'],
+    include: ['packages/*/src/**/*.test.ts'],
   },
 });

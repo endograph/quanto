@@ -19,9 +19,12 @@
     "typecheck": "tsc --noEmit"
   },
   "peerDependencies": {
-    "quanto": "^0.0.0"
+    "quanto": "workspace:^"
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "quanto": "workspace:*"
   }
 }

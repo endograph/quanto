@@ -1,10 +1,11 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    // During development, quanto resolves to the core's source; the published package depends on quanto's dist.
+    // In the repo, quanto resolves to the core's source, so nothing needs building first. Published, it's
+    // the quanto peer dependency's dist.
     "paths": {
-      "quanto": ["../../src/index.ts"],
-      "quanto/*": ["../../src/*/index.ts"]
+      "quanto": ["../quanto/src/index.ts"],
+      "quanto/*": ["../quanto/src/*/index.ts"]
     }
   },
   "include": ["src"]
