@@ -1,7 +1,7 @@
 {
   "name": "quanto",
   "version": "0.0.0",
-  "description": "Turn messy human text into well-typed values and back: lengths, weights, durations, money, dates and custom types.",
+  "description": "Turn messy human text into well-typed values and back: lengths, weights, durations and custom types. Money and dates are in @quanto/money and @quanto/datetime.",
   "type": "module",
   "sideEffects": false,
   "files": [
@@ -16,10 +16,6 @@
     "./quantity": {
       "types": "./dist/quantity/index.d.ts",
       "import": "./dist/quantity/index.js"
-    },
-    "./money": {
-      "types": "./dist/money/index.d.ts",
-      "import": "./dist/money/index.js"
     },
     "./codecs": {
       "types": "./dist/codecs/index.d.ts",

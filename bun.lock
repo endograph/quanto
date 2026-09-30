@@ -23,6 +23,26 @@
         "quanto": "workspace:^",
       },
     },
+    "packages/datetime": {
+      "name": "@quanto/datetime",
+      "version": "0.0.0",
+      "devDependencies": {
+        "quanto": "workspace:*",
+      },
+      "peerDependencies": {
+        "quanto": "workspace:^",
+      },
+    },
+    "packages/money": {
+      "name": "@quanto/money",
+      "version": "0.0.0",
+      "devDependencies": {
+        "quanto": "workspace:*",
+      },
+      "peerDependencies": {
+        "quanto": "workspace:^",
+      },
+    },
     "packages/quanto": {
       "name": "quanto",
       "version": "0.0.0",
@@ -40,6 +60,10 @@
     "@quansync/fs": ["@quansync/fs@1.1.0", "", { "dependencies": { "quansync": "^1.0.0" } }, "sha512-qAPG/t3HqML1TlN7sY/pTbEjzFVAKsMjNNMGheyDosro+kT4iw2KCUoHcVdmliwWjorm4elZbgNQyU2eD97eDg=="],
 
     "@quanto/codecs": ["@quanto/codecs@workspace:packages/codecs"],
+
+    "@quanto/datetime": ["@quanto/datetime@workspace:packages/datetime"],
+
+    "@quanto/money": ["@quanto/money@workspace:packages/money"],
 
     "@quanto/site": ["@quanto/site@workspace:apps/site"],
 

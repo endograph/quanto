@@ -303,7 +303,6 @@ export function quantity<const T extends UnitTable, C extends keyof T & string =
 
   const codec = defineCodec<Quantity<C>>({
     id,
-    kind: 'quantity',
     parse,
     format: defaultFormat,
     check,

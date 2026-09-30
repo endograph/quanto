@@ -104,7 +104,6 @@ export const pace = <C extends PaceUnit = PaceUnit>(options?: QuantityOptions<Pa
 
   const codec = defineCodec<Quantity<C>>({
     id: 'pace',
-    kind: 'quantity',
     parse,
     format: (value, ctx) => `${formatTime(value.value, ctx)} ${paceUnits[value.unit].aliases[0]}`,
     check,

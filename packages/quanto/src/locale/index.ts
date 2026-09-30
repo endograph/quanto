@@ -32,6 +32,8 @@ export interface Locale {
   readonly measurementSystem: MeasurementSystem;
   /** Month and weekday names for the language, or English when the language isn't bundled. */
   readonly names: Names;
+  /** Names accepted when parsing: the language's, then English, which every locale accepts. */
+  readonly acceptedNames: readonly Names[];
 }
 
 const cache = new Map<string, Locale>();
@@ -81,6 +83,7 @@ export function resolveLocale(tag: string): Locale {
     currency: currency || undefined,
     measurementSystem: region === 'US' ? 'us' : region === 'GB' ? 'uk' : 'metric',
     names: NAMES[language] ?? NAMES.en!,
+    acceptedNames: NAMES[language] && language !== 'en' ? [NAMES[language]!, NAMES.en!] : [NAMES.en!],
   };
   cache.set(canonical, locale);
   return locale;

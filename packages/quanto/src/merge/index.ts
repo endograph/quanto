@@ -1,7 +1,7 @@
 import { mergeContexts, startSession } from '../core/context';
 import { InvalidValueError } from '../core/errors';
 import type { StandardSchemaV1 } from '../core/standard-schema';
-import type { Codec, CodecKind, Ctx, Issue, ParseContext, ParseResult } from '../core/types';
+import type { Codec, Ctx, Issue, ParseContext, ParseResult } from '../core/types';
 
 /** A merged value, tagged with the id of the codec that produced it. */
 export interface Tagged<T> {
@@ -34,8 +34,6 @@ export function merge<const Cs extends readonly Codec<unknown>[]>(codecs: Cs): M
   }
   const byId = new Map(members.map((m) => [m.id, m]));
   const id = `merge(${members.map((m) => m.id).join(',')})`;
-  const kinds = new Set(members.map((m) => m.kind));
-  const kind: CodecKind | undefined = kinds.size === 1 ? members[0]!.kind : undefined;
 
   const parse = (text: string, ctx?: Ctx): ParseResult<Tagged<T>> => {
     if (text.trim() === '') return { ok: false, issues: [{ code: 'empty', message: 'Enter a value.' }] };
@@ -82,6 +80,5 @@ export function merge<const Cs extends readonly Codec<unknown>[]>(codecs: Cs): M
     },
   };
 
-  const base = { id, parse, format, schema, codecs: members };
-  return kind === undefined ? base : { ...base, kind };
+  return { id, parse, format, schema, codecs: members };
 }

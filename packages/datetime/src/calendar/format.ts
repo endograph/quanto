@@ -1,7 +1,7 @@
 // Default formatting for dates and times, from bundled data only (DESIGN.md, Formatting). Every form
 // here reads back through the grammar under the same ctx.
 
-import type { ResolvedCtx } from '../../core/types';
+import type { ResolvedCtx } from 'quanto';
 import { type CivilDate, type CivilTime, isoDate } from './civil';
 
 /** `Oct 2, 2026` (MDY regions), `2 Oct 2026` (DMY), `2026-10-02` (YMD). Never a numeric day/month order. */

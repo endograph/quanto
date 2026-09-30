@@ -42,7 +42,6 @@ export const percent = (options?: CodecOptions<number>) =>
 You write:
 
 - **`id`**: letters, digits, `_`, `-` and `.`.
-- **`kind`** (optional): `'quantity' | 'money' | 'date' | 'time' | 'localDateTime' | 'dateTime'`. It lets `range()` complete partial sides. Omit it if none fits.
 - **`parse(text, ctx)`**: return `{ ok: true, value }` or `{ ok: false, issues }`. Never throw on bad input. `text` is trimmed and never empty.
 - **`format(value, ctx)`**: the default formatter.
 - **`check(value)`**: the structural check. Return `{ message, path? }[]`, empty when `value` is a well-formed `T`. Servers validate stored values with it.
@@ -68,6 +67,23 @@ export const horseHeight = quantity({
 - **Conversions that are neither use a function pair**, like L/100km over a km/L base: `{ toBase: (v) => 100 / v, fromBase: (b) => 100 / b, aliases: […] }`. Both functions are required, must invert each other and must be strictly monotonic; `quantity()` spot-checks this. Pick a base where bigger means more, since `compare` orders by it.
 - **The first alias is what `format` prints.** Aliases match case-insensitively, except those that differ only by case from another unit's alias (`mW` and `MW`), which match exactly as written. Adding such a unit can change what existing input means: next to megabit `Mb`, typing `mb` no longer matches megabyte `MB` unless you list `mb` as an alias of `MB`.
 - **`subunit`** makes a trailing bare number work: `ft: { …, subunit: 'in' }` reads `5'11` as 5 ft 11 in.
+
+## Ranges
+
+Quantity codecs get ranges from `range()`. For any other codec, build one with `defineRange`, which does the splitting, choosing and formatting; you supply only the shorthand your values have:
+
+```ts
+import { defineRange } from 'quanto';
+
+export const percentRange = (codec = percent()) =>
+  defineRange(codec, {
+    // "10-20%": the bare side borrows the other's "%".
+    propose: (left, right) => (/%$/.test(right) && !/%$/.test(left) ? [{ sides: [`${left}%`, right] }] : []),
+    inOrder: (start, end) => start <= end,
+  });
+```
+
+With no rules, both sides must be written in full. `@quanto/money`'s `moneyRange` and `@quanto/datetime`'s `dateRange` are written the same way.
 
 ## Context and primitives
 

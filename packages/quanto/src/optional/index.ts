@@ -4,7 +4,7 @@ import type { Codec, Ctx, ParseResult } from '../core/types';
 
 /**
  * Allows empty input: `''` and whitespace parse to `null`, and `null` formats as `''`. Keeps the
- * inner codec's `id` and `kind`.
+ * inner codec's `id`.
  */
 export function optional<T>(codec: Codec<T>): Codec<T | null> {
   const parse = (text: string, ctx?: Ctx): ParseResult<T | null> => {
@@ -22,5 +22,5 @@ export function optional<T>(codec: Codec<T>): Codec<T | null> {
     },
   };
 
-  return codec.kind === undefined ? { id: codec.id, parse, format, schema } : { id: codec.id, kind: codec.kind, parse, format, schema };
+  return { id: codec.id, parse, format, schema };
 }

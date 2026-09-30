@@ -1,9 +1,9 @@
-// Money operations: add, subtract, compare, scale, allocate, convert. See DESIGN.md, "Operations (quanto/money)".
+// Money operations: add, subtract, compare, scale, allocate, convert. See DESIGN.md, "Operations".
 // Amounts stay integers in the currency's minor unit; every operation that can produce a fraction
 // takes an explicit rounding mode.
 
-import { isKnownCurrency, minorDigits } from '../codecs/money/currencies';
-import type { Money } from '../core/types';
+import { isKnownCurrency, minorDigits } from './currencies';
+import type { Money } from './types';
 
 /** `Intl.NumberFormat` rounding mode names. */
 export type RoundingMode = 'ceil' | 'floor' | 'expand' | 'trunc' | 'halfCeil' | 'halfFloor' | 'halfExpand' | 'halfTrunc' | 'halfEven';

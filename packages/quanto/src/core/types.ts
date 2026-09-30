@@ -1,9 +1,6 @@
 import type { Locale } from '../locale';
 import type { StandardSchemaV1 } from './standard-schema';
 
-/** Metadata that lets wrappers such as `range()` pick a completion strategy. */
-export type CodecKind = 'quantity' | 'money' | 'date' | 'time' | 'localDateTime' | 'dateTime';
-
 /**
  * A parser and formatter for values of type `T`. Build one with `defineCodec`.
  *
@@ -13,7 +10,6 @@ export type CodecKind = 'quantity' | 'money' | 'date' | 'time' | 'localDateTime'
 export interface Codec<T> {
   /** Identifies the codec, e.g. `'length'`. Used to tag `merge()` results. */
   readonly id: string;
-  readonly kind?: CodecKind | undefined;
   /**
    * Parses text a person typed. Never throws on bad input: failures come back as `issues`.
    * Omit `ctx.now` in a browser; on a server parsing for a user, pass their `locale` and `now`.
@@ -132,9 +128,3 @@ export interface Quantity<U extends string = string> {
   readonly unit: U;
 }
 
-/** An amount in the currency's minor unit (cents for USD), never a float. */
-export interface Money<C extends string = string> {
-  readonly minorUnits: number;
-  /** ISO 4217 code. */
-  readonly currency: C;
-}

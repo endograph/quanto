@@ -3,10 +3,7 @@
 // grammar doesn't consume makes the input unparseable; nothing is silently ignored except a weekday
 // name written next to an explicit date ("Fri, Oct 2").
 
-import type { ResolvedCtx } from '../../core/types';
-import type { Locale } from '../../locale';
-import { NAMES } from '../../locale/names';
-import { normalize } from '../../primitives/normalize';
+import { normalize, type Locale, type ResolvedCtx } from 'quanto';
 import { addDays, type CivilDate, type CivilTime, isValidDate, isValidTime, normalizeOffset, parseNow, weekdayOf } from './civil';
 
 /** What the text said, resolved against `now` where needed. */
@@ -36,7 +33,7 @@ function nameTables(locale: Locale): NameTables {
   if (cached) return cached;
   const monthIndex = new Map<string, number>();
   const weekdayIndex = new Map<string, number>();
-  for (const names of [NAMES.en!, locale.names]) {
+  for (const names of locale.acceptedNames) {
     names.months.long.forEach((n, i) => monthIndex.set(n.toLowerCase(), i + 1));
     names.months.short.forEach((n, i) => monthIndex.set(n.toLowerCase(), i + 1));
     names.weekdays.long.forEach((n, i) => weekdayIndex.set(n.toLowerCase(), i));

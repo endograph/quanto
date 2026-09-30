@@ -1,7 +1,7 @@
 import { startSession } from './context';
 import { InvalidValueError, isInvalidValueError } from './errors';
 import type { StandardSchemaV1 } from './standard-schema';
-import type { Codec, CodecKind, CodecOptions, Ctx, Issue, ParseOutcome, ParseResult, ResolvedCtx } from './types';
+import type { Codec, CodecOptions, Ctx, Issue, ParseOutcome, ParseResult, ResolvedCtx } from './types';
 
 /** A problem reported by a codec's structural check. */
 export interface CheckProblem {
@@ -13,7 +13,6 @@ export interface CheckProblem {
 export interface CodecDefinition<T> {
   /** Letters, digits, `_`, `-` and `.`. Parentheses and commas are reserved for derived ids. */
   readonly id: string;
-  readonly kind?: CodecKind | undefined;
   /** Receives trimmed, non-empty text. Never throw on bad input: return issues. */
   parse(text: string, ctx: ResolvedCtx): ParseOutcome<T>;
   /** The default formatter. */
@@ -71,7 +70,7 @@ export function runUserSchema<T>(
  * schema, the parse `context`, the `format` override and the composed `schema`.
  */
 export function defineCodec<T>(definition: CodecDefinition<T>): Codec<T> {
-  const { id, kind, options } = definition;
+  const { id, options } = definition;
   assertCodecId(id);
   const userSchema = options?.schema;
   const formatter = options?.format ?? definition.format;
@@ -119,7 +118,7 @@ export function defineCodec<T>(definition: CodecDefinition<T>): Codec<T> {
     },
   };
 
-  return kind === undefined ? { id, parse, format, schema } : { id, kind, parse, format, schema };
+  return { id, parse, format, schema };
 }
 
 /**

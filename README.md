@@ -6,6 +6,8 @@
   <a href="DESIGN.md">Design</a> ·
   <a href="packages/quanto/README.md">Usage</a> ·
   <a href="packages/quanto/AUTHORING.md">Writing a codec</a> ·
+  <a href="packages/money/README.md">Money</a> ·
+  <a href="packages/datetime/README.md">Dates</a> ·
   <a href="packages/codecs/README.md">More codecs</a>
 </p>
 
@@ -28,7 +30,7 @@ length().parse('70 kg');  // { ok: false, issues: [{ code: 'unknown_unit', … }
 - **Round-trips.** Whatever `format` prints, `parse` reads back.
 - **Yours to extend.** Custom codecs use the same API as the built-ins, and a fixtures file is the spec.
 
-Built in: length, mass, duration, temperature, volume, area, speed, percent, money, date, time and date-time. [`@quanto/codecs`](packages/codecs/README.md) adds data sizes, energy, pace, pressure and a few more. Not sure which one you'll get? `merge` them and take the first that parses.
+Built in: length, mass, duration, temperature, volume, area, speed and percent. [`@quanto/money`](packages/money/README.md) adds money, [`@quanto/datetime`](packages/datetime/README.md) dates and times, and [`@quanto/codecs`](packages/codecs/README.md) data sizes, energy, pace, pressure and a few more. Not sure which one you'll get? `merge` them and take the first that parses.
 
 Pre-release, not on npm yet.
 

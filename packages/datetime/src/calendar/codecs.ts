@@ -1,10 +1,22 @@
-import { defineCodec } from '../../core/define-codec';
-import type { Codec, CodecOptions, ParseOutcome, ResolvedCtx } from '../../core/types';
+import { defineCodec, type Codec, type CodecOptions, type ParseOutcome, type ResolvedCtx } from 'quanto';
 import { isoDate, isoTime, normalizeOffset, parseIsoDate, parseIsoTime } from './civil';
 import { formatDate, formatDateTime, formatTime } from './format';
 import { type Moment, nowParts, parseMoment } from './grammar';
 
 type Problems = Array<{ message: string }>;
+
+/** Which of the four codecs a codec is, so `dateRange` can pick its rules. Codecs made here only. */
+export type CalendarKind = 'date' | 'time' | 'localDateTime' | 'dateTime';
+
+const kinds = new WeakMap<object, CalendarKind>();
+
+/** The calendar kind of a codec made by `date()`, `time()`, `localDateTime()` or `dateTime()`. */
+export const calendarKindOf = (codec: object): CalendarKind | undefined => kinds.get(codec);
+
+const register = (kind: CalendarKind, codec: Codec<string>): Codec<string> => {
+  kinds.set(codec, kind);
+  return codec;
+};
 
 const unparseable = <T>(text: string, hint: string): ParseOutcome<T> => ({
   ok: false,
@@ -33,14 +45,13 @@ export function date(options?: CodecOptions<string>): Codec<string> {
     if (!moment?.date || moment.time || moment.offset) return unparseable(text, 'a date');
     return { ok: true, value: isoDate(moment.date) };
   };
-  return defineCodec<string>({
+  return register('date', defineCodec<string>({
     id: 'date',
-    kind: 'date',
     parse,
     format: (value, ctx) => formatDate(parseIsoDate(value)!, ctx),
     check: (value): Problems => (typeof value === 'string' && parseIsoDate(value) ? [] : [{ message: 'Expected a date as YYYY-MM-DD.' }]),
     options,
-  });
+  }));
 }
 
 /** A wall-clock time, stored as `HH:MM:SS`: `3pm`, `3:30 p.m.`, `15:00`, `noon`. */
@@ -50,14 +61,13 @@ export function time(options?: CodecOptions<string>): Codec<string> {
     if (!moment?.time || (moment.date && !moment.dateFromNow) || moment.offset) return unparseable(text, 'a time');
     return { ok: true, value: isoTime(moment.time) };
   };
-  return defineCodec<string>({
+  return register('time', defineCodec<string>({
     id: 'time',
-    kind: 'time',
     parse,
     format: (value, ctx) => formatTime(parseIsoTime(value)!, ctx),
     check: (value): Problems => (typeof value === 'string' && parseIsoTime(value) ? [] : [{ message: 'Expected a time as HH:MM:SS.' }]),
     options,
-  });
+  }));
 }
 
 /** Fills in today's date for a time-only moment. */
@@ -73,9 +83,8 @@ export function localDateTime(options?: CodecOptions<string>): Codec<string> {
     if (!moment?.time || moment.offset) return unparseable(text, 'a date and time');
     return { ok: true, value: `${isoDate(withDate(moment, ctx))}T${isoTime(moment.time)}` };
   };
-  return defineCodec<string>({
+  return register('localDateTime', defineCodec<string>({
     id: 'localDateTime',
-    kind: 'localDateTime',
     parse,
     format: (value, ctx) => {
       const parts = splitDateTime(value, false)!;
@@ -83,7 +92,7 @@ export function localDateTime(options?: CodecOptions<string>): Codec<string> {
     },
     check: (value): Problems => (splitDateTime(value, false) ? [] : [{ message: 'Expected a date and time as YYYY-MM-DDTHH:MM:SS.' }]),
     options,
-  });
+  }));
 }
 
 /**
@@ -97,9 +106,8 @@ export function dateTime(options?: CodecOptions<string>): Codec<string> {
     const offset = moment.offset ?? nowParts(ctx).offset;
     return { ok: true, value: `${isoDate(withDate(moment, ctx))}T${isoTime(moment.time)}${offset}` };
   };
-  return defineCodec<string>({
+  return register('dateTime', defineCodec<string>({
     id: 'dateTime',
-    kind: 'dateTime',
     parse,
     format: (value, ctx) => {
       const parts = splitDateTime(value, true)!;
@@ -107,5 +115,5 @@ export function dateTime(options?: CodecOptions<string>): Codec<string> {
     },
     check: (value): Problems => (splitDateTime(value, true) ? [] : [{ message: 'Expected a date and time with offset as YYYY-MM-DDTHH:MM:SS±HH:MM.' }]),
     options,
-  });
+  }));
 }

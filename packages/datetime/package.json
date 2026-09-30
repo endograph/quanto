@@ -1,0 +1,30 @@
+{
+  "name": "@quanto/datetime",
+  "version": "0.0.0",
+  "description": "Dates and times for quanto: parse \"tomorrow 3pm\", \"Oct 2\" and \"03/04/2026\" into ISO strings, with ranges.",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "quanto": "workspace:^"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "quanto": "workspace:*"
+  }
+}

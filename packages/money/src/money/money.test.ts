@@ -1,7 +1,9 @@
 import { test } from 'vitest';
-import { roundTrip, runFixtures } from '../../testing';
+import { roundTrip, runFixtures } from 'quanto/testing';
 import fixtures from './fixtures.json';
-import { money } from './index';
+import rangeFixtures from './fixtures.range.json';
+import { moneyRange } from '../range';
+import { money, type MoneyOptions } from './index';
 
 runFixtures(money, fixtures, { test });
 
@@ -21,4 +23,10 @@ const values = [
 ];
 for (const locale of ['en-US', 'en-CA', 'de-DE', 'fr-FR', 'de-CH', 'en-IN', 'zh-CN', 'sv-SE', 'pt-BR', 'id-ID']) {
   roundTrip(money(), values, { test, ctx: { locale } });
+}
+
+// Ranges: currency and magnitude borrowing.
+runFixtures((options?: MoneyOptions) => moneyRange(money(options)), rangeFixtures, { test });
+for (const locale of ['en-US', 'de-DE', 'fr-FR']) {
+  roundTrip(moneyRange(money()), [{ start: { minorUnits: 1000, currency: 'USD' }, end: { minorUnits: 2000000, currency: 'USD' } }], { test, ctx: { locale } });
 }

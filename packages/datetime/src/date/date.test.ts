@@ -1,5 +1,5 @@
 import { test } from 'vitest';
-import { roundTrip, runFixtures } from '../../testing';
+import { roundTrip, runFixtures } from 'quanto/testing';
 import fixtures from './fixtures.json';
 import { date } from './index';
 

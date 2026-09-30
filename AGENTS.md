@@ -4,8 +4,8 @@ These instructions are for agents working on this repository. They are not shipp
 
 ## Packages
 
-- This is a bun workspace. The core, `quanto`, is `packages/quanto`; `@quanto/codecs` is `packages/codecs`. The root is private: shared tooling and the repo docs.
-- `@quanto/codecs` imports quanto only by name, through its public API (`quanto`, `quanto/codecs`, `quanto/quantity`, `quanto/testing`), never by relative path into `packages/quanto/src`. If it needs something that isn't public, raise it as an API question.
+- This is a bun workspace. The core, `quanto`, is `packages/quanto`. Domain packages: `@quanto/money` (`packages/money`), `@quanto/datetime` (`packages/datetime`) and `@quanto/codecs` (`packages/codecs`). The site is `apps/site`. The root is private: shared tooling and the repo docs.
+- Domain packages import quanto only by name, through its public API (`quanto`, `quanto/codecs`, `quanto/quantity`, `quanto/testing`), never by relative path into `packages/quanto/src`. If it needs something that isn't public, raise it as an API question.
 - `bun run typecheck` and `bun run build` at the root cover every package.
 
 ## Tests

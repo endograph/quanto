@@ -6,12 +6,10 @@ export { defineCodec, formatWithFallback } from './core/define-codec';
 export type { CheckProblem, CodecDefinition } from './core/define-codec';
 export type {
   Codec,
-  CodecKind,
   CodecOptions,
   Ctx,
   Issue,
   IssueCode,
-  Money,
   ParseContext,
   ParseOutcome,
   ParseResult,
@@ -30,5 +28,5 @@ export type { FormatNumberOptions, LocaleCtx, NumberMatch, ReadNumberOptions } f
 export { optional } from './optional';
 export { merge } from './merge';
 export type { LeafValue, MergedCodec, Tagged } from './merge';
-export { range } from './range';
-export type { Range } from './range';
+export { defineRange, range } from './range';
+export type { Range, RangeProposal, RangeRules } from './range';

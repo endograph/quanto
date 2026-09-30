@@ -1,10 +1,6 @@
-import { defineCodec } from '../../core/define-codec';
-import type { Codec, CodecOptions, Money, ParseOutcome, ResolvedCtx } from '../../core/types';
-import { normalize } from '../../primitives/normalize';
-import { formatNumber, readNumber } from '../../primitives/number';
-import { CURRENCY_TOKENS, DISPLAY_SYMBOLS, isKnownCurrency, minorDigits, resolveCandidates } from './currencies';
-
-export { isKnownCurrency, minorDigits } from './currencies';
+import { defineCodec, formatNumber, normalize, readNumber, type Codec, type CodecOptions, type ParseOutcome, type ResolvedCtx } from 'quanto';
+import { CURRENCY_TOKENS, DISPLAY_SYMBOLS, isKnownCurrency, minorDigits, resolveCandidates } from '../currencies';
+import type { Money } from '../types';
 
 /** Options for the money codec. */
 export interface MoneyOptions extends CodecOptions<Money> {
@@ -154,7 +150,6 @@ export function money(options?: MoneyOptions): Codec<Money> {
 
   return defineCodec<Money>({
     id: 'money',
-    kind: 'money',
     parse,
     format,
     check,
