@@ -472,7 +472,10 @@ Default formatters use only bundled data, so they're deterministic and round-tri
 - Dates use unambiguous forms: `Oct 2, 2026` in MDY regions, `2 Oct 2026` in DMY regions (bundled month names; English for languages without bundled names), and ISO `2026-10-02` in YMD regions. Never a numeric day/month order.
 - Times follow the region's hour cycle (bundled, like the separators): `3:00 PM` or `15:00`, with seconds only when they aren't zero. Date-times join the two (`Oct 2, 2026, 3:00 PM`; `2026-10-02 15:00` in YMD regions), and `dateTime()` adds the offset (`… -04:00`), so the instant survives a round trip.
 
-`quanto/formats` has ready-made formatters such as `feetInches`, plus opt-in `Intl` formatters for richer output (localized unit names, full currency styles). The `Intl` formatters are outside the determinism guarantee and are display-only: their output varies between ICU versions and isn't guaranteed to round-trip.
+`quanto/formats` has ready-made formatters for a codec's `format` option:
+
+- **Compound formatters**, from bundled data only, so they're deterministic and round-trip: `feetInches` (`5'11"`, `6'0"`, `11"`), `poundsOunces` (`1 lb 4 oz`), `stonesPounds` (`11 st 4 lb`) and `hoursMinutes` (`2 h 30 min`; days show as hours). The smallest part is rounded to a whole number and carried (`71.6 in` is `6'0"`), leading zero parts are left out, and later zero parts are kept (`6'0"`, `2 lb 0 oz`). Each works with its built-in codec (`length`, `mass`, `duration`); given a unit outside that table, it throws.
+- **`Intl` formatters**, opt-in, for richer output: `intlUnit({ unitDisplay })` (localized unit names: `5 feet`, `5 Fuß`), `intlMoney({ currencyDisplay })` (`12.34 US dollars`), `intlDate({ dateStyle })`, `intlTime({ timeStyle })` and `intlDateTime({ dateStyle, timeStyle })`. They're outside the determinism guarantee and display-only: their output varies between ICU versions and isn't guaranteed to parse back, so a field using one shows raw text for editing (`display="raw"`). `intlMoney` takes decimal places from quanto's bundled table, not Intl's. `intlUnit` covers built-in units that Intl knows, and prints the number and unit ID for the rest. `intlDateTime` shows a date-time's wall-clock time as entered, without its offset. They have no fixtures, since exact output depends on the runtime.
 
 ## Ranges
 
@@ -559,7 +562,7 @@ import { feetInches } from 'quanto/formats';
   - `quanto/codecs`: `quantity`, and `assertQuantityOptions`, `checkQuantity` and `resolveDefaultUnit` for quantity-like codecs that can't use `quantity()` (like `pace`); the built-in quantity codecs and their unit tables (`length`/`lengthUnits`, `mass`/`massUnits`, …); `money`; `date`, `time`, `localDateTime`, `dateTime`.
   - `quanto/quantity`: quantity operations (`convert`, `compare`).
   - `quanto/money`: money operations.
-  - `quanto/formats`: ready-made formatters (`feetInches`, the `Intl` formatters).
+  - `quanto/formats`: ready-made formatters (`feetInches`, `poundsOunces`, `stonesPounds`, `hoursMinutes`; `intlUnit`, `intlMoney`, `intlDate`, `intlTime`, `intlDateTime`) and the `Formatter<T>` type.
   - `quanto/testing`: `roundTrip` and `runFixtures`, the generic fixture runner.
 - **Repository layout.** A bun workspace: `packages/quanto` (the core, npm `quanto`) and `packages/codecs` (`@quanto/codecs`). The private root holds the shared dev tooling (TypeScript, tsdown, vitest, `tsconfig.base.json`, one `vitest.config.ts` for every package) and the repo docs (`DESIGN.md`, `AGENTS.md`, `PRIOR_ART.md`). `bun run typecheck`, `bun run build` and `bun run test` at the root cover every package.
 - UI adapters are separate packages (web React first, React Native later). The core package never imports them.

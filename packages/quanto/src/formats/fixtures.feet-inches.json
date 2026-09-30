@@ -1,0 +1,16 @@
+[
+  { "format": { "value": 71, "unit": "in" }, "text": "5'11\"" },
+  { "format": { "value": 72, "unit": "in" }, "text": "6'0\"" },
+  { "format": { "value": 6, "unit": "ft" }, "text": "6'0\"" },
+  { "format": { "value": 11, "unit": "in" }, "text": "11\"" },
+  { "format": { "value": 0, "unit": "in" }, "text": "0\"" },
+  { "format": { "value": 71.4, "unit": "in" }, "text": "5'11\"" },
+  { "format": { "value": 71.6, "unit": "in" }, "text": "6'0\"" },
+  { "format": { "value": 180, "unit": "cm" }, "text": "5'11\"" },
+  { "format": { "value": 1.8288, "unit": "m" }, "text": "6'0\"" },
+  { "format": { "value": -66, "unit": "in" }, "text": "-5'6\"" },
+  { "format": { "value": 5280, "unit": "ft" }, "text": "5,280'0\"" },
+  { "format": { "value": 5280, "unit": "ft" }, "ctx": { "locale": "de-DE" }, "text": "5.280'0\"" },
+  { "parse": "5'11\"", "value": { "value": 71, "unit": "in" } },
+  { "parse": "6'0\"", "value": { "value": 72, "unit": "in" } }
+]

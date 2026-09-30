@@ -1,0 +1,7 @@
+[
+  { "format": { "value": 158, "unit": "lb" }, "text": "11 st 4 lb" },
+  { "format": { "value": 11, "unit": "st" }, "text": "11 st 0 lb" },
+  { "format": { "value": 10, "unit": "lb" }, "text": "10 lb" },
+  { "format": { "value": 70, "unit": "kg" }, "text": "11 st 0 lb" },
+  { "parse": "11 st 4 lb", "value": { "value": 158, "unit": "lb" } }
+]

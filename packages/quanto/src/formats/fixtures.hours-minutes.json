@@ -1,0 +1,10 @@
+[
+  { "format": { "value": 150, "unit": "min" }, "text": "2 h 30 min" },
+  { "format": { "value": 45, "unit": "min" }, "text": "45 min" },
+  { "format": { "value": 120, "unit": "min" }, "text": "2 h 0 min" },
+  { "format": { "value": 1.5, "unit": "h" }, "text": "1 h 30 min" },
+  { "format": { "value": 5415, "unit": "s" }, "text": "1 h 30 min" },
+  { "format": { "value": 2, "unit": "d" }, "text": "48 h 0 min" },
+  { "format": { "value": 0, "unit": "min" }, "text": "0 min" },
+  { "parse": "2 h 30 min", "value": { "value": 150, "unit": "min" } }
+]

@@ -1,0 +1,9 @@
+[
+  { "format": { "value": 20, "unit": "oz" }, "text": "1 lb 4 oz" },
+  { "format": { "value": 12, "unit": "oz" }, "text": "12 oz" },
+  { "format": { "value": 32, "unit": "oz" }, "text": "2 lb 0 oz" },
+  { "format": { "value": 7.5, "unit": "lb" }, "text": "7 lb 8 oz" },
+  { "format": { "value": 1, "unit": "kg" }, "text": "2 lb 3 oz" },
+  { "format": { "value": 15.6, "unit": "oz" }, "text": "1 lb 0 oz" },
+  { "parse": "1 lb 4 oz", "value": { "value": 20, "unit": "oz" } }
+]
