@@ -11,7 +11,10 @@ export type { ToBase } from './convert';
 export interface UnitDefinition {
   /** Conversion to the table's base unit: a factor, or `{ factor, offset }` for affine units (temperature). */
   readonly toBase: ToBase;
-  /** What people type. Matched case-insensitively. The first alias is what `format` prints. */
+  /**
+   * What people type. The first alias is what `format` prints. Matched case-insensitively, except aliases
+   * that differ only by case from another unit's alias (`mW` and `MW`), which match exactly as written.
+   */
   readonly aliases: readonly string[];
   /** The unit a trailing bare number takes after this one: `ft` → `in` makes `5'11` read as 5 ft 11 in. */
   readonly subunit?: string | undefined;
@@ -46,26 +49,30 @@ interface Component {
   readonly unit: string | undefined;
 }
 
-const aliasKey = (alias: string): string => normalize(alias).trim().toLowerCase();
+const exactKey = (alias: string): string => normalize(alias).trim();
+const foldedKey = (alias: string): string => exactKey(alias).toLowerCase();
+
+interface AliasEntry {
+  readonly key: string;
+  readonly unit: string;
+  readonly caseSensitive: boolean;
+}
 const isLetter = (c: string | undefined): boolean => c !== undefined && /\p{L}/u.test(c);
 
-/** Builds the alias index, checking the table at definition time. */
-function indexAliases(id: string, units: UnitTable): Array<{ readonly key: string; readonly unit: string }> {
-  const owner = new Map<string, string>();
+/**
+ * Builds the alias index, checking the table at definition time. Aliases match case-insensitively,
+ * unless another unit has an alias that differs only by case: then all of those match exactly as written.
+ */
+function indexAliases(id: string, units: UnitTable): AliasEntry[] {
+  const byFolded = new Map<string, Array<{ readonly alias: string; readonly unit: string }>>();
   for (const [unit, def] of Object.entries(units)) {
     if (def.aliases.length === 0) throw new Error(`quanto: unit "${unit}" in codec "${id}" has no aliases. Give it at least one; the first is what format prints.`);
     for (const alias of def.aliases) {
-      const key = aliasKey(alias);
-      if (key === '' || /^[\d.,+-]/.test(key)) {
+      const folded = foldedKey(alias);
+      if (folded === '' || /^[\d.,+-]/.test(folded)) {
         throw new Error(`quanto: alias "${alias}" of unit "${unit}" in codec "${id}" is empty or starts with a digit or sign, so it can't be told apart from the number.`);
       }
-      const existing = owner.get(key);
-      if (existing !== undefined && existing !== unit) {
-        throw new Error(
-          `quanto: alias "${alias}" in codec "${id}" belongs to both "${existing}" and "${unit}" (aliases match case-insensitively). Remove it from one of them.`,
-        );
-      }
-      owner.set(key, unit);
+      byFolded.set(folded, [...(byFolded.get(folded) ?? []), { alias, unit }]);
     }
     if (def.subunit !== undefined) {
       const sub = units[def.subunit];
@@ -75,7 +82,25 @@ function indexAliases(id: string, units: UnitTable): Array<{ readonly key: strin
       }
     }
   }
-  return [...owner].map(([key, unit]) => ({ key, unit })).sort((a, b) => b.key.length - a.key.length);
+
+  const entries: AliasEntry[] = [];
+  for (const [folded, group] of byFolded) {
+    if (group.every((g) => g.unit === group[0]!.unit)) {
+      entries.push({ key: folded, unit: group[0]!.unit, caseSensitive: false });
+      continue;
+    }
+    const owner = new Map<string, string>();
+    for (const { alias, unit } of group) {
+      const key = exactKey(alias);
+      const existing = owner.get(key);
+      if (existing !== undefined && existing !== unit) {
+        throw new Error(`quanto: alias "${alias}" in codec "${id}" belongs to both "${existing}" and "${unit}". Remove it from one of them.`);
+      }
+      if (existing === undefined) entries.push({ key, unit, caseSensitive: true });
+      owner.set(key, unit);
+    }
+  }
+  return entries.sort((a, b) => b.key.length - a.key.length);
 }
 
 function assertUnit(id: string, units: UnitTable, unit: string | undefined, option: string): void {
@@ -103,13 +128,13 @@ export function quantity<const T extends UnitTable, C extends keyof T & string =
   const resolveDefault = (system: MeasurementSystem): string | undefined =>
     typeof defaultUnit === 'object' ? defaultUnit[system] : defaultUnit;
 
-  const matchAlias = (lower: string, at: number): { unit: string; end: number } | undefined => {
-    for (const { key, unit } of aliases) {
-      if (!lower.startsWith(key, at)) continue;
+  const matchAlias = (s: string, lower: string, at: number): { unit: string; end: number } | undefined => {
+    for (const { key, unit, caseSensitive } of aliases) {
+      if (!(caseSensitive ? s : lower).startsWith(key, at)) continue;
       let end = at + key.length;
-      if (isLetter(key[key.length - 1]) && isLetter(lower[end])) continue;
+      if (isLetter(key[key.length - 1]) && isLetter(s[end])) continue;
       // "5 ft. 11 in." — a period after a word alias, when it isn't a decimal point.
-      if (isLetter(key[key.length - 1]) && lower[end] === '.' && !/\d/.test(lower[end + 1] ?? '')) end++;
+      if (isLetter(key[key.length - 1]) && s[end] === '.' && !/\d/.test(s[end + 1] ?? '')) end++;
       return { unit, end };
     }
     return undefined;
@@ -133,7 +158,7 @@ export function quantity<const T extends UnitTable, C extends keyof T & string =
       if (!n) return unparseable(text);
       pos = n.end;
       while (s[pos] === ' ') pos++;
-      const match = matchAlias(lower, pos);
+      const match = matchAlias(s, lower, pos);
       if (match) {
         components.push({ value: n.value, unit: match.unit });
         pos = match.end;

@@ -1,7 +1,9 @@
-// Quantity operations: convert, add, subtract, scale, compare. See DESIGN.md, "Operations (quanto/quantity)".
+// Quantity operations: convert and compare. See DESIGN.md, "Operations (quanto/quantity)".
 // Each takes a quantity codec first: it carries the unit table, so unit checks are explicit.
+// Arithmetic is left to apps, which know whether adding two values means anything in their domain:
+//   { value: a.value + convert(len, b, a.unit).value, unit: a.unit }
 
-import { convertValue, factorOf, isAffine, offsetOf } from '../codecs/quantity/convert';
+import { convertValue, factorOf, offsetOf } from '../codecs/quantity/convert';
 import type { UnitDefinition } from '../codecs/quantity';
 import type { Quantity } from '../core/types';
 
@@ -27,48 +29,12 @@ function unitOf<U extends string>(codec: QuantityTable<U>, q: Quantity<string>, 
   return def;
 }
 
-function refuseAffine(codec: QuantityTable<string>, def: UnitDefinition, q: Quantity<string>, operation: string): void {
-  if (isAffine(def.toBase)) {
-    throw new Error(
-      `quanto: ${operation} is refused for "${q.unit}" in codec "${codec.id}": it's an absolute scale with an offset (like °C), so the result would be meaningless. Convert to a scale without an offset first, or compute the difference yourself.`,
-    );
-  }
-}
-
 /** Converts a quantity to another unit of the same table. */
 export function convert<U extends string, T extends U>(codec: QuantityTable<U>, q: Quantity<U>, to: T): Quantity<T> {
   const from = unitOf(codec, q, 'convert');
   const target = unitOf(codec, { value: 0, unit: to }, 'convert');
   const value = q.unit === to ? q.value : convertValue(q.value, from.toBase, target.toBase);
   return { value: value === 0 ? 0 : value, unit: to };
-}
-
-/** Adds `b` to `a`. The result is in `a`'s unit. Refused for affine units. */
-export function add<U extends string, A extends U>(codec: QuantityTable<U>, a: Quantity<A>, b: Quantity<U>): Quantity<A> {
-  const da = unitOf(codec, a, 'add');
-  const db = unitOf(codec, b, 'add');
-  refuseAffine(codec, da, a, 'add');
-  refuseAffine(codec, db, b, 'add');
-  return { value: a.value + convert(codec, b, a.unit).value, unit: a.unit };
-}
-
-/** Subtracts `b` from `a`. The result is in `a`'s unit. Refused for affine units. */
-export function subtract<U extends string, A extends U>(codec: QuantityTable<U>, a: Quantity<A>, b: Quantity<U>): Quantity<A> {
-  const da = unitOf(codec, a, 'subtract');
-  const db = unitOf(codec, b, 'subtract');
-  refuseAffine(codec, da, a, 'subtract');
-  refuseAffine(codec, db, b, 'subtract');
-  const value = a.value - convert(codec, b, a.unit).value;
-  return { value: value === 0 ? 0 : value, unit: a.unit };
-}
-
-/** Multiplies a quantity by a plain number. Refused for affine units. */
-export function scale<U extends string, A extends U>(codec: QuantityTable<U>, a: Quantity<A>, factor: number): Quantity<A> {
-  const da = unitOf(codec, a, 'scale');
-  refuseAffine(codec, da, a, 'scale');
-  if (!Number.isFinite(factor)) throw new Error(`quanto: scale got a non-finite factor (${factor}).`);
-  const value = a.value * factor;
-  return { value: value === 0 ? 0 : value, unit: a.unit };
 }
 
 /**

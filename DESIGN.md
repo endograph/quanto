@@ -269,31 +269,34 @@ TypeScript types (unit IDs, `Quantity<U>`) are inferred from the table's literal
 
 - **Unit IDs** are the stored identifiers. They only need to be unique within a table.
 - **Aliases are resolved within the codec's own table.** `1m` is one meter to a length codec and one minute to a duration codec. A unit from some other table (`70 kg` in a length field) is simply an `unknown_unit`. Users never see unit IDs.
-- **Alias matching is case-insensitive in every table**, after Unicode normalization. `3M` and `3m` are both meters; `Mb` and `MB` are both megabytes, since megabits are rare in practice. There is no case-sensitivity flag: a use case that needs one writes a custom codec. Two aliases in one table that collide under case-insensitive matching are a definition-time error.
-- **Affine units** (temperature, which has an offset) declare `toBase` as `{ factor, offset }`. Adding, subtracting or scaling absolute temperatures is refused; converting and comparing work.
-- **`subunit`** (optional) names the unit a trailing bare number takes after this one: `ft: { …, subunit: 'in' }` makes `5'11` read as 5 ft 11 in, and `m: { …, subunit: 'cm' }` makes `1m80` read as 180 cm. It's explicit rather than guessed from the table, and must name a smaller, non-affine unit.
+- **Alias matching is case-insensitive**, after Unicode normalization: `3M` and `3m` are both meters. The one exception is worked out from the table, with nothing to configure: when aliases of different units differ only by case, like `mW` (milliwatt) and `MW` (megawatt), or `Mb` (megabit) and `MB` (megabyte), each of them matches only exactly as written. Input that matches none of them exactly, like `mw` in that table, is an `unknown_unit` rather than a guess. Where one reading is the common case, the table lists that spelling as an alias too: `MB: { aliases: ['MB', 'mb', …] }` makes `mb` read as megabytes while `Mb` stays megabits. The same alias on two units is a definition-time error.
+- **Linear, affine and function units.** `toBase` says how a unit converts to the table's base unit, and its form declares what kind of unit it is; nothing is inferred:
+  - a **number** is a linear factor (`in: { toBase: 0.0254 }`). Converting between two units is value × `from.toBase` ÷ `to.toBase`, with decimal factors scaled to integers first so results are exact. Use this form whenever the conversion is a plain factor.
+  - **`{ factor, offset }`** is affine (temperature): base = value × factor + offset. With kelvin as the base, °C is `{ factor: 1, offset: 273.15 }`.
+  - a **function**, with a sibling **`fromBase`** function, is for conversions that aren't "multiply, then maybe add": fuel economy (`'l/100km': { toBase: (v) => 100 / v, fromBase: (v) => 100 / v, … }` with km/L as the base) or wire gauge. Deferred: see [Deferred](#deferred).
+- **Only linear units compound** (`5 ft 11 in`) or serve as a `subunit`. Affine and function units convert and compare only.
+- **`subunit`** (optional) names the unit a trailing bare number takes after this one: `ft: { …, subunit: 'in' }` makes `5'11` read as 5 ft 11 in, and `m: { …, subunit: 'cm' }` makes `1m80` read as 180 cm. It's explicit rather than guessed from the table, and must name a smaller linear unit.
 - `quantity()` checks at definition time that aliases are unique within the table and that `defaultUnit` and `canonicalUnit` name real units.
 
 ### Operations (`quanto/quantity`)
 
-Operations are opt-in, live in their own subpath, and are a convenience rather than the core. Many apps will write their own. They are well specified but not exhaustive.
+Operations are opt-in, live in their own subpath, and are a convenience rather than the core. There are two, `convert` and `compare`: the ones apps would get wrong on their own (exact conversion, affine and function units, tolerance).
 
 Operations take a quantity codec as their first argument. The codec carries the unit table, so unit checking is explicit at both type level and runtime:
 
 ```ts
-import { convert, add, subtract, scale, compare } from 'quanto/quantity';
+import { convert, compare } from 'quanto/quantity';
 
 const len = length();
 convert(len, h, 'cm');   // Quantity<'cm'>
-add(len, a, b);          // result in a's unit
-subtract(len, a, b);
-scale(len, a, 2);
 compare(len, a, b);      // -1 | 0 | 1
 ```
 
+- **Arithmetic is left to apps.** Whether adding two values means anything is a domain question (`300 K + 5 K`, `30 mpg + 40 mpg`, an absolute temperature plus a difference), and the app knows its domain. With `convert` it's one line: `{ value: a.value + convert(len, b, a.unit).value, unit: a.unit }`.
+
 - A value whose unit isn't in the codec's table is a type error, and throws at runtime (covering untyped JSON).
-- **`compare` uses a relative tolerance** of `1e-9` on base-unit values. Five feet and sixty inches differ by an ulp after conversion; without tolerance they would compare unequal.
-- Values aren't tied to the codec that parsed them. A `height` value and a `roadDistance` value are both lengths, and any codec whose table contains both units can combine them. The results of operations are not re-validated against any codec's schema.
+- **`compare` uses a relative tolerance** of `1e-9` on base-unit values. Five feet and sixty inches differ by an ulp after conversion; without tolerance they would compare unequal. It orders values in the base unit: with a base where bigger means more, bigger compares greater.
+- Values aren't tied to the codec that parsed them. A `height` value and a `roadDistance` value are both lengths, and any codec whose table contains both units can convert and compare them. The results of operations are not re-validated against any codec's schema.
 - Out of scope: dimensional algebra (length ÷ time = speed, compound SI units).
 
 ### Quantity codecs
@@ -312,7 +315,7 @@ const height = length({
 - **`canonicalUnit`** narrows the value type to that unit (`Quantity<'in'>`) and turns unit-aware constraints into plain number checks that any validator can express. It is the recommended way to validate quantities.
 - Without `canonicalUnit`, cross-unit constraints are written as refinements that use quanto's math, e.g. `.refine((h) => compare(len, h, { value: 8, unit: 'ft' }) <= 0)`.
 - **Compound input** (`5'11"`, `5 ft 11 in`, `1 lb 4 oz`, `2h30m`) is summed into the **smallest** unit mentioned (71 in, 20 oz, 150 min), or into `canonicalUnit` if set. The smallest unit usually gives an exact integer, and it's what `canonicalUnit` users expect.
-  - Components go from larger to smaller units, without repeats; `11 in 5 ft` is unparseable. Affine units don't compound.
+  - Components go from larger to smaller units, without repeats; `11 in 5 ft` is unparseable. Only linear units compound.
   - Only the first component carries a sign, and it applies to the whole: `-5 ft 6 in` is -66 in.
   - A trailing bare number takes the previous unit's `subunit`; without one it's unparseable.
   - Conversions scale decimal factors to integers before dividing, so `5 ft 11 in` is exactly 71 in and 1 in is exactly 25.4 mm.
@@ -342,7 +345,7 @@ type Money<C extends string = string> = { minorUnits: number; currency: C }; // 
 
 ### Operations (`quanto/money`)
 
-Opt-in, in their own subpath, with the same status as quantity operations.
+Opt-in, in their own subpath, with the same status as quantity operations. Unlike quantities, money keeps its arithmetic: the currency and safe-integer checks, rounding modes and loss-free splitting are exactly what apps get wrong on their own, and money has no affine or non-linear cases to rule on.
 
 ```ts
 import { add, subtract, compare, scale, allocate, convert } from 'quanto/money';
@@ -418,7 +421,7 @@ Always make a best effort:
 - A single separator followed by **one, two, or four or more digits** is a decimal separator in any locale: `1,5 m` → 1.5 m, `2,25` → 2.25.
 - Thousands grouping must be consistent (`1,50,000` is valid in en-IN, not in en-US).
 - Other accepted forms: fractions (`1/2`, `5½`), exponents (`1e3`), suffixes (`1.2k`, `3M`) where the codec allows them.
-- Input is normalized before lexing (`normalize`): smart quotes (`’ ”` → `' "`), prime marks (`′ ″`), Unicode fractions, non-breaking and thin spaces. Case is handled by case-insensitive matching, not by normalization.
+- Input is normalized before lexing (`normalize`): smart quotes (`’ ”` → `' "`), prime marks (`′ ″`), Unicode fractions, non-breaking and thin spaces. Case is handled by matching (see [Unit tables](#unit-tables)), not by normalization.
 
 ## Formatting
 
@@ -511,7 +514,7 @@ import { feetInches } from 'quanto/formats';
 - Subpath exports:
   - `quanto`: core. `defineCodec`; `formatWithFallback`; the primitives `normalize`, `readNumber` and `formatNumber`; `merge`, `range`, `optional`; and the types `Codec`, `CodecOptions`, `Ctx`, `ResolvedCtx`, `Locale`, `ParseResult`, `ParseOutcome`, `ParseContext`, `Issue`, `IssueCode`, `QuantoValue`, `Quantity`, `Money` and `UnitTable`.
   - `quanto/codecs`: `quantity`; the built-in quantity codecs and their unit tables (`length`/`lengthUnits`, `mass`/`massUnits`, …); `money`; `date`, `time`, `localDateTime`, `dateTime`.
-  - `quanto/quantity`: quantity operations.
+  - `quanto/quantity`: quantity operations (`convert`, `compare`).
   - `quanto/money`: money operations.
   - `quanto/formats`: ready-made formatters (`feetInches`, the `Intl` formatters).
   - `quanto/testing`: `roundTrip` and `runFixtures`, the generic fixture runner.
@@ -627,6 +630,13 @@ Decided in principle, not in v1:
 - **Sub-minor-unit money** (`$3.459`): an optional `precision` option on the money codec.
 - **Calendar durations** (`2 months`): a separate codec with an ISO 8601 duration value (`P2M`).
 - **Open-ended ranges** (`5ft+`, `under 10 kg`).
+- **Function units** (`toBase` and `fromBase` as functions), designed now and implemented with the first codec that needs them, likely `fuelEconomy`:
+  - Having one of the pair without the other is a definition-time error, and so is a failed spot check: `fromBase(toBase(x))` must come back to `x` (within tolerance) at a few sample points inside the function's domain. The check catches a missing, swapped or wrong inverse; the `roundTrip` fixtures stay the real safety net.
+  - The functions must be strictly monotonic (increasing or decreasing), or they can't invert each other and `compare` has no meaning. Tables should pick a base where bigger means more: km/L, not L/100km, for fuel economy.
+  - Parsing always computes the base value of a function unit. A non-finite result (`0 L/100km`) is `unparseable`, because the input means nothing; merely out-of-range values (`-5 mpg`) are left to the user's schema, as for every quantity. `convert` throws on a non-finite result.
+  - Code that reads factors (`subunit` checks, compound input, exact conversion) rejects function units explicitly rather than treating them as factors.
+  - The fixtures for `fuelEconomy` cover `0 mpg`, negative values, `0 L/100km`, conversion under `canonicalUnit`, and `compare` across mpg and L/100km.
+  - Pace (`5:30 /km`) and gas mark (`gas mark 4`) need their own grammar (clock notation, unit before number), so they're custom codecs regardless.
 - **`auto`**, an "accept anything" codec: a merge of all built-ins plus a text fallback. Its merge order and what bare numbers mean are undecided.
 - **Agent tooling** beyond the basics above: an `explain(codec, text, ctx)` trace, a CLI with JSON output, a `new-codec` scaffold, and JSON Schema exports for the value shapes.
 - **Async codecs** (v2), including frozen formatting: see [Async codecs (v2)](#async-codecs-v2).

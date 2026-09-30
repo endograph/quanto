@@ -1,0 +1,19 @@
+[
+  { "parse": "5 mW", "value": { "value": 5, "unit": "mW" } },
+  { "parse": "5 MW", "value": { "value": 5, "unit": "MW" } },
+  { "parse": "5MW", "value": { "value": 5, "unit": "MW" } },
+  { "parse": "5 mw", "issues": ["unknown_unit"] },
+  { "parse": "5 Mw", "issues": ["unknown_unit"] },
+  { "parse": "5 kW", "value": { "value": 5, "unit": "kW" } },
+  { "parse": "5 kw", "value": { "value": 5, "unit": "kW" } },
+  { "parse": "5 KW", "value": { "value": 5, "unit": "kW" } },
+  { "parse": "5 W", "value": { "value": 5, "unit": "W" } },
+  { "parse": "5 w", "value": { "value": 5, "unit": "W" } },
+  { "parse": "5 megawatts", "value": { "value": 5, "unit": "MW" } },
+  { "parse": "5 MEGAWATTS", "value": { "value": 5, "unit": "MW" } },
+  { "parse": "5 Milliwatts", "value": { "value": 5, "unit": "mW" } },
+  { "parse": "5 MW", "options": { "canonicalUnit": "kW" }, "value": { "value": 5000, "unit": "kW" } },
+  { "parse": "5 mW", "options": { "canonicalUnit": "W" }, "value": { "value": 0.005, "unit": "W" } },
+  { "format": { "value": 5, "unit": "MW" }, "text": "5 MW" },
+  { "format": { "value": 5, "unit": "mW" }, "text": "5 mW" }
+]

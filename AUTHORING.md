@@ -48,6 +48,24 @@ You write:
 
 `defineCodec` handles the rest: empty input, running `check` and the user's `schema` (keeping its output), throwing from `format` on a malformed value, reporting the parse `context`, the `format` override and the composed `schema`. Don't reimplement any of it.
 
+## Quantity codecs
+
+For a number with a unit, don't write a parser: define a unit table and call `quantity()` (or extend a built-in table with an object spread).
+
+```ts
+import { quantity, lengthUnits } from 'quanto/codecs';
+
+export const horseHeight = quantity({
+  id: 'horseHeight',
+  units: { ...lengthUnits, hand: { toBase: 0.1016, aliases: ['hh', 'hand', 'hands'] } },
+  defaultUnit: 'hand',
+});
+```
+
+- **`toBase` is a plain number whenever the conversion is a plain factor.** Only temperature-like scales need `{ factor, offset }`. Plain factors convert exactly and are the only units that compound (`5 ft 11 in`).
+- **The first alias is what `format` prints.** Aliases match case-insensitively, except those that differ only by case from another unit's alias (`mW` and `MW`), which match exactly as written. Adding such a unit can change what existing input means: next to megabit `Mb`, typing `mb` no longer matches megabyte `MB` unless you list `mb` as an alias of `MB`.
+- **`subunit`** makes a trailing bare number work: `ft: { …, subunit: 'in' }` reads `5'11` as 5 ft 11 in.
+
 ## Context and primitives
 
 `ctx` is a `ResolvedCtx`:
