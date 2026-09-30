@@ -134,9 +134,9 @@ Reading the clock through `ctx.now()` is what keeps `context` accurate without a
 
 The lexing built-ins use is exported from `quanto`, so custom codecs get the same locale behaviour and the same determinism:
 
-- **`normalize(text)`**: the input normalization described under [Locale-aware number parsing](#locale-aware-number-parsing) (quotes, primes, Unicode fractions, non-breaking and thin spaces). It doesn't fold case.
-- **`readNumber(text, ctx, { from?, suffixes? })`**: reads one number starting at `from` (default 0) using the locale rules, and returns `{ value, end }` or `undefined`. `suffixes: true` accepts `k`, `M` and so on.
-- **`formatNumber(n, ctx, { maxFractionDigits? })`**: formats with the region's bundled separators, so the result reads back with `readNumber`.
+- **`normalize(text)`**: the input normalization described under [Locale-aware number parsing](#locale-aware-number-parsing): quotes and primes, Unicode fractions (`5½` → `5 1/2`), NFKC (so full-width digits read as digits), the Unicode minus sign, and runs of any whitespace to one space. It doesn't fold case or trim.
+- **`readNumber(text, ctx, { from?, suffixes? })`**: reads one number starting at `from` (default 0, leading spaces skipped) using the locale rules, and returns `{ value, end }` or `undefined`. It accepts a leading `-` or `+`; whether negatives make sense is the codec's call. `suffixes: true` accepts `k`, `m`, `b`/`bn` and `t`, attached to the number and case-insensitive. When the locale's reading of an ambiguous separator gives invalid grouping, the other reading is used (`1234,567` in en-US is 1234.567).
+- **`formatNumber(n, ctx, { maxFractionDigits?, minFractionDigits? })`**: formats with the region's bundled separators and grouping, so the result reads back with `readNumber`. Defaults: at most 3 fraction digits, at least 0; rounding is half away from zero, on the number's shortest decimal representation (`1.005` → `1.01` at two digits). Space and apostrophe grouping print as plain ` ` and `'`.
 - **`ctx.locale`**: month and weekday names, numeric date order, separators, currency and measurement system, for codecs that need them directly.
 
 The built-in date grammar is not exported in v1.
