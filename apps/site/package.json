@@ -1,0 +1,8 @@
+{
+  "name": "@quanto/site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun serve.ts"
+  }
+}

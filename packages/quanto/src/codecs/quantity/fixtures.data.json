@@ -1,10 +1,10 @@
 [
-  { "parse": "500 MB", "value": { "value": 500, "unit": "megabyte" } },
-  { "parse": "500 mb", "value": { "value": 500, "unit": "megabyte" } },
-  { "parse": "500 Mb", "value": { "value": 500, "unit": "megabit" } },
+  { "parse": "500 MB", "value": { "value": 500, "unit": "MB" } },
+  { "parse": "500 mb", "value": { "value": 500, "unit": "MB" } },
+  { "parse": "500 Mb", "value": { "value": 500, "unit": "Mb" } },
   { "parse": "500 mB", "issues": ["unknown_unit"] },
-  { "parse": "500 megabytes", "value": { "value": 500, "unit": "megabyte" } },
-  { "parse": "500 MEGABITS", "value": { "value": 500, "unit": "megabit" } },
-  { "parse": "8 Mb", "options": { "canonicalUnit": "megabyte" }, "value": { "value": 1, "unit": "megabyte" } },
-  { "format": { "value": 500, "unit": "megabit" }, "text": "500 Mb" }
+  { "parse": "500 megabytes", "value": { "value": 500, "unit": "MB" } },
+  { "parse": "500 MEGABITS", "value": { "value": 500, "unit": "Mb" } },
+  { "parse": "8 Mb", "options": { "canonicalUnit": "MB" }, "value": { "value": 1, "unit": "MB" } },
+  { "format": { "value": 500, "unit": "Mb" }, "text": "500 Mb" }
 ]

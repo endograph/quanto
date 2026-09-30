@@ -1,6 +1,6 @@
 # @quanto/codecs
 
-More codecs for [quanto](../quanto/README.md): `dataSize`, `dataRate`, `energy`, `power`, `pressure`, `angle`, `frequency`, `fuelEconomy`, `pace` and `percent`.
+More codecs for [quanto](../quanto/README.md): `dataSize`, `dataRate`, `energy`, `power`, `pressure`, `angle`, `frequency`, `fuelEconomy` and `pace`.
 
 ```ts
 import { dataSize, pace } from '@quanto/codecs';

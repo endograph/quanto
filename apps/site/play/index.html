@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="Try quanto's codecs: type something the way a person would and see the typed value.">
 <title>playground · quanto</title>
-<link rel="icon" href="../../../../favicon.svg" type="image/svg+xml">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="../quanto.css">
 <style>
   header {
@@ -146,21 +146,19 @@
   const $ = (id) => document.getElementById(id);
 
   const EXAMPLES = {
+    any: [`5'11"`, '1m', '€12,50', 'tomorrow', '72°F', '2h30m', '3/4', '1 lb 4 oz', 'hello'],
     length: [`5'11"`, '180cm', '1,8 m', '5 ft 11 in', '1.500 km', '6½ in', '70', '70 kg'],
     mass: ['1 lb 4 oz', '81.6 kg', '11 st 4 lb', '500 g', '3 cups'],
     duration: ['2h30m', '90 min', '1 week 2 days', '1m', '3 months'],
     temperature: ['72°F', '22 °C', '295.15 K', '-40F', 'hot'],
     money: ['$1,234.50', '€12,50', 'USD 12.99', '$1.2k', '¥500', '1,5 BHD', '$3.459', '12 XYZ'],
     date: ['tomorrow', 'next fri', 'Oct 2, 2026', '03/04/2026', '13/04', '2. Okt. 2026', 'in 3 days', 'someday'],
-    merge: ['1m', '3/4', '180 lb', '€5', 'friday', 'hello'],
   };
-  const LABELS = { merge: 'merge(…)' };
-  const IMPORTS = { merge: 'merge', length: 'length', mass: 'mass', duration: 'duration', temperature: 'temperature', money: 'money', date: 'date' };
   const ids = Object.keys(EXAMPLES);
 
   const params = new URLSearchParams(location.search);
   const state = {
-    codec: ids.includes(params.get('codec')) ? params.get('codec') : 'length',
+    codec: ids.includes(params.get('codec')) ? params.get('codec') : 'any',
     locale: locales.includes(params.get('locale')) ? params.get('locale') : 'en-US',
   };
   $('input').value = params.has('q') ? params.get('q') : EXAMPLES[state.codec][0];
@@ -188,7 +186,7 @@
 
   function renderTabs() {
     $('tabs').innerHTML = ids
-      .map((id) => `<button class="tab" role="tab" data-id="${id}" aria-selected="${id === state.codec}">${esc(LABELS[id] || id)}</button>`)
+      .map((id) => `<button class="tab" role="tab" data-id="${id}" aria-selected="${id === state.codec}">${esc(id)}</button>`)
       .join('');
   }
 
@@ -228,7 +226,7 @@
       .join('')}</dl>`;
 
     // Quantities also get a convert() table.
-    const tagged = state.codec === 'merge' ? result.value : { codec: state.codec, value: result.value };
+    const tagged = state.codec === 'any' ? result.value : { codec: state.codec, value: result.value };
     const inner = codecs[tagged.codec];
     if (inner.kind === 'quantity') {
       const q = tagged.value;
@@ -249,9 +247,11 @@
 
   function renderCode(text, result) {
     const codec = codecs[state.codec];
-    const imports = state.codec === 'merge' ? 'merge, length, mass, duration, temperature, money, date' : IMPORTS[state.codec];
-    const from = state.codec === 'merge' ? `'quanto'` : `'quanto/codecs'`;
-    const lines = [`import { ${imports} } from ${from};`, ''];
+    const builtIns = ids.filter((id) => id !== 'any');
+    const lines =
+      state.codec === 'any'
+        ? [`import { merge } from 'quanto';`, `import { ${builtIns.join(', ')} } from 'quanto/codecs';`, '']
+        : [`import { ${state.codec} } from 'quanto/codecs';`, ''];
     lines.push(`const codec = ${codec.call};`);
     lines.push(`const result = codec.parse(${str(text)}, { locale: '${state.locale}' });`);
     if (result.implicits) lines.push(`// no ctx.now, so the machine clock is used and recorded in result.implicits`);

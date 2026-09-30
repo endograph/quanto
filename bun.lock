@@ -10,6 +10,9 @@
         "vitest": "^5.0.3",
       },
     },
+    "apps/site": {
+      "name": "@quanto/site",
+    },
     "packages/codecs": {
       "name": "@quanto/codecs",
       "version": "0.0.0",
@@ -37,6 +40,8 @@
     "@quansync/fs": ["@quansync/fs@1.1.0", "", { "dependencies": { "quansync": "^1.0.0" } }, "sha512-qAPG/t3HqML1TlN7sY/pTbEjzFVAKsMjNNMGheyDosro+kT4iw2KCUoHcVdmliwWjorm4elZbgNQyU2eD97eDg=="],
 
     "@quanto/codecs": ["@quanto/codecs@workspace:packages/codecs"],
+
+    "@quanto/site": ["@quanto/site@workspace:apps/site"],
 
     "@rolldown/binding-android-arm-eabi": ["@rolldown/binding-android-arm-eabi@1.2.12", "", { "os": "android", "cpu": "arm" }, "sha512-dB/a1214qKfHMXCpgqR4OZT+jS4kTyEXbQGJPqzobt5EwH5rX080pxE37alt3RzvR1bf1Yz/yGqRfrYAxuPw0A=="],
 

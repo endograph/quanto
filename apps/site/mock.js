@@ -399,7 +399,9 @@
   }
 
   const codecs = { length, mass, duration, temperature, money, date };
-  codecs.merge = merge([length, mass, duration, temperature, money, date]);
+  // "any" is every built-in merged; earlier codecs win ambiguous input.
+  const builtIns = { ...codecs };
+  const any = merge(Object.values(builtIns));
+  window.quantoMock = { codecs: { any, ...builtIns }, locales: Object.keys(LOCALES) };
 
-  window.quantoMock = { codecs, locales: Object.keys(LOCALES) };
 })();

@@ -18,7 +18,7 @@ src/codecs/<name>/
 
 ## Defining a codec
 
-A minimal percentage codec (`@quanto/codecs` ships a fuller `percent`):
+A minimal percentage codec (`quanto/codecs` ships a fuller `percent`):
 
 ```ts
 import { defineCodec, readNumber, formatNumber, type CodecOptions } from 'quanto';

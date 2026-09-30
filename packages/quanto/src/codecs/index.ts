@@ -10,6 +10,7 @@ export type { DurationUnit } from './duration';
 export { length, lengthUnits } from './length';
 export type { LengthUnit } from './length';
 export { mass, massUnits } from './mass';
+export { percent } from './percent';
 export type { MoneyOptions } from './money';
 export { money } from './money';
 export type { MassUnit } from './mass';

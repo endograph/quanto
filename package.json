@@ -3,14 +3,16 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "scripts": {
     "build": "bun run --filter './packages/*' build",
     "typecheck": "bun run --filter './packages/*' typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "bun run typecheck && bun run test"
+    "check": "bun run typecheck && bun run test",
+    "site": "bun run --filter @quanto/site dev"
   },
   "devDependencies": {
     "tsdown": "^0.23.0",

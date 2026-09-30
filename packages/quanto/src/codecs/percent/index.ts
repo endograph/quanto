@@ -1,4 +1,7 @@
-import { defineCodec, formatNumber, normalize, readNumber, type Codec, type CodecOptions, type ParseOutcome, type ResolvedCtx } from 'quanto';
+import { defineCodec } from '../../core/define-codec';
+import type { Codec, CodecOptions, ParseOutcome, ResolvedCtx } from '../../core/types';
+import { normalize } from '../../primitives/normalize';
+import { formatNumber, readNumber } from '../../primitives/number';
 
 const WORDS = ['%', 'percent', 'per cent', 'pct'];
 

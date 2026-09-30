@@ -1,23 +1,45 @@
+<p align="center">
+  <img src="favicon.svg" alt="quanto" width="96" />
+</p>
+
+<p align="center">
+  <a href="DESIGN.md">Design</a> ·
+  <a href="packages/quanto/README.md">Usage</a> ·
+  <a href="packages/quanto/AUTHORING.md">Writing a codec</a> ·
+  <a href="packages/codecs/README.md">More codecs</a>
+</p>
+
 # quanto
 
-Turn messy human text into well-typed values and back. This repository is a bun workspace:
+A forgiving and flexible input parser and formatter.
 
-| Package | Path | What it is |
-|---|---|---|
-| `quanto` | [`packages/quanto`](packages/quanto/README.md) | The core: `defineCodec`, the primitives, the wrappers, and the everyday codecs (lengths, weights, durations, money, dates…). |
-| `@quanto/codecs` | [`packages/codecs`](packages/codecs/README.md) | More codecs, built only on quanto's public API. |
+People type `5'11"`, `180cm` and `1,8 m` and mean the same height. quanto turns that into a typed value you can store, compare and format back.
 
-- [`DESIGN.md`](DESIGN.md) is the source of truth for the design.
-- [`AGENTS.md`](AGENTS.md) has instructions for agents working in this repository.
-- [`packages/quanto/AUTHORING.md`](packages/quanto/AUTHORING.md) is the codec authoring guide, shipped with the package.
+```ts
+import { length } from 'quanto/codecs';
+
+length().parse(`5'11"`);  // { ok: true, value: { value: 71, unit: 'in' } }
+length().parse('1,8 m');  // { ok: true, value: { value: 1.8, unit: 'm' } }
+length().parse('70 kg');  // { ok: false, issues: [{ code: 'unknown_unit', … }] }
+```
+
+- **Forgiving.** Locale-aware numbers, compound input like `2h30m`, smart quotes, `$1.2k`, `next fri`.
+- **Plain data.** Values are JSON. Validate them on the server with any Standard Schema library, no re-parsing.
+- **Round-trips.** Whatever `format` prints, `parse` reads back.
+- **Yours to extend.** Custom codecs use the same API as the built-ins, and a fixtures file is the spec.
+
+Built in: length, mass, duration, temperature, volume, area, speed, percent, money, date, time and date-time. [`@quanto/codecs`](packages/codecs/README.md) adds data sizes, energy, pace, pressure and a few more. Not sure which one you'll get? `merge` them and take the first that parses.
+
+Pre-release, not on npm yet.
 
 ## Development
 
 ```sh
 bun install
-bun run typecheck   # every package
-bun run build       # every package
-bun run test        # every package's fixtures and tests, against source
+bun run typecheck
+bun run build
+bun run test
+bun run site        # the website and playground, on localhost:4173
 ```
 
-Tests and typechecking resolve `quanto` to `packages/quanto/src`, so nothing needs building first.
+It's a bun workspace: the core lives in `packages/quanto`, the extra codecs in `packages/codecs`, and the website in `apps/site`. Tests resolve `quanto` to source, so nothing needs building first.

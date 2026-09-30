@@ -70,15 +70,6 @@ const isLetter = (c: string | undefined): boolean => c !== undefined && /\p{L}/u
  * unless another unit has an alias that differs only by case: then all of those match exactly as written.
  */
 function indexAliases(id: string, units: UnitTable): AliasEntry[] {
-  // Unit IDs are stored; IDs that differ only by case are easy to confuse and collide in case-insensitive storage.
-  const folded = new Map<string, string>();
-  for (const unit of Object.keys(units)) {
-    const other = folded.get(unit.toLowerCase());
-    if (other !== undefined) {
-      throw new Error(`quanto: unit IDs "${other}" and "${unit}" in codec "${id}" differ only by case. Unit IDs are stored, so make them distinct (like "Mbit/s" and "MB/s"); aliases can still differ by case.`);
-    }
-    folded.set(unit.toLowerCase(), unit);
-  }
   const byFolded = new Map<string, Array<{ readonly alias: string; readonly unit: string }>>();
   for (const [unit, def] of Object.entries(units)) {
     if (def.aliases.length === 0) throw new Error(`quanto: unit "${unit}" in codec "${id}" has no aliases. Give it at least one; the first is what format prints.`);
