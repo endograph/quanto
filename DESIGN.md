@@ -276,10 +276,13 @@ TypeScript types (unit IDs, `Quantity<U>`) are inferred from the table's literal
 - **Linear, affine and function units.** `toBase` says how a unit converts to the table's base unit, and its form declares what kind of unit it is; nothing is inferred:
   - a **number** is a linear factor (`in: { toBase: 0.0254 }`). Converting between two units is value × `from.toBase` ÷ `to.toBase`, with decimal factors scaled to integers first so results are exact. Use this form whenever the conversion is a plain factor.
   - **`{ factor, offset }`** is affine (temperature): base = value × factor + offset. With kelvin as the base, °C is `{ factor: 1, offset: 273.15 }`.
-  - a **function**, with a sibling **`fromBase`** function, is for conversions that aren't "multiply, then maybe add": fuel economy (`'l/100km': { toBase: (v) => 100 / v, fromBase: (v) => 100 / v, … }` with km/L as the base) or wire gauge. Deferred: see [Deferred](#deferred).
+  - a **function**, with a sibling **`fromBase`** function, is for conversions that aren't "multiply, then maybe add": fuel economy (`'l/100km': { toBase: (v) => 100 / v, fromBase: (v) => 100 / v, … }` with km/L as the base) or wire gauge.
+    - Having one of the pair without the other is a definition-time error, and so is a failed spot check. At fixed sample points (`0.5, 1, 2, 10, 100`, skipping any where `toBase` isn't finite), `fromBase(toBase(x))` must come back to `x` within tolerance, and `toBase` must be strictly increasing or strictly decreasing. The check catches a missing, swapped or wrong inverse; the `roundTrip` fixtures stay the real safety net.
+    - The functions must be strictly monotonic, or they can't invert each other and `compare` has no meaning. Tables should pick a base where bigger means more: km/L, not L/100km, for fuel economy.
+    - A value with no base value (`0 L/100km`), or none in `canonicalUnit` (`0 mpg` when the canonical unit is L/100km), is `unparseable`: the input means nothing. Merely out-of-range values (`-5 mpg`) are left to the user's schema, as for every quantity. `convert` throws on a non-finite result.
 - **Only linear units compound** (`5 ft 11 in`) or serve as a `subunit`. Affine and function units convert and compare only.
 - **`subunit`** (optional) names the unit a trailing bare number takes after this one: `ft: { …, subunit: 'in' }` makes `5'11` read as 5 ft 11 in, and `m: { …, subunit: 'cm' }` makes `1m80` read as 180 cm. It's explicit rather than guessed from the table, and must name a smaller linear unit.
-- `quantity()` checks at definition time that aliases are unique within the table and that `defaultUnit` and `canonicalUnit` name real units.
+- `quantity()` checks at definition time that no alias belongs to two units (see the case rule above), that subunits and function units are well formed, and that `defaultUnit` and `canonicalUnit` name real units.
 
 ### Operations (`quanto/quantity`)
 
@@ -323,10 +326,16 @@ const height = length({
   - A trailing bare number takes the previous unit's `subunit`; without one it's unparseable.
   - Conversions scale decimal factors to integers before dividing, so `5 ft 11 in` is exactly 71 in and 1 in is exactly 25.4 mm.
 - **Unit matching**: the longest alias wins (`miles` before `mi` before `m`), aliases may contain spaces and `/` (`fl oz`, `km/h`), and a word alias can't run into a following letter (`5 ms` is not `5 m` + `s`). A period after a word alias is skipped (`5 ft. 11 in.`). A word that matches no alias is `unknown_unit`; anything else left over is `unparseable`.
-- Default formatting prints at most 3 fraction digits, then the unit's first alias, separated by a space unless the alias is `'` or `"`.
-- Built-in quantity codecs: `length`, `mass`, `duration`, `temperature`, `volume`, `area`, `speed` (its own unit table, not derived), each exported alongside its unit table (`lengthUnits`, …).
+- Default formatting prints at most 3 fraction digits, then the unit's first alias, separated by a space unless the alias is `'`, `"` or `°` (`45°`, `30'`).
+- Built-in quantity codecs: `length`, `mass`, `duration`, `temperature`, `volume`, `area`, `speed` (its own unit table, not derived), `dataSize`, `dataRate`, `energy`, `power`, `pressure`, `angle`, `frequency`, `fuelEconomy` and `pace`, each exported alongside its unit table (`lengthUnits`, …). Built-in codecs that aren't quantities: `percent`, `money` and the date and time codecs.
 - `duration` covers fixed-length units only (ms through weeks). Calendar durations (months, years) are not quantities because they have no fixed length. Clock notation (`1:30`) isn't accepted in v1.
 - `mass` has no `ton`: it means different masses in US, UK and metric use (`t`/`tonne` is the metric ton). `volume`'s customary units are US measures; UK imperial pints and gallons need a custom table.
+- `dataSize` is bytes only: `KB`, `MB`, … are decimal (1000) and `KiB`, `MiB`, … binary (1024). With no bit units, `Mb` means megabytes. `dataRate` has both, so bit and byte aliases that differ only by case match exactly; all-lowercase `mbps`, `kbps` and `gbps` are listed as bits, and `mb/s` is ambiguous and rejected.
+- `energy`'s `cal`, `Cal` and `calories` are kilocalories, as on food labels; the small calorie isn't included. `power` has both `mW` and `MW`, matched exactly. `pressure` and `frequency` have no milli- units, so `mpa` and `mhz` mean mega-.
+- `angle` uses arcseconds as its base, so `40°26'46"` compounds exactly (degrees take arcminutes as their subunit, arcminutes take arcseconds).
+- `fuelEconomy` has km/L as its base; L/100km is a function unit. `mpg` is US; UK mpg is `mpg (imp)`, as with `volume`.
+- `pace` is written with `defineCodec` rather than `quantity()`, because it reads clock notation (`5:30 /km`, `1:05:00 /mi`, or `5.5 min/km`). It still carries a unit table (seconds per km and per mile), so `convert`, `compare` and range ordering work on it. It formats to a tenth of a second.
+- `percent` is a plain number in percentage points (`12.5`, not `0.125`). A bare number is a percentage; `bps` and `‰` scale; `3/4`, `3 in 4` and `3 out of 4` are ratios (75).
 
 ## Money
 
@@ -663,13 +672,7 @@ Decided in principle, not in v1:
 - **Sub-minor-unit money** (`$3.459`): an optional `precision` option on the money codec.
 - **Calendar durations** (`2 months`): a separate codec with an ISO 8601 duration value (`P2M`).
 - **Open-ended ranges** (`5ft+`, `under 10 kg`).
-- **Function units** (`toBase` and `fromBase` as functions), designed now and implemented with the first codec that needs them, likely `fuelEconomy`:
-  - Having one of the pair without the other is a definition-time error, and so is a failed spot check: `fromBase(toBase(x))` must come back to `x` (within tolerance) at a few sample points inside the function's domain. The check catches a missing, swapped or wrong inverse; the `roundTrip` fixtures stay the real safety net.
-  - The functions must be strictly monotonic (increasing or decreasing), or they can't invert each other and `compare` has no meaning. Tables should pick a base where bigger means more: km/L, not L/100km, for fuel economy.
-  - Parsing always computes the base value of a function unit. A non-finite result (`0 L/100km`) is `unparseable`, because the input means nothing; merely out-of-range values (`-5 mpg`) are left to the user's schema, as for every quantity. `convert` throws on a non-finite result.
-  - Code that reads factors (`subunit` checks, compound input, exact conversion) rejects function units explicitly rather than treating them as factors.
-  - The fixtures for `fuelEconomy` cover `0 mpg`, negative values, `0 L/100km`, conversion under `canonicalUnit`, and `compare` across mpg and L/100km.
-  - Pace (`5:30 /km`) and gas mark (`gas mark 4`) need their own grammar (clock notation, unit before number), so they're custom codecs regardless.
+- **Gas mark** (`gas mark 4`): the number follows the unit, and only a few discrete marks exist, so it's a custom codec rather than a function unit.
 - **`auto`**, an "accept anything" codec: a merge of all built-ins plus a text fallback. Its merge order and what bare numbers mean are undecided.
 - **Agent tooling** beyond the basics above: an `explain(codec, text, ctx)` trace, a CLI with JSON output, a `new-codec` scaffold, and JSON Schema exports for the value shapes.
 - **Async codecs** (v2), including frozen formatting: see [Async codecs (v2)](#async-codecs-v2).

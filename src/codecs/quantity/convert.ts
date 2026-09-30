@@ -1,9 +1,38 @@
-/** How a unit converts to its table's base unit: a factor, or a factor and offset for affine units. */
-export type ToBase = number | { readonly factor: number; readonly offset: number };
+/**
+ * How a unit converts to its table's base unit: a linear factor, `{ factor, offset }` for affine units,
+ * or a function (with a sibling `fromBase`) for conversions that are neither, like L/100km.
+ */
+export type ToBase = number | { readonly factor: number; readonly offset: number } | ((value: number) => number);
 
-export const factorOf = (toBase: ToBase): number => (typeof toBase === 'number' ? toBase : toBase.factor);
-export const offsetOf = (toBase: ToBase): number => (typeof toBase === 'number' ? 0 : toBase.offset);
-export const isAffine = (toBase: ToBase): boolean => typeof toBase !== 'number' && toBase.offset !== 0;
+/** The parts of a unit definition that say how it converts. */
+export interface Conversion {
+  readonly toBase: ToBase;
+  readonly fromBase?: ((base: number) => number) | undefined;
+}
+
+/** A plain factor (or `{ factor, offset: 0 }`): the only kind that compounds, serves as a subunit and converts exactly. */
+export const isLinear = (toBase: ToBase): toBase is number | { readonly factor: number; readonly offset: number } =>
+  typeof toBase === 'number' || (typeof toBase === 'object' && toBase.offset === 0);
+
+/** The factor of a linear or affine unit. Callers check `isLinear` (or rule out functions) first. */
+export function factorOf(toBase: ToBase): number {
+  if (typeof toBase === 'function') throw new Error('quanto: internal error: factorOf called on a function unit.');
+  return typeof toBase === 'number' ? toBase : toBase.factor;
+}
+
+/** A value in the unit's own terms, expressed in the base unit. */
+export function toBaseValue(value: number, unit: Conversion): number {
+  const { toBase } = unit;
+  if (typeof toBase === 'function') return toBase(value);
+  return typeof toBase === 'number' ? value * toBase : value * toBase.factor + toBase.offset;
+}
+
+/** A base-unit value, expressed in the unit's own terms. */
+export function fromBaseValue(base: number, unit: Conversion): number {
+  const { toBase, fromBase } = unit;
+  if (typeof toBase === 'function') return fromBase!(base);
+  return typeof toBase === 'number' ? base / toBase : (base - toBase.offset) / toBase.factor;
+}
 
 /** The smallest power of ten that makes `n` an integer, up to 10^15; undefined if none does. */
 function decimalScale(n: number): number | undefined {
@@ -31,9 +60,11 @@ export function sumLinear(terms: readonly { readonly value: number; readonly fac
   return terms.reduce((sum, t) => sum + (t.value * t.factor) / targetFactor, 0);
 }
 
-/** Converts a value between two units of the same table, handling affine units. */
-export function convertValue(value: number, from: ToBase, to: ToBase): number {
-  if (!isAffine(from) && !isAffine(to)) return sumLinear([{ value, factor: factorOf(from) }], factorOf(to));
-  const base = value * factorOf(from) + offsetOf(from);
-  return (base - offsetOf(to)) / factorOf(to);
+/**
+ * Converts a value between two units of the same table. Linear units convert exactly (see `sumLinear`);
+ * affine and function units go through the base unit. The result can be non-finite (`0 mpg` in L/100km).
+ */
+export function convertValue(value: number, from: Conversion, to: Conversion): number {
+  if (isLinear(from.toBase) && isLinear(to.toBase)) return sumLinear([{ value, factor: factorOf(from.toBase) }], factorOf(to.toBase));
+  return fromBaseValue(toBaseValue(value, from), to);
 }

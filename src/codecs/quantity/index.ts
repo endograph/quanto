@@ -3,14 +3,20 @@ import type { Codec, CodecOptions, Issue, ParseOutcome, Quantity, ResolvedCtx } 
 import type { MeasurementSystem } from '../../locale';
 import { normalize } from '../../primitives/normalize';
 import { formatNumber, readNumber } from '../../primitives/number';
-import { convertValue, factorOf, isAffine, sumLinear, type ToBase } from './convert';
+import { convertValue, factorOf, isLinear, sumLinear, toBaseValue, type ToBase } from './convert';
 
 export type { ToBase } from './convert';
 
 /** One unit in a unit table. */
 export interface UnitDefinition {
-  /** Conversion to the table's base unit: a factor, or `{ factor, offset }` for affine units (temperature). */
+  /**
+   * Conversion to the table's base unit: a factor; `{ factor, offset }` for affine units (temperature); or a
+   * function, with `fromBase`, for conversions that are neither (`(v) => 100 / v` for L/100km over km/L).
+   * Functions must be strictly monotonic inverses of each other; `quantity()` spot-checks both.
+   */
   readonly toBase: ToBase;
+  /** The inverse of a function `toBase`, and only allowed with one. */
+  readonly fromBase?: ((base: number) => number) | undefined;
   /**
    * What people type. The first alias is what `format` prints. Matched case-insensitively, except aliases
    * that differ only by case from another unit's alias (`mW` and `MW`), which match exactly as written.
@@ -77,10 +83,11 @@ function indexAliases(id: string, units: UnitTable): AliasEntry[] {
     if (def.subunit !== undefined) {
       const sub = units[def.subunit];
       if (!sub) throw new Error(`quanto: subunit "${def.subunit}" of unit "${unit}" in codec "${id}" isn't in the table.`);
-      if (isAffine(def.toBase) || factorOf(sub.toBase) >= factorOf(def.toBase)) {
-        throw new Error(`quanto: subunit "${def.subunit}" of unit "${unit}" in codec "${id}" must be a smaller, non-affine unit.`);
+      if (!isLinear(def.toBase) || !isLinear(sub.toBase) || factorOf(sub.toBase) >= factorOf(def.toBase)) {
+        throw new Error(`quanto: subunit "${def.subunit}" of unit "${unit}" in codec "${id}" must be a smaller unit, and both must be linear (a plain factor).`);
       }
     }
+    checkFunctionUnit(id, unit, def);
   }
 
   const entries: AliasEntry[] = [];
@@ -101,6 +108,37 @@ function indexAliases(id: string, units: UnitTable): AliasEntry[] {
     }
   }
   return entries.sort((a, b) => b.key.length - a.key.length);
+}
+
+const SAMPLES = [0.5, 1, 2, 10, 100];
+
+/**
+ * A function unit needs both functions, and they must be strictly monotonic inverses. Checked at a few
+ * sample points (skipping any where `toBase` isn't finite): it catches a missing, swapped or wrong
+ * inverse, and fixtures remain the real safety net.
+ */
+function checkFunctionUnit(id: string, unit: string, def: UnitDefinition): void {
+  const where = `unit "${unit}" in codec "${id}"`;
+  if (typeof def.toBase !== 'function') {
+    if (def.fromBase !== undefined) throw new Error(`quanto: ${where} has fromBase but its toBase isn't a function. Remove fromBase, or make toBase a function.`);
+    return;
+  }
+  const { toBase, fromBase } = def;
+  if (typeof fromBase !== 'function') throw new Error(`quanto: ${where} has a function toBase but no fromBase function. Add fromBase, its inverse.`);
+  const points = SAMPLES.map((x) => ({ x, base: toBase(x) })).filter((p) => Number.isFinite(p.base));
+  if (points.length < 2) throw new Error(`quanto: ${where}: toBase isn't finite at the sample points ${SAMPLES.join(', ')}, so it can't be checked.`);
+  for (const { x, base } of points) {
+    const back = fromBase(base);
+    if (!(Math.abs(back - x) <= 1e-9 * Math.max(Math.abs(x), 1))) {
+      throw new Error(`quanto: ${where}: fromBase(toBase(${x})) is ${back}, not ${x}. fromBase must be the inverse of toBase.`);
+    }
+  }
+  const rising = points[1]!.base > points[0]!.base;
+  for (let i = 1; i < points.length; i++) {
+    if (points[i]!.base === points[i - 1]!.base || points[i]!.base > points[i - 1]!.base !== rising) {
+      throw new Error(`quanto: ${where}: toBase must be strictly increasing or strictly decreasing.`);
+    }
+  }
 }
 
 function assertUnit(id: string, units: UnitTable, unit: string | undefined, option: string): void {
@@ -191,29 +229,41 @@ export function quantity<const T extends UnitTable, C extends keyof T & string =
       }
     }
 
-    // Compound input goes from larger to smaller units, without repeats or affine units.
+    // Compound input goes from larger to smaller units, without repeats, and only in linear units.
     for (let i = 1; i < resolved.length; i++) {
       const prev = units[resolved[i - 1]!.unit]!.toBase;
       const cur = units[resolved[i]!.unit]!.toBase;
-      if (isAffine(prev) || isAffine(cur) || factorOf(cur) >= factorOf(prev)) return unparseable(text);
+      if (!isLinear(prev) || !isLinear(cur) || factorOf(cur) >= factorOf(prev)) return unparseable(text);
     }
 
     const first = resolved[0]!;
-    const target =
-      canonicalUnit ??
-      resolved.reduce((smallest, c) => (factorOf(units[c.unit]!.toBase) < factorOf(units[smallest]!.toBase) ? c.unit : smallest), first.unit);
-
     let value: number;
+    let unit: string;
     if (resolved.length === 1) {
-      value = first.unit === target ? first.value : convertValue(first.value, units[first.unit]!.toBase, units[target]!.toBase);
+      value = first.value;
+      unit = first.unit;
     } else {
+      // Summed into the smallest unit (the last), or straight into a linear canonicalUnit.
+      unit = canonicalUnit !== undefined && isLinear(units[canonicalUnit]!.toBase) ? canonicalUnit : resolved[resolved.length - 1]!.unit;
       // The first component's sign applies to the whole: "-5 ft 6 in" is -66 in.
       const sign = first.value < 0 ? -1 : 1;
       value = sumLinear(
         resolved.map((c, i) => ({ value: i === 0 ? c.value : sign * c.value, factor: factorOf(units[c.unit]!.toBase) })),
-        factorOf(units[target]!.toBase),
+        factorOf(units[unit]!.toBase),
       );
     }
+    // A value with no base value, or none in canonicalUnit, means nothing: "0 L/100km", or "0 mpg" in L/100km.
+    const meaningless = (): ParseOutcome<Quantity<C>> => ({
+      ok: false,
+      issues: [{ code: 'unparseable', message: `"${text}" doesn't correspond to a real value.` }],
+    });
+    if (!Number.isFinite(toBaseValue(value, units[unit]!))) return meaningless();
+    if (canonicalUnit !== undefined && unit !== canonicalUnit) {
+      value = convertValue(value, units[unit]!, units[canonicalUnit]!);
+      unit = canonicalUnit;
+      if (!Number.isFinite(value)) return meaningless();
+    }
+    const target = unit;
     return { ok: true, value: { value: value === 0 ? 0 : value, unit: target as C } };
   };
 
@@ -232,7 +282,7 @@ export function quantity<const T extends UnitTable, C extends keyof T & string =
 
   const defaultFormat = (value: Quantity<C>, ctx: ResolvedCtx): string => {
     const alias = units[value.unit]!.aliases[0]!;
-    return `${formatNumber(value.value, ctx)}${/^['"]$/.test(alias) ? '' : ' '}${alias}`;
+    return `${formatNumber(value.value, ctx)}${/^['"°]$/.test(alias) ? '' : ' '}${alias}`;
   };
 
   const codec = defineCodec<Quantity<C>>({

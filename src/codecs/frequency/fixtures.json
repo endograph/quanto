@@ -1,0 +1,34 @@
+[
+  {"parse": "440 Hz", "value": {"value": 440, "unit": "Hz"}},
+  {"parse": "440hz", "value": {"value": 440, "unit": "Hz"}},
+  {"parse": "440 hertz", "value": {"value": 440, "unit": "Hz"}},
+  {"parse": "44.1 kHz", "value": {"value": 44.1, "unit": "kHz"}},
+  {"parse": "44.1 khz", "value": {"value": 44.1, "unit": "kHz"}},
+  {"parse": "101.1 MHz", "value": {"value": 101.1, "unit": "MHz"}},
+  {"parse": "101.1 mhz", "value": {"value": 101.1, "unit": "MHz"}},
+  {"parse": "2.4 GHz", "value": {"value": 2.4, "unit": "GHz"}},
+  {"parse": "2,4 GHz", "ctx": {"locale": "de-DE"}, "value": {"value": 2.4, "unit": "GHz"}},
+  {"parse": "3 gigahertz", "value": {"value": 3, "unit": "GHz"}},
+  {"parse": "3000 rpm", "value": {"value": 3000, "unit": "rpm"}},
+  {"parse": "3000 RPM", "value": {"value": 3000, "unit": "rpm"}},
+  {"parse": "3000 rev/min", "value": {"value": 3000, "unit": "rpm"}},
+  {"parse": "120 bpm", "value": {"value": 120, "unit": "bpm"}},
+  {"parse": "120 beats per minute", "value": {"value": 120, "unit": "bpm"}},
+
+  {"parse": "3000 rpm", "options": {"canonicalUnit": "Hz"}, "value": {"value": 50, "unit": "Hz"}},
+  {"parse": "2.4 GHz", "options": {"canonicalUnit": "MHz"}, "value": {"value": 2400, "unit": "MHz"}},
+  {"parse": "60 bpm", "options": {"canonicalUnit": "Hz"}, "value": {"value": 1, "unit": "Hz"}},
+  {"parse": "1 Hz", "options": {"canonicalUnit": "rpm"}, "value": {"value": 60, "unit": "rpm"}},
+
+  {"parse": "440", "issues": ["missing_unit"]},
+  {"parse": "120", "options": {"defaultUnit": "bpm"}, "value": {"value": 120, "unit": "bpm"}},
+  {"parse": "440 kg", "issues": ["unknown_unit"]},
+  {"parse": "high", "issues": ["unparseable"]},
+  {"parse": "", "issues": ["empty"]},
+
+  {"format": {"value": 440, "unit": "Hz"}, "text": "440 Hz"},
+  {"format": {"value": 2.4, "unit": "GHz"}, "ctx": {"locale": "de-DE"}, "text": "2,4 GHz"},
+  {"format": {"value": 44.1, "unit": "kHz"}, "text": "44.1 kHz"},
+  {"format": {"value": 3000, "unit": "rpm"}, "text": "3,000 rpm"},
+  {"format": {"value": 120, "unit": "bpm"}, "text": "120 bpm"}
+]

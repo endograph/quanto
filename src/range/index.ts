@@ -5,6 +5,7 @@ import type { StandardSchemaV1 } from '../core/standard-schema';
 import type { Codec, CodecOptions, Ctx, Issue, ParseResult } from '../core/types';
 import { normalize } from '../primitives/normalize';
 import type { UnitDefinition } from '../codecs/quantity';
+import { toBaseValue } from '../codecs/quantity/convert';
 import { instantSeconds, rollIso } from '../codecs/calendar/civil';
 import { strategyFor } from './strategies';
 
@@ -38,11 +39,7 @@ function inOrder(codec: Codec<unknown>, start: unknown, end: unknown): boolean {
       const { value, unit } = q as { value?: unknown; unit?: unknown };
       const def = typeof unit === 'string' && Object.hasOwn(units, unit) ? units[unit] : undefined;
       if (!def || typeof value !== 'number') return undefined;
-      const t: unknown = def.toBase;
-      const b =
-        typeof t === 'function' ? (t as (v: number) => number)(value)
-        : typeof t === 'number' ? value * t
-        : value * (t as { factor: number }).factor + (t as { offset: number }).offset;
+      const b = toBaseValue(value, def);
       return Number.isFinite(b) ? b : undefined;
     };
     const a = base(start);

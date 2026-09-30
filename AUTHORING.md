@@ -18,6 +18,8 @@ src/codecs/<name>/
 
 ## Defining a codec
 
+A minimal percentage codec (quanto ships a fuller `percent`):
+
 ```ts
 import { defineCodec, readNumber, formatNumber, type CodecOptions } from 'quanto';
 
@@ -63,6 +65,7 @@ export const horseHeight = quantity({
 ```
 
 - **`toBase` is a plain number whenever the conversion is a plain factor.** Only temperature-like scales need `{ factor, offset }`. Plain factors convert exactly and are the only units that compound (`5 ft 11 in`).
+- **Conversions that are neither use a function pair**, like L/100km over a km/L base: `{ toBase: (v) => 100 / v, fromBase: (b) => 100 / b, aliases: […] }`. Both functions are required, must invert each other and must be strictly monotonic; `quantity()` spot-checks this. Pick a base where bigger means more, since `compare` orders by it.
 - **The first alias is what `format` prints.** Aliases match case-insensitively, except those that differ only by case from another unit's alias (`mW` and `MW`), which match exactly as written. Adding such a unit can change what existing input means: next to megabit `Mb`, typing `mb` no longer matches megabyte `MB` unless you list `mb` as an alias of `MB`.
 - **`subunit`** makes a trailing bare number work: `ft: { …, subunit: 'in' }` reads `5'11` as 5 ft 11 in.
 

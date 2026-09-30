@@ -3,7 +3,7 @@
 // Arithmetic is left to apps, which know whether adding two values means anything in their domain:
 //   { value: a.value + convert(len, b, a.unit).value, unit: a.unit }
 
-import { convertValue, factorOf, offsetOf } from '../codecs/quantity/convert';
+import { convertValue, toBaseValue } from '../codecs/quantity/convert';
 import type { UnitDefinition } from '../codecs/quantity';
 import type { Quantity } from '../core/types';
 
@@ -33,7 +33,10 @@ function unitOf<U extends string>(codec: QuantityTable<U>, q: Quantity<string>, 
 export function convert<U extends string, T extends U>(codec: QuantityTable<U>, q: Quantity<U>, to: T): Quantity<T> {
   const from = unitOf(codec, q, 'convert');
   const target = unitOf(codec, { value: 0, unit: to }, 'convert');
-  const value = q.unit === to ? q.value : convertValue(q.value, from.toBase, target.toBase);
+  const value = q.unit === to ? q.value : convertValue(q.value, from, target);
+  if (!Number.isFinite(value)) {
+    throw new Error(`quanto: convert of ${q.value} ${q.unit} to "${to}" in codec "${codec.id}" has no finite result (like 0 mpg in L/100km).`);
+  }
   return { value: value === 0 ? 0 : value, unit: to };
 }
 
@@ -44,8 +47,8 @@ export function convert<U extends string, T extends U>(codec: QuantityTable<U>, 
 export function compare<U extends string>(codec: QuantityTable<U>, a: Quantity<U>, b: Quantity<U>): -1 | 0 | 1 {
   const da = unitOf(codec, a, 'compare');
   const db = unitOf(codec, b, 'compare');
-  const x = a.value * factorOf(da.toBase) + offsetOf(da.toBase);
-  const y = b.value * factorOf(db.toBase) + offsetOf(db.toBase);
+  const x = toBaseValue(a.value, da);
+  const y = toBaseValue(b.value, db);
   if (Math.abs(x - y) <= COMPARE_TOLERANCE * Math.max(Math.abs(x), Math.abs(y))) return 0;
   return x < y ? -1 : 1;
 }
