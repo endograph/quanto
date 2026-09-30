@@ -2,6 +2,12 @@
 
 These instructions are for agents working on this repository. They are not shipped with the package (the shipped codec authoring guide is `AUTHORING.md`). `DESIGN.md` is the source of truth for the design.
 
+## Packages
+
+- The core package, `quanto`, is at the repo root (`src/`). `packages/codecs` is `@quanto/codecs`.
+- `@quanto/codecs` imports quanto only by name, through its public API (`quanto`, `quanto/codecs`, `quanto/quantity`, `quanto/testing`), never by relative path into `src/`. If it needs something that isn't public, raise it as an API question.
+- `bun run typecheck` and `bun run build` at the root cover both packages.
+
 ## Tests
 
 - Never add unit tests unless the user explicitly asks for them, or a test is required to fix a bug.

@@ -36,8 +36,8 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "tsdown",
-    "typecheck": "tsc --noEmit",
+    "build": "tsdown && cd packages/codecs && tsdown",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p packages/codecs",
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "bun run typecheck && bun run test"

@@ -1,0 +1,27 @@
+{
+  "name": "@quanto/codecs",
+  "version": "0.0.0",
+  "description": "More quanto codecs: data sizes and rates, energy, power, pressure, angles, frequency, fuel economy, pace and percentages.",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "quanto": "^0.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
