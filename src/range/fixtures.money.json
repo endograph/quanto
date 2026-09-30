@@ -1,0 +1,21 @@
+[
+  { "parse": "$10-20", "value": { "start": { "minorUnits": 1000, "currency": "USD" }, "end": { "minorUnits": 2000, "currency": "USD" } } },
+  { "parse": "$10 - $20", "value": { "start": { "minorUnits": 1000, "currency": "USD" }, "end": { "minorUnits": 2000, "currency": "USD" } } },
+  { "parse": "$10 to $20", "value": { "start": { "minorUnits": 1000, "currency": "USD" }, "end": { "minorUnits": 2000, "currency": "USD" } } },
+  { "parse": "10-20 EUR", "value": { "start": { "minorUnits": 1000, "currency": "EUR" }, "end": { "minorUnits": 2000, "currency": "EUR" } } },
+  { "parse": "10-20 €", "ctx": { "locale": "de-DE" }, "value": { "start": { "minorUnits": 1000, "currency": "EUR" }, "end": { "minorUnits": 2000, "currency": "EUR" } } },
+  { "parse": "$10-20k", "value": { "start": { "minorUnits": 1000000, "currency": "USD" }, "end": { "minorUnits": 2000000, "currency": "USD" } } },
+  { "parse": "$10k-20", "value": { "start": { "minorUnits": 1000000, "currency": "USD" }, "end": { "minorUnits": 2000000, "currency": "USD" } } },
+  { "parse": "$1.5-2M", "value": { "start": { "minorUnits": 150000000, "currency": "USD" }, "end": { "minorUnits": 200000000, "currency": "USD" } } },
+  { "parse": "$500-1k", "value": { "start": { "minorUnits": 50000, "currency": "USD" }, "end": { "minorUnits": 100000, "currency": "USD" } } },
+  { "parse": "$10.50-12.75", "value": { "start": { "minorUnits": 1050, "currency": "USD" }, "end": { "minorUnits": 1275, "currency": "USD" } } },
+  { "parse": "-$10 - $20", "value": { "start": { "minorUnits": -1000, "currency": "USD" }, "end": { "minorUnits": 2000, "currency": "USD" } } },
+  { "parse": "$20-10", "value": { "start": { "minorUnits": 2000, "currency": "USD" }, "end": { "minorUnits": 1000, "currency": "USD" } } },
+  { "parse": "$10-€20", "value": { "start": { "minorUnits": 1000, "currency": "USD" }, "end": { "minorUnits": 2000, "currency": "EUR" } } },
+  { "parse": "10-20", "options": { "defaultCurrency": "USD" }, "value": { "start": { "minorUnits": 1000, "currency": "USD" }, "end": { "minorUnits": 2000, "currency": "USD" } } },
+  { "parse": "10-20", "issues": ["missing_currency"] },
+  { "parse": "$10-20.555", "issues": ["excess_precision"] },
+  { "parse": "$10", "issues": ["unparseable"] },
+  { "format": { "start": { "minorUnits": 1000, "currency": "USD" }, "end": { "minorUnits": 2000, "currency": "USD" } }, "text": "$10.00 – $20.00" },
+  { "format": { "start": { "minorUnits": 1000, "currency": "EUR" }, "end": { "minorUnits": 2000, "currency": "EUR" } }, "ctx": { "locale": "de-DE" }, "text": "10,00 € – 20,00 €" }
+]

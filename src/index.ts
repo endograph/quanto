@@ -26,3 +26,9 @@ export type { UnitDefinition, UnitTable } from './codecs/quantity';
 export { normalize } from './primitives/normalize';
 export { formatNumber, readNumber } from './primitives/number';
 export type { FormatNumberOptions, LocaleCtx, NumberMatch, ReadNumberOptions } from './primitives/number';
+
+export { optional } from './optional';
+export { merge } from './merge';
+export type { LeafValue, MergedCodec, Tagged } from './merge';
+export { range } from './range';
+export type { Range } from './range';

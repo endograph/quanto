@@ -1,0 +1,14 @@
+[
+  { "parse": "", "value": null, "context": { "locale": "en-US" } },
+  { "parse": "   ", "value": null },
+  { "parse": "", "ctx": { "locale": "de-DE" }, "value": null, "context": { "locale": "de-DE" } },
+  { "parse": "5 ft", "value": { "value": 5, "unit": "ft" } },
+  { "parse": "5'11\"", "value": { "value": 71, "unit": "in" } },
+  { "parse": "70", "options": { "defaultUnit": "in" }, "value": { "value": 70, "unit": "in" } },
+  { "parse": "70", "issues": ["missing_unit"] },
+  { "parse": "70 kg", "issues": ["unknown_unit"] },
+  { "parse": "abc", "issues": ["unparseable"] },
+  { "format": null, "text": "" },
+  { "format": { "value": 5, "unit": "ft" }, "text": "5 ft" },
+  { "format": { "value": 1.8, "unit": "m" }, "ctx": { "locale": "de-DE" }, "text": "1,8 m" }
+]

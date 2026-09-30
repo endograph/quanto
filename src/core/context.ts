@@ -48,3 +48,10 @@ export function startSession(ctx: Ctx | undefined): Session {
     context: () => (now === undefined ? { locale: locale.tag } : { locale: locale.tag, now }),
   };
 }
+
+/** Combines the contexts of several parses of the same input: the locale, and the first `now` read. */
+export function mergeContexts(contexts: readonly ParseContext[]): ParseContext {
+  const locale = contexts[0]?.locale ?? DEFAULT_LOCALE;
+  const now = contexts.find((c) => c.now !== undefined)?.now;
+  return now === undefined ? { locale } : { locale, now };
+}

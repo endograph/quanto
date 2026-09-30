@@ -221,6 +221,9 @@ const heightOrWeight = merge([length(), mass()]);
 - Two codecs with the same `id` are a definition-time error.
 - **Its `id` is derived**, so it is deterministic: `merge(length,mass)`, from the inner ids in order. Nested merges flatten: `merge([merge([a, b]), c])` is the same codec as `merge([a, b, c])`, and tags are always leaf ids. Custom ids can't contain parentheses or commas, so derived ids never collide with them.
 - **Its `kind`** is the inner codecs' shared `kind`, if they all have the same one, and absent otherwise. `range(merge([length(), mass()]))` therefore still gets quantity completion.
+- **Empty input** is one `empty` issue, not one per codec.
+- **`context`** combines the contexts of the codecs that parsed: the locale, and `now` if any of them read the clock.
+- **Types:** the value is `Tagged<T> = { codec: string; value: T }`, where `T` is the union of the leaf codecs' value types. Codec ids are plain strings at the type level, so narrowing on `codec` doesn't narrow `value`; check the value's shape or cast after checking the tag. The merged codec exposes its leaf codecs as `codecs`.
 - Merge is expected to be uncommon. Custom codecs are the primary extension mechanism.
 
 ## Quantities
@@ -456,6 +459,9 @@ heightRange.parse('5-7 ft'); // { ok: true, value: { start: { value: 5, unit: 'f
   - `time`: a side with no meridiem borrows the other side's, unless that would put the start after the end, in which case the start takes the opposite meridiem. `9-11pm` → 9pm–11pm; `9-5pm` → 9am–5pm.
   - `localDateTime` and `dateTime`: a side with no date borrows the other side's, wherever the date was written: `Oct 3 3-5pm`, `tomorrow 3-5pm` and `3-5pm tomorrow` all put both times on one day. The times complete as in `time`. When both sides share a borrowed date and the end time is before the start time, the end moves to the next day: `Oct 3 10pm-1am` → Oct 3, 10pm–Oct 4, 1am. For `dateTime`, a side with no UTC offset borrows the other side's written offset, before falling back to `ctx.now`'s.
   - No `kind`, or a kind without a strategy: no completion. Both sides must be fully specified.
+- **Which split wins:** splits are tried left to right, and the first split with any completion where both sides parse provides the value. If none does, the result carries the issues of the first side that failed, which is the most specific failure (`5-7 kg` reports `unknown_unit`, from `5 kg`). Text with no separator is `unparseable`.
+- **Where ordering is knowable:** quantities of a codec with a unit table (compared in the base unit, with `compare`'s tolerance) and money in a single currency. Other values, including merged ones, count as in order.
+- **Formatting** prints both sides in full, separated by ` – ` (an en dash with spaces): `5 ft – 7 ft`, `$10.00 – $20.00`. It reads back under the same `ctx`, even with negative values.
 - Ordering only picks between completions. It isn't enforced: `7-5 ft` parses as typed, and rejecting it is left to the user's schema, which can use `compare` from the operations subpaths.
 - Open-ended ranges (`5ft+`, `under 10 kg`) are deferred.
 
