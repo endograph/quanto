@@ -1,23 +1,24 @@
 import { quantity, type QuantityCodec, type QuantityOptions, type UnitDefinition } from '../quantity';
 
 /**
- * Power units. Base unit: the watt. `mW` (milliwatt) and `MW` (megawatt) differ only by case, so they
- * match exactly as written. `hp` is mechanical horsepower; `PS` is metric horsepower.
+ * Power units. Base unit: the watt. `mW` (milliwatt) and `MW` (megawatt) differ only by case, so those
+ * aliases match exactly as written, and their unit IDs are spelled out so stored values never differ
+ * only by case. `hp` is mechanical horsepower; `PS` is metric horsepower.
  */
 export const powerUnits: {
-  readonly mW: UnitDefinition;
+  readonly milliwatt: UnitDefinition;
   readonly W: UnitDefinition;
   readonly kW: UnitDefinition;
-  readonly MW: UnitDefinition;
+  readonly megawatt: UnitDefinition;
   readonly GW: UnitDefinition;
   readonly hp: UnitDefinition;
   readonly PS: UnitDefinition;
   readonly BTUh: UnitDefinition;
 } = {
-  mW: { toBase: 1e-3, aliases: ['mW', 'milliwatt', 'milliwatts'] },
+  milliwatt: { toBase: 1e-3, aliases: ['mW', 'milliwatt', 'milliwatts'] },
   W: { toBase: 1, aliases: ['W', 'watt', 'watts'] },
   kW: { toBase: 1e3, aliases: ['kW', 'kilowatt', 'kilowatts'] },
-  MW: { toBase: 1e6, aliases: ['MW', 'megawatt', 'megawatts'] },
+  megawatt: { toBase: 1e6, aliases: ['MW', 'megawatt', 'megawatts'] },
   GW: { toBase: 1e9, aliases: ['GW', 'gigawatt', 'gigawatts'] },
   hp: { toBase: 745.69987158227022, aliases: ['hp', 'bhp', 'horsepower'] },
   PS: { toBase: 735.49875, aliases: ['PS', 'metric horsepower', 'metric hp'] },

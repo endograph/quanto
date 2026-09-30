@@ -22,6 +22,9 @@ export type Strategy = (left: string, right: string, ctx: ResolvedCtx) => Propos
 function numberSpan(side: string, ctx: ResolvedCtx): { start: number; end: number } | undefined {
   const start = side.search(/\d|[.,]\d/);
   if (start < 0) return undefined;
+  // Clock notation is one number to a range: `5:00-5:30 /km` (pace).
+  const clock = /^\d+:[0-5]\d(?::[0-5]\d)?(?:[.,]\d+)?/.exec(side.slice(start));
+  if (clock) return { start, end: start + clock[0].length };
   const n = readNumber(side, ctx, { from: start });
   return n ? { start, end: n.end } : undefined;
 }

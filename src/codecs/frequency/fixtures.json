@@ -12,16 +12,13 @@
   {"parse": "3000 rpm", "value": {"value": 3000, "unit": "rpm"}},
   {"parse": "3000 RPM", "value": {"value": 3000, "unit": "rpm"}},
   {"parse": "3000 rev/min", "value": {"value": 3000, "unit": "rpm"}},
-  {"parse": "120 bpm", "value": {"value": 120, "unit": "bpm"}},
-  {"parse": "120 beats per minute", "value": {"value": 120, "unit": "bpm"}},
 
   {"parse": "3000 rpm", "options": {"canonicalUnit": "Hz"}, "value": {"value": 50, "unit": "Hz"}},
   {"parse": "2.4 GHz", "options": {"canonicalUnit": "MHz"}, "value": {"value": 2400, "unit": "MHz"}},
-  {"parse": "60 bpm", "options": {"canonicalUnit": "Hz"}, "value": {"value": 1, "unit": "Hz"}},
+  {"parse": "120 bpm", "issues": ["unknown_unit"]},
   {"parse": "1 Hz", "options": {"canonicalUnit": "rpm"}, "value": {"value": 60, "unit": "rpm"}},
 
   {"parse": "440", "issues": ["missing_unit"]},
-  {"parse": "120", "options": {"defaultUnit": "bpm"}, "value": {"value": 120, "unit": "bpm"}},
   {"parse": "440 kg", "issues": ["unknown_unit"]},
   {"parse": "high", "issues": ["unparseable"]},
   {"parse": "", "issues": ["empty"]},
@@ -29,6 +26,5 @@
   {"format": {"value": 440, "unit": "Hz"}, "text": "440 Hz"},
   {"format": {"value": 2.4, "unit": "GHz"}, "ctx": {"locale": "de-DE"}, "text": "2,4 GHz"},
   {"format": {"value": 44.1, "unit": "kHz"}, "text": "44.1 kHz"},
-  {"format": {"value": 3000, "unit": "rpm"}, "text": "3,000 rpm"},
-  {"format": {"value": 120, "unit": "bpm"}, "text": "120 bpm"}
+  {"format": {"value": 3000, "unit": "rpm"}, "text": "3,000 rpm"}
 ]

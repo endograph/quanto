@@ -70,6 +70,15 @@ const isLetter = (c: string | undefined): boolean => c !== undefined && /\p{L}/u
  * unless another unit has an alias that differs only by case: then all of those match exactly as written.
  */
 function indexAliases(id: string, units: UnitTable): AliasEntry[] {
+  // Unit IDs are stored; IDs that differ only by case are easy to confuse and collide in case-insensitive storage.
+  const folded = new Map<string, string>();
+  for (const unit of Object.keys(units)) {
+    const other = folded.get(unit.toLowerCase());
+    if (other !== undefined) {
+      throw new Error(`quanto: unit IDs "${other}" and "${unit}" in codec "${id}" differ only by case. Unit IDs are stored, so make them distinct (like "Mbit/s" and "MB/s"); aliases can still differ by case.`);
+    }
+    folded.set(unit.toLowerCase(), unit);
+  }
   const byFolded = new Map<string, Array<{ readonly alias: string; readonly unit: string }>>();
   for (const [unit, def] of Object.entries(units)) {
     if (def.aliases.length === 0) throw new Error(`quanto: unit "${unit}" in codec "${id}" has no aliases. Give it at least one; the first is what format prints.`);
@@ -141,6 +150,38 @@ function checkFunctionUnit(id: string, unit: string, def: UnitDefinition): void 
   }
 }
 
+/** Definition-time checks of a quantity codec's options. Shared by `quantity()` and `pace()`. */
+export function assertQuantityOptions(id: string, units: UnitTable, defaultUnit: DefaultUnit<string> | undefined, canonicalUnit: string | undefined): void {
+  assertUnit(id, units, canonicalUnit, 'canonicalUnit');
+  if (typeof defaultUnit === 'object') {
+    for (const system of ['us', 'uk', 'metric'] as const) assertUnit(id, units, defaultUnit[system], `defaultUnit.${system}`);
+  } else assertUnit(id, units, defaultUnit, 'defaultUnit');
+}
+
+/** The unit a bare number means under a measurement system, if any. */
+export const resolveDefaultUnit = <U extends string>(defaultUnit: DefaultUnit<U> | undefined, system: MeasurementSystem): U | undefined =>
+  typeof defaultUnit === 'object' ? defaultUnit[system] : defaultUnit;
+
+/**
+ * The structural check of a quantity value: a finite number, a unit in the table (the canonical unit,
+ * if set), and a finite base value, so nothing passes that `parse` would reject (`0 L/100km`).
+ */
+export function checkQuantity(units: UnitTable, canonicalUnit: string | undefined, value: unknown): Array<{ message: string; path?: PropertyKey[] }> {
+  if (typeof value !== 'object' || value === null) return [{ message: 'Expected { value, unit }.' }];
+  const v = value as Record<string, unknown>;
+  const problems: Array<{ message: string; path?: PropertyKey[] }> = [];
+  const finite = typeof v.value === 'number' && Number.isFinite(v.value);
+  if (!finite) problems.push({ message: 'Expected a finite number.', path: ['value'] });
+  if (typeof v.unit !== 'string' || !Object.hasOwn(units, v.unit)) {
+    problems.push({ message: `Expected one of the units: ${Object.keys(units).join(', ')}.`, path: ['unit'] });
+  } else if (canonicalUnit !== undefined && v.unit !== canonicalUnit) {
+    problems.push({ message: `Expected the unit "${canonicalUnit}".`, path: ['unit'] });
+  } else if (finite && !Number.isFinite(toBaseValue(v.value as number, units[v.unit]!))) {
+    problems.push({ message: `${String(v.value)} ${v.unit} has no value in the table's other units.`, path: ['value'] });
+  }
+  return problems;
+}
+
 function assertUnit(id: string, units: UnitTable, unit: string | undefined, option: string): void {
   if (unit !== undefined && !units[unit]) {
     throw new Error(`quanto: ${option} "${unit}" of codec "${id}" isn't in its unit table. Use one of: ${Object.keys(units).join(', ')}.`);
@@ -157,14 +198,9 @@ export function quantity<const T extends UnitTable, C extends keyof T & string =
   type U = keyof T & string;
   const { id, units, defaultUnit, canonicalUnit, schema, format } = definition;
   const aliases = indexAliases(id, units);
-  assertUnit(id, units, canonicalUnit, 'canonicalUnit');
-  if (typeof defaultUnit === 'object') {
-    for (const system of ['us', 'uk', 'metric'] as const) assertUnit(id, units, defaultUnit[system], `defaultUnit.${system}`);
-  } else assertUnit(id, units, defaultUnit, 'defaultUnit');
+  assertQuantityOptions(id, units, defaultUnit, canonicalUnit);
   const exampleAlias = units[Object.keys(units)[0]!]!.aliases[0]!;
 
-  const resolveDefault = (system: MeasurementSystem): string | undefined =>
-    typeof defaultUnit === 'object' ? defaultUnit[system] : defaultUnit;
 
   const matchAlias = (s: string, lower: string, at: number): { unit: string; end: number } | undefined => {
     for (const { key, unit, caseSensitive } of aliases) {
@@ -217,7 +253,7 @@ export function quantity<const T extends UnitTable, C extends keyof T & string =
     for (const [i, c] of components.entries()) {
       if (c.unit !== undefined) resolved.push({ value: c.value, unit: c.unit });
       else if (i === 0) {
-        const unit = resolveDefault(ctx.locale.measurementSystem);
+        const unit = resolveDefaultUnit<string>(defaultUnit, ctx.locale.measurementSystem);
         if (unit === undefined) {
           return { ok: false, issues: [{ code: 'missing_unit', message: `Add a unit, like "${formatNumber(c.value, ctx)} ${exampleAlias}".` }] };
         }
@@ -267,18 +303,7 @@ export function quantity<const T extends UnitTable, C extends keyof T & string =
     return { ok: true, value: { value: value === 0 ? 0 : value, unit: target as C } };
   };
 
-  const check = (value: unknown): Array<{ message: string; path?: PropertyKey[] }> => {
-    if (typeof value !== 'object' || value === null) return [{ message: 'Expected { value, unit }.' }];
-    const v = value as Record<string, unknown>;
-    const problems: Array<{ message: string; path?: PropertyKey[] }> = [];
-    if (typeof v.value !== 'number' || !Number.isFinite(v.value)) problems.push({ message: 'Expected a finite number.', path: ['value'] });
-    if (typeof v.unit !== 'string' || !Object.hasOwn(units, v.unit)) {
-      problems.push({ message: `Expected one of the units: ${Object.keys(units).join(', ')}.`, path: ['unit'] });
-    } else if (canonicalUnit !== undefined && v.unit !== canonicalUnit) {
-      problems.push({ message: `Expected the unit "${canonicalUnit}".`, path: ['unit'] });
-    }
-    return problems;
-  };
+  const check = (value: unknown): Array<{ message: string; path?: PropertyKey[] }> => checkQuantity(units, canonicalUnit, value);
 
   const defaultFormat = (value: Quantity<C>, ctx: ResolvedCtx): string => {
     const alias = units[value.unit]!.aliases[0]!;

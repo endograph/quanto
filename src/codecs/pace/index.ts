@@ -3,7 +3,7 @@ import type { ParseOutcome, Quantity, ResolvedCtx } from '../../core/types';
 import { normalize } from '../../primitives/normalize';
 import { readNumber } from '../../primitives/number';
 import { convertValue } from '../quantity/convert';
-import type { QuantityCodec, QuantityOptions, UnitDefinition } from '../quantity';
+import { assertQuantityOptions, checkQuantity, resolveDefaultUnit, type QuantityCodec, type QuantityOptions, type UnitDefinition } from '../quantity';
 
 /**
  * Pace units: seconds per kilometer and seconds per mile. Base unit: seconds per kilometer. The first
@@ -70,6 +70,7 @@ function formatTime(seconds: number, ctx: ResolvedCtx): string {
  */
 export const pace = <C extends PaceUnit = PaceUnit>(options?: QuantityOptions<PaceUnit, C>): QuantityCodec<PaceUnit, C> => {
   const { defaultUnit, canonicalUnit, schema, format } = options ?? {};
+  assertQuantityOptions('pace', paceUnits, defaultUnit, canonicalUnit);
 
   const parse = (text: string, ctx: ResolvedCtx): ParseOutcome<Quantity<C>> => {
     const s = normalize(text).toLowerCase();
@@ -79,7 +80,7 @@ export const pace = <C extends PaceUnit = PaceUnit>(options?: QuantityOptions<Pa
 
     let unit: PaceUnit | undefined;
     if (tail === '') {
-      unit = typeof defaultUnit === 'object' ? defaultUnit[ctx.locale.measurementSystem] : defaultUnit;
+      unit = resolveDefaultUnit(defaultUnit, ctx.locale.measurementSystem);
       if (unit === undefined) {
         return { ok: false, issues: [{ code: 'missing_unit', message: `Add a unit, like "${formatTime(time.seconds, ctx)} /km".` }] };
       }
@@ -96,18 +97,11 @@ export const pace = <C extends PaceUnit = PaceUnit>(options?: QuantityOptions<Pa
     return { ok: true, value: { value: convertValue(time.seconds, paceUnits[unit], paceUnits[canonicalUnit]), unit: canonicalUnit } };
   };
 
+  // Pace can't be negative: a negative number of seconds per km means nothing.
   const check = (value: unknown): Array<{ message: string; path?: PropertyKey[] }> => {
-    if (typeof value !== 'object' || value === null) return [{ message: 'Expected { value, unit }.' }];
-    const v = value as Record<string, unknown>;
-    const problems: Array<{ message: string; path?: PropertyKey[] }> = [];
-    if (typeof v.value !== 'number' || !Number.isFinite(v.value) || v.value < 0) {
-      problems.push({ message: 'Expected a finite, non-negative number of seconds.', path: ['value'] });
-    }
-    if (typeof v.unit !== 'string' || !Object.hasOwn(paceUnits, v.unit)) {
-      problems.push({ message: `Expected one of the units: ${Object.keys(paceUnits).join(', ')}.`, path: ['unit'] });
-    } else if (canonicalUnit !== undefined && v.unit !== canonicalUnit) {
-      problems.push({ message: `Expected the unit "${canonicalUnit}".`, path: ['unit'] });
-    }
+    const problems = checkQuantity(paceUnits, canonicalUnit, value);
+    const v = (value as { value?: unknown } | null)?.value;
+    if (problems.length === 0 && typeof v === 'number' && v < 0) problems.push({ message: 'Expected a non-negative number of seconds.', path: ['value'] });
     return problems;
   };
 

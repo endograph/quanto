@@ -3,15 +3,7 @@ import type { Codec, CodecOptions, ParseOutcome, ResolvedCtx } from '../../core/
 import { normalize } from '../../primitives/normalize';
 import { formatNumber, readNumber } from '../../primitives/number';
 
-/** What a trailing word does to the number: `%` keeps it, `‰` divides by 10, basis points by 100. */
-const SCALES: ReadonlyArray<{ readonly words: readonly string[]; readonly divisor: number }> = [
-  { words: ['%', 'percent', 'per cent', 'pct'], divisor: 1 },
-  { words: ['‰', 'per mille', 'permille', 'per mil'], divisor: 10 },
-  { words: ['bp', 'bps', 'basis point', 'basis points'], divisor: 100 },
-];
-
-/** `3 in 10`, `3 out of 4`, and a bare fraction `3/4`, are ratios rather than percentages. */
-const RATIO = /^(\d+)\s*(?:\/|in|out of)\s*(\d+)$/;
+const WORDS = ['%', 'percent', 'per cent', 'pct'];
 
 const unparseable = (text: string): ParseOutcome<number> => ({
   ok: false,
@@ -20,23 +12,19 @@ const unparseable = (text: string): ParseOutcome<number> => ({
 
 function parse(text: string, ctx: ResolvedCtx): ParseOutcome<number> {
   const s = normalize(text).toLowerCase();
-  const ratio = RATIO.exec(s);
-  if (ratio) {
-    const [part, whole] = [Number(ratio[1]), Number(ratio[2])];
-    return whole === 0 ? unparseable(text) : { ok: true, value: (part / whole) * 100 };
-  }
   const n = readNumber(s, ctx);
   if (!n) return unparseable(text);
   const rest = s.slice(n.end).trim();
-  const scale = rest === '' ? { divisor: 1 } : SCALES.find((sc) => sc.words.includes(rest));
-  if (!scale) return unparseable(text);
-  const value = n.value / scale.divisor;
-  return { ok: true, value: value === 0 ? 0 : value };
+  if (rest !== '' && !WORDS.includes(rest)) return unparseable(text);
+  // A bare fraction could mean a ratio (3/4 as 75%) or a tiny percentage (0.75%); neither is safe to guess.
+  if (rest === '' && s.slice(0, n.end).includes('/')) return unparseable(text);
+  return { ok: true, value: n.value === 0 ? 0 : n.value };
 }
 
 /**
- * Percentages: `12.5%`, `12.5`, `50 bps`, `5‰`, `3 in 10`, `3/4`. The value is the percentage as a plain
- * number (`12.5`, not `0.125`); a bare number is a percentage. Formats as `12.5%`.
+ * Percentages: `12.5%`, `12.5`, `12.5 percent`. The value is the percentage as a plain number (`12.5`,
+ * not `0.125`); a bare number is a percentage. Ratios (`3 in 10`), basis points and per mille aren't
+ * accepted, and neither is a bare fraction (`3/4`). Formats as `12.5%`.
  */
 export const percent = (options?: CodecOptions<number>): Codec<number> =>
   defineCodec<number>({

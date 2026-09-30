@@ -34,28 +34,33 @@ export function fromBaseValue(base: number, unit: Conversion): number {
   return typeof toBase === 'number' ? base / toBase : (base - toBase.offset) / toBase.factor;
 }
 
-/** The smallest power of ten that makes `n` an integer, up to 10^15; undefined if none does. */
-function decimalScale(n: number): number | undefined {
-  for (let d = 0; d <= 15; d++) {
-    const scaled = n * 10 ** d;
-    if (Math.abs(scaled - Math.round(scaled)) < 1e-6) return d;
-  }
-  return undefined;
+/**
+ * The number of decimal places in a factor's shortest written form (`0.0254` → 4), or undefined for
+ * forms like `1e-7`. Factors are treated as the decimals they're written as.
+ */
+function decimalPlaces(n: number): number | undefined {
+  const s = String(Math.abs(n));
+  if (!/^\d+(\.\d+)?$/.test(s)) return undefined;
+  return s.split('.')[1]?.length ?? 0;
 }
 
 /**
  * Sums `terms` (value × linear factor) and expresses the result in a unit with `targetFactor`.
  *
  * Decimal factors (0.3048, 0.0254) are scaled to integers first, so `5 ft 11 in` is exactly 71 in and
- * 1 in is exactly 25.4 mm. Factors that aren't short decimals fall back to plain division.
+ * 1 in is exactly 25.4 mm. When the scaled integers wouldn't be exact (more than 2^53), it falls back to
+ * plain division, accurate to float precision.
  */
 export function sumLinear(terms: readonly { readonly value: number; readonly factor: number }[], targetFactor: number): number {
-  const scales = [targetFactor, ...terms.map((t) => t.factor)].map(decimalScale);
-  if (scales.every((d) => d !== undefined)) {
-    const d = Math.max(...(scales as number[]));
+  const places = [targetFactor, ...terms.map((t) => t.factor)].map(decimalPlaces);
+  if (places.every((d) => d !== undefined)) {
+    const d = Math.max(...(places as number[]));
     const int = (f: number): number => Math.round(f * 10 ** d);
-    const numerator = terms.reduce((sum, t) => sum + t.value * int(t.factor), 0);
-    return numerator / int(targetFactor);
+    const ints = [targetFactor, ...terms.map((t) => t.factor)].map(int);
+    if (ints.every((i) => Number.isSafeInteger(i) && i !== 0)) {
+      const numerator = terms.reduce((sum, t) => sum + t.value * int(t.factor), 0);
+      return numerator / int(targetFactor);
+    }
   }
   return terms.reduce((sum, t) => sum + (t.value * t.factor) / targetFactor, 0);
 }

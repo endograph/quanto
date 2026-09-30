@@ -1,0 +1,6 @@
+[
+  { "parse": "5:00-5:30 /km", "value": { "start": { "value": 300, "unit": "sPerKm" }, "end": { "value": 330, "unit": "sPerKm" } } },
+  { "parse": "5:00 - 5:30/km", "value": { "start": { "value": 300, "unit": "sPerKm" }, "end": { "value": 330, "unit": "sPerKm" } } },
+  { "parse": "8:00 to 8:30 per mile", "value": { "start": { "value": 480, "unit": "sPerMi" }, "end": { "value": 510, "unit": "sPerMi" } } },
+  { "parse": "5:00 /km - 5:30 /km", "value": { "start": { "value": 300, "unit": "sPerKm" }, "end": { "value": 330, "unit": "sPerKm" } } }
+]

@@ -2,7 +2,7 @@ import { quantity, type QuantityCodec, type QuantityOptions, type UnitDefinition
 
 /**
  * Data size units. Base unit: the byte. `KB`, `MB`, … are decimal (1000), as on drives and in macOS;
- * `KiB`, `MiB`, … are binary (1024). There are no bit units, so `Mb` and `mb` also mean megabytes.
+ * `KiB`, `MiB`, … are binary (1024). There are no bit units, so a lowercase `b` means bytes too: `100b` is 100 bytes and `Mb` is megabytes.
  */
 export const dataSizeUnits: {
   readonly B: UnitDefinition;
