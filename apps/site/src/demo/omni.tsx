@@ -1,0 +1,324 @@
+// The big field that reads anything: it types its own examples until someone takes it over, offers
+// them as chips, and shows what it makes of the text. The demo page puts its switches above it; the
+// landing page shows it as it comes.
+import { Fragment, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
+import { approx, merge, range, type Codec, type Issue } from 'quanto';
+import { duration, length, mass, temperature } from 'quanto/codecs';
+import { feetInches, hoursMinutes } from 'quanto/formats';
+import { money, moneyRange } from 'quanto/money';
+import { date, dateRange, dateTime, time } from 'quanto-datetime';
+import { de, es, fr, it, nl, pt } from 'quanto-datetime/names';
+import { useQuanto, useQuantoCtx, type Display, type QuantoField } from 'quanto-react';
+import { setText, still, stop, type, wait } from './typist';
+
+export const names = [de, es, fr, it, nl, pt];
+
+
+/**
+ * Example chips for the field with the given id. A chip fills the field and focuses it, and leaves the
+ * commit to the person: nothing is stored until they press Enter or leave. Ones that produce an issue
+ * are dimmed: a sync codec says which, and for an external one (parsing would call its service) `bad`
+ * lists them.
+ */
+export function Try(props: { field: string; codec?: Codec<any>; bad?: readonly string[]; texts: readonly string[]; onRun?: () => void }) {
+  const { field, codec, bad = [], texts, onRun } = props;
+  const ctx = useQuantoCtx();
+  const run = (text: string) => {
+    const input = document.getElementById(field);
+    if (!(input instanceof HTMLInputElement)) return;
+    onRun?.();
+    stop(input);
+    input.focus();
+    setText(input, text);
+    input.setSelectionRange(text.length, text.length);
+  };
+  return (
+    <span className="chips">
+      <span className="overline">try</span>
+      {texts.map((text) => {
+        const ok = codec ? codec.parse(text, ctx).ok : !bad.includes(text);
+        return (
+          <button type="button" key={text} className={ok ? 'chip' : 'chip bad'} title={ok ? undefined : 'produces an issue'} onClick={() => run(text)}>
+            {text}
+          </button>
+        );
+      })}
+    </span>
+  );
+}
+
+// Single values, a range of each, and all of it optionally approximate. Wrappers compose from the
+// outside in: approx reads the marker, merge picks the reading, and each range completes its own two
+// sides. Money goes after the quantities because it reads `ft` as the forint.
+const singles = {
+  date: date({ names }),
+  time: time(),
+  dateTime: dateTime({ names }),
+  length: length({ format: feetInches }),
+  mass: mass(),
+  duration: duration({ format: hoursMinutes }),
+  temperature: temperature(),
+  money: money(),
+};
+const anything = approx(
+  merge([
+    ...Object.values(singles),
+    dateRange(singles.date),
+    dateRange(singles.time),
+    dateRange(singles.dateTime),
+    range(singles.length),
+    range(singles.mass),
+    range(singles.duration),
+    range(singles.temperature),
+    moneyRange(singles.money),
+  ]),
+);
+export const heroExamples = ['next fri', '$1.2k', '180 cm', 'October 3 to 5', 'about 6 ft', '9-5pm', '$10-20k', 'roughly 2-3 hours', '€12,50', '2. Oktober'];
+
+type Anything = typeof anything extends Codec<infer T> ? T : never;
+
+/**
+ * The one issue worth showing. A merge reports every member's, and most only say the text wasn't theirs
+ * (no unit they know, no currency), which misleads when another codec was meant. An issue from a codec
+ * that did read the text is the real one.
+ */
+function problem(issues: readonly Issue[]): string | undefined {
+  if (issues.length === 0) return undefined;
+  const real = issues.find((issue) => issue.code === 'empty' || issue.code === 'excess_precision' || issue.code === 'invalid');
+  return real?.message ?? 'No codec could read that.';
+}
+
+/** A value as a one-line JS literal, coloured by token. */
+function Code({ value }: { value: unknown }): ReactNode {
+  const p = (text: string) => <span className="j-p">{text}</span>;
+  if (Array.isArray(value)) {
+    return (
+      <>
+        {p('[')}
+        {value.map((x, i) => (
+          <Fragment key={i}>
+            {i > 0 && p(', ')}
+            <Code value={x} />
+          </Fragment>
+        ))}
+        {p(']')}
+      </>
+    );
+  }
+  if (value !== null && typeof value === 'object') {
+    return (
+      <>
+        {p('{ ')}
+        {Object.entries(value)
+          .filter(([, x]) => x !== undefined)
+          .map(([k, x], i) => (
+            <Fragment key={k}>
+              {i > 0 && p(', ')}
+              <span className="j-k">{k}</span>
+              {p(': ')}
+              <Code value={x} />
+            </Fragment>
+          ))}
+        {p(' }')}
+      </>
+    );
+  }
+  return <span className={typeof value === 'string' ? 'j-s' : typeof value === 'number' ? 'j-n' : 'j-b'}>{JSON.stringify(value)}</span>;
+}
+
+const github = 'https://github.com/endograph/quanto';
+/** Where each codec in the big field lives in the repo, by the id `merge` tags its values with. */
+const sources: Readonly<Record<string, string>> = {
+  date: 'tree/main/packages/datetime/src/date',
+  time: 'tree/main/packages/datetime/src/time',
+  dateTime: 'tree/main/packages/datetime/src/date-time',
+  length: 'tree/main/packages/quanto/src/codecs/length',
+  mass: 'tree/main/packages/quanto/src/codecs/mass',
+  duration: 'tree/main/packages/quanto/src/codecs/duration',
+  temperature: 'tree/main/packages/quanto/src/codecs/temperature',
+  money: 'tree/main/packages/quanto/src/money',
+  'range(date)': 'blob/main/packages/datetime/src/range.ts',
+  'range(time)': 'blob/main/packages/datetime/src/range.ts',
+  'range(dateTime)': 'blob/main/packages/datetime/src/range.ts',
+  'range(money)': 'blob/main/packages/quanto/src/money/range.ts',
+};
+
+/** The codec's id, as a link to its source. Quantity ranges all come from the core's `range`. */
+function CodecLink({ id }: { id: string }) {
+  return (
+    <a className="codec" href={`${github}/${sources[id] ?? 'tree/main/packages/quanto/src/range'}`} target="_blank" rel="noreferrer">
+      {id}
+    </a>
+  );
+}
+
+/**
+ * What the field makes of its text, a row per part. It follows the text as soon as it parses, and keeps
+ * the last reading while it doesn't. An error waits for the commit, like the field's own.
+ */
+function Status({ field }: { field: QuantoField<Anything> }) {
+  const last = useRef<(readonly [string, ReactNode])[]>([]);
+  const { echo, value: committed } = field;
+  const error = problem(field.issues);
+  if (error) {
+    last.current = [['raw', <Code value={committed?.raw ?? ''} />], ['error', <span className="bad">{error}</span>]];
+  } else if (echo) {
+    // Unedited text echoes the committed value, whose raw is what was typed, not the formatted text on show.
+    const settled = committed && 'value' in committed && committed.value === echo.value;
+    last.current = [
+      ['raw', <Code value={settled ? committed.raw : field.inputProps.value} />],
+      ['codec', <CodecLink id={echo.value.value.codec} />],
+      ['value', <Code value={echo.value.value.value} />],
+      ['approximate', <Code value={echo.value.approximate} />],
+    ];
+  }
+  const rows = last.current;
+  return (
+    <div className="status">
+      <p className="overline">status</p>
+      {rows.length === 0 ? (
+        <p className="idle">Nothing yet. This follows the text as soon as it parses.</p>
+      ) : (
+        <dl>
+          {rows.map(([name, shown]) => (
+            <Fragment key={name}>
+              <dt>{name}</dt>
+              <dd>{shown}</dd>
+            </Fragment>
+          ))}
+        </dl>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The value, or for `ms` after it goes away, the last one it had. A new value shows at once; only its
+ * going waits, so text that stops parsing for a keystroke on its way to parsing again doesn't flicker.
+ */
+function useLinger<T>(value: T | undefined, ms: number): T | undefined {
+  const [last, setLast] = useState(value);
+  useEffect(() => {
+    if (value !== undefined) {
+      setLast(value);
+      return;
+    }
+    const timer = setTimeout(() => setLast(undefined), ms);
+    return () => clearTimeout(timer);
+  }, [value, ms]);
+  return value ?? last;
+}
+
+/** Lets the page move the field on to its next example, which also restarts its typing. */
+export interface OmniHandle {
+  next(): void;
+}
+
+export function Omni(props: {
+  display?: Display;
+  restoreOnEdit?: boolean;
+  /** What it types and offers as chips. */
+  examples?: readonly string[];
+  /** Labels over the field and its reading, when the reading sits beside it. */
+  labels?: readonly [field: string, reading: string];
+  handle?: Ref<OmniHandle>;
+  onExample?: () => void;
+}) {
+  const { display = 'raw', restoreOnEdit = false, examples = heroExamples, labels, handle, onExample } = props;
+  const field = useQuanto(anything, { display, restoreOnEdit });
+  const ref = useRef<HTMLInputElement>(null);
+  // The field types its own examples until someone takes it over. `skip` restarts it on the next one.
+  const [auto, setAuto] = useState(true);
+  const [skip, setSkip] = useState(0);
+  const example = useRef(0);
+  const advance = () => {
+    example.current = (example.current + 1) % examples.length;
+    onExample?.();
+  };
+  useImperativeHandle(handle, () => ({
+    next() {
+      advance();
+      setAuto(true);
+      setSkip((s) => s + 1);
+    },
+  }));
+  useEffect(() => {
+    const input = ref.current;
+    if (!auto || !input) return;
+    let on = true;
+    void (async () => {
+      while (on && (await type(input, examples[example.current]!))) {
+        if (still) return;
+        await wait(4500);
+        if (!on) return;
+        advance();
+      }
+    })();
+    return () => {
+      on = false;
+      stop(input);
+    };
+  }, [auto, skip]);
+  const takeOver = (how: 'pointer' | 'key') => {
+    const input = ref.current;
+    if (!auto || !input) return;
+    setAuto(false);
+    stop(input);
+    // Their typing replaces the example either way.
+    if (how === 'key') input.select();
+    else setText(input, '');
+  };
+  // A raw field keeps the typed text, so its reading sits beside it. A formatted one becomes the reading
+  // on blur, so until then the reading waits inside the field.
+  const beside = display === 'raw';
+  const labelled = beside && labels !== undefined;
+  const error = problem(field.issues);
+  const echo = error ? undefined : field.echo;
+  const ghost = echo && echo.text !== field.inputProps.value.trim() ? echo.text : undefined;
+  // Beside the field, the reading holds on briefly when the text stops parsing. An issue replaces it at once.
+  const lingering = useLinger(echo?.text, 100);
+  const reading = error ? undefined : lingering;
+  // The reading and an issue share one place: whichever the field has to say about the text.
+  const said = (
+    <>
+      <span id={field.ids.echo}>{beside ? reading : ghost}</span>
+      <span id={field.ids.issues} role="alert">
+        {error}
+      </span>
+    </>
+  );
+  return (
+    <>
+      <div className={labelled ? 'hero-field beside labelled' : beside ? 'hero-field beside' : 'hero-field'}>
+        {labelled && (
+          <label className="overline input-label" htmlFor="hero">
+            {labels[0]}
+          </label>
+        )}
+        {labelled && <p className="overline reading-label">{labels[1]}</p>}
+        <span className="hero-input">
+          <input
+            {...field.inputProps}
+            ref={ref}
+            id="hero"
+            className="text-field"
+            aria-label="Type a date, a time, an amount or a measurement, or a range of them"
+            placeholder="next fri, $10-20k, about 6 ft…"
+            autoComplete="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            onPointerDown={() => takeOver('pointer')}
+            onKeyDown={(e) => {
+              if (e.nativeEvent.isTrusted) takeOver('key');
+              field.inputProps.onKeyDown(e);
+            }}
+          />
+          {!beside && <span className={error ? 'ghost bad' : 'ghost'}>{said}</span>}
+        </span>
+        {beside && <p className={error ? 'reading bad' : 'reading'}>{said}</p>}
+      </div>
+      <Try field="hero" codec={anything} texts={examples} onRun={() => setAuto(false)} />
+      <Status field={field} />
+    </>
+  );
+}

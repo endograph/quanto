@@ -7,6 +7,7 @@
 <title>quanto</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="quanto.css">
+<link rel="stylesheet" href="omni.css">
 <style>
   body { align-items: center; }
   main {
@@ -15,71 +16,132 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    padding: 48px 24px 24px;
+    /* The mark and name sit about a third of the way down the screen, under the buttons; the rest
+       follows them. */
+    padding: max(40px, 33svh - 220px) 24px 24px;
     text-align: center;
   }
-  .mark-button { margin: 0 0 36px; padding: 0; border: 0; background: none; cursor: pointer; }
-  .mark { width: clamp(131px, 19.6vw, 183px); height: auto; }
+  .mark-button { margin: 0 0 28px; padding: 0; border: 0; background: none; cursor: pointer; }
+  .mark { width: clamp(88px, 12vw, 120px); height: auto; }
   .mark-button:hover .face { transform: translate(-0.5px, -0.5px); }
   .mark-button:hover .mark.pressed .face, .mark.pressed .face { transform: translate(2px, 2px); }
   h1 { margin: 0; font: 700 clamp(40px, 7vw, 56px)/1 var(--sans); letter-spacing: -0.06em; }
   .lede { margin: 14px 0 0; color: var(--muted); font-size: 17px; }
 
-  /* One example at a time, typed then parsed. Aligned on the arrow so nothing jumps. */
-  .ticker {
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: baseline;
-    gap: 16px;
-    width: min(980px, 100%);
-    min-height: 1.6em;
-    margin: 56px 0 52px;
-    font: 15px/1.6 var(--mono);
+  /* Install and GitHub, at the top: cards on a hard shadow, pressed into it on click. Quieter than the
+     field, in the page's softer tones, until the pointer is on them. */
+  .steps { width: 100%; display: flex; flex-wrap: wrap; justify-content: center; gap: 14px 18px; padding: 20px 28px 0; }
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    padding: 9px 12px 9px 16px;
+    border: 1px solid var(--field-border);
+    background: var(--paper);
+    box-shadow: 3px 3px 0 var(--line);
+    color: var(--muted);
+    text-align: left;
     text-decoration: none;
+    cursor: pointer;
+    transition: transform 70ms ease-out, box-shadow 70ms ease-out;
   }
-  .ticker .raw { justify-self: end; white-space: pre; }
-  .ticker .raw::after {
-    content: '';
-    display: inline-block;
-    width: 0.55em;
-    height: 1.1em;
-    margin-left: 2px;
-    vertical-align: -0.2em;
-    background: var(--ink);
-    animation: blink 1s steps(1) infinite;
+  .step:hover { border-color: var(--shade); color: var(--ink); transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--line); }
+  .step:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--line); }
+  .step .overline { display: block; font-size: 10px; }
+  .step code { display: block; font: 14px/1.5 var(--mono); }
+  .step-act { display: flex; align-items: center; gap: 5px; align-self: stretch; color: var(--muted); font: 13px/1 var(--mono); }
+  .step:hover .step-act { color: var(--ink); }
+  .step-act svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .step-act .i-star { fill: currentColor; stroke: none; }
+  .step-act .i-done { display: none; }
+  .step[data-copied] .i-copy { display: none; }
+  .step[data-copied] .i-done { display: block; }
+  .step[data-copied] .step-act { color: var(--ink); }
+  /* The count, fenced off from the label by a rule. */
+  .step-stars { padding-left: 12px; border-left: 1px solid var(--line); }
+  .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+  /* The field from the demo, as it comes. */
+  /* The field renders once the script has run, so its room is held from the start and the button
+     below doesn't jump. Its height is fixed parts plus the field's font size: once for the field side
+     by side with its reading, twice when the reading stacks under it. */
+  .omni {
+    --field-font: clamp(24px, 4vw, 36px);
+    width: min(760px, 100%);
+    min-height: calc(274px + 1.25 * var(--field-font));
+    margin: 56px 0 44px;
+    text-align: left;
   }
-  .ticker.done .raw::after { visibility: hidden; }
-  .ticker .arrow { color: var(--shade); }
-  .ticker .value { justify-self: start; text-align: left; white-space: nowrap; opacity: 0; transition: opacity 120ms; }
-  .ticker.done .value { opacity: 1; }
-  .ticker .codec { color: var(--muted); }
-  .ticker:hover .raw { text-decoration: underline; text-underline-offset: 5px; text-decoration-color: var(--shade); }
-  @keyframes blink { 50% { visibility: hidden; } }
+  .omni .status { --gap: 28px; min-height: 140px; }
+  /* The chips go above the field, on one line, and show while someone is at the field or the chips. They
+     keep their room while hidden, so nothing moves when they appear. */
+  .omni { display: flex; flex-direction: column; }
+  .omni .chips {
+    order: -1;
+    flex-wrap: nowrap;
+    /* Padding rather than margin, so the pointer stays on them on its way up from the field. */
+    margin: 0;
+    padding-bottom: 14px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 120ms, visibility 0s 120ms;
+  }
+  .omni .chip { flex: none; }
+  .omni:has(.hero-field:hover, .hero-field:focus-within, .chips:hover, .chips:focus-within) .chips {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 120ms;
+  }
 
   footer {
     width: 100%;
     display: flex;
-    justify-content: space-between;
-    gap: 16px;
+    justify-content: flex-end;
     padding: 20px 28px;
     color: var(--muted);
     font: 12px/1.5 var(--mono);
   }
-  footer nav { display: flex; gap: 20px; }
   footer a { text-decoration: none; }
   footer a:hover { color: var(--ink); }
 
+  @media (max-width: 820px) {
+    .omni { min-height: calc(296px + 2.5 * var(--field-font)); }
+  }
   @media (max-width: 640px) {
-    .ticker { grid-template-columns: 1fr; gap: 4px; text-align: center; }
-    .ticker .raw, .ticker .value { justify-self: center; text-align: center; white-space: normal; }
-    .ticker .codec { display: none; }
-    .ticker .arrow { transform: rotate(90deg); }
-    footer { flex-direction: column; align-items: center; }
+    main { padding-left: 18px; padding-right: 18px; }
+    .steps { gap: 10px; padding: 18px 12px 0; }
+    .step { gap: 12px; padding: 8px 10px 8px 12px; }
+    .step-stars { padding-left: 10px; }
+    footer { justify-content: center; }
   }
 </style>
 </head>
 <body class="grid-bg">
+<header class="steps">
+  <button class="step" type="button" data-copy>
+    <span>
+      <span class="overline">Install</span>
+      <code>npm i quanto</code>
+    </span>
+    <span class="step-act">
+      <span class="vh">Copy</span>
+      <svg class="i-copy" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+      <svg class="i-done" viewBox="0 0 24 24" aria-hidden="true"><path d="m4.5 12.5 5 5 10-11"/></svg>
+    </span>
+  </button>
+  <a class="step" href="https://github.com/endograph/quanto">
+    <span>
+      <span class="overline">GitHub</span>
+      <code>Star on GitHub</code>
+    </span>
+    <span class="step-act step-stars">
+      <svg class="i-star" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.9 6 6.5.9-4.7 4.6 1.1 6.5L12 17.9 6.2 21l1.1-6.5L2.6 9.9 9.1 9z"/></svg>
+      <span id="stars" hidden></span>
+    </span>
+  </a>
+</header>
 <main>
   <button class="mark-button" id="mark-button" type="button" aria-label="quanto mark. Click to change the glyph.">
     <svg class="mark" id="mark" viewBox="8 3 48 60" aria-hidden="true">
@@ -88,22 +150,14 @@
     </svg>
   </button>
   <h1>quanto</h1>
-  <p class="lede">A forgiving and flexible input parser and formatter.</p>
+  <p class="lede">A flexible input parser and formatter.</p>
 
-  <a class="ticker" id="ticker" href="play/index.html" aria-label="Try an example in the playground">
-    <span class="raw" id="raw"></span>
-    <span class="arrow">→</span>
-    <span class="value"><code id="value"></code> <span class="codec" id="codec"></span></span>
-  </a>
+  <div class="omni" id="omni"></div>
 
   <a class="btn" href="demo/index.html">Open the playground <span aria-hidden="true">→</span></a>
 </main>
 <footer>
-  <span>pre-release · lengths, weights, durations, money, dates</span>
-  <nav>
-    <code>npm i quanto</code>
-    <a href="https://github.com/endograph/quanto">GitHub</a>
-  </nav>
+  <span>v%version% · <a href="https://github.com/endograph/quanto/blob/main/LICENSE">MIT</a> · <a href="https://github.com/endograph/quanto">GitHub</a></span>
 </footer>
 
 <script type="module" src="landing.js"></script>

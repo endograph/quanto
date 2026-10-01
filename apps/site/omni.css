@@ -1,0 +1,82 @@
+/* The big field that reads anything (src/demo/omni.tsx), shared by the landing and demo pages, and the
+   example chips the demo's cards use too. */
+
+.hero-field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px 32px; align-items: center; }
+.hero-field.beside { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.hero-input { position: relative; display: block; }
+.hero-field .text-field, .ghost { font: clamp(24px, 4vw, 36px)/1.25 var(--mono); }
+.hero-field .text-field {
+  padding: 18px 22px;
+  border-color: var(--ink);
+  box-shadow: 6px 6px 0 var(--shade);
+  transition: transform 70ms ease-out, box-shadow 70ms ease-out;
+}
+.hero-field .text-field:focus { transform: translate(-1px, -1px); box-shadow: 7px 7px 0 var(--shade); }
+.hero-field .text-field[aria-invalid='true'] { border-color: var(--danger); }
+/* Format on blur: the reading waits inside the field, on the right, until the field becomes it. */
+.ghost {
+  position: absolute;
+  top: 50%;
+  right: 23px;
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0.4;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+/* Raw: the field keeps the typed text, so the value sits beside it, the way an app would show it. */
+.reading { min-width: 0; margin: 0; font: 600 clamp(24px, 4vw, 36px)/1.25 var(--sans); letter-spacing: -0.03em; overflow-wrap: anywhere; }
+/* An issue takes the reading's place, at reading size for a sentence rather than a value. */
+.ghost.bad, .reading.bad { color: var(--danger); font: 500 16px/1.4 var(--sans); letter-spacing: 0; }
+.ghost.bad { max-width: 45%; opacity: 1; text-align: right; white-space: normal; }
+.hero-field + .chips { margin-top: 18px; }
+
+/* What the field makes of its text, a row per part. */
+.status { min-height: 134px; margin-top: var(--gap, 32px); padding: 12px 16px 14px; background: var(--well); border: 1px solid var(--line); font: 13px/1.7 var(--mono); }
+.status p { margin: 0; }
+.status .idle { color: var(--muted); }
+.status dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 20px; margin: 6px 0 0; }
+.status dt { color: var(--muted); }
+.status dd { margin: 0; overflow-wrap: anywhere; }
+.status .bad { color: var(--danger); }
+/* Token colours, for the status values only. The rest of the page stays in the three tones. */
+.status { --string: #1a7f37; --number: #0550ae; --boolean: #8250df; }
+@media (prefers-color-scheme: dark) {
+  .status { --string: #7ee787; --number: #79c0ff; --boolean: #d2a8ff; }
+}
+.j-p { color: var(--shade); }
+.j-k { color: var(--muted); }
+.j-s { color: var(--string); }
+.j-n { color: var(--number); }
+.j-b { color: var(--boolean); }
+.codec { color: var(--ink); text-decoration: none; }
+.codec::after { content: ' ↗'; color: var(--muted); }
+.codec:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+/* Example chips: click one and it fills the field and puts you in it. */
+.chips { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; margin-top: 12px; font: 13px/1.5 var(--mono); }
+.chips .overline { margin-right: 4px; }
+.chip { padding: 3px 9px; border: 1px dashed var(--field-border); background: none; font: 13px/1.5 var(--mono); cursor: pointer; }
+.chip:hover { border-style: solid; border-color: var(--ink); }
+.chip:active { background: var(--ink); color: var(--paper); }
+.chip.bad { color: var(--muted); }
+.chip.bad:active { color: var(--paper); }
+
+/* Labels over the field and its reading: the labels share the first row, so the field and the reading
+   still line up on the second. Stacked, each label sits over its own part. */
+.hero-field.labelled { row-gap: 10px; }
+.hero-field.labelled .input-label { grid-area: 1 / 1; }
+.hero-field.labelled .reading-label { grid-area: 1 / 2; }
+.hero-field.labelled .hero-input { grid-area: 2 / 1; }
+.hero-field.labelled .reading { grid-area: 2 / 2; }
+
+@media (max-width: 820px) {
+  .hero-field.beside { grid-template-columns: minmax(0, 1fr); }
+  /* Under the field, the reading needs no label, and keeps its line while empty so nothing below jumps. */
+  .hero-field.labelled .reading-label { display: none; }
+  /* Clear of the field's shadow, and in line with the text inside it (its padding plus its border). */
+  .hero-field.labelled .reading { grid-area: 3 / 1; min-height: 1.25em; margin-top: 12px; padding-left: 23px; }
+  .hero-field.labelled .reading.bad { min-height: 1.875em; }
+}

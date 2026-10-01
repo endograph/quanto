@@ -1,6 +1,6 @@
 import { defineCodec, type Codec, type CodecOptions, type ParseOutcome, type ResolvedCtx } from 'quanto';
 import { isoDate, isoTime, normalizeOffset, parseIsoDate, parseIsoTime } from './civil';
-import { formatDate, formatDateTime, formatTime } from './format';
+import { formatDate, formatDateSpan, formatDateTime, formatTime } from './format';
 import { buildNameTables, type Moment, nowParts, parseMoment } from './grammar';
 import { assertNames, type Names } from './names';
 
@@ -30,6 +30,14 @@ const kinds = new WeakMap<object, CalendarKind>();
 
 /** The calendar kind of a codec made by `date()`, `time()`, `localDateTime()` or `dateTime()`. */
 export const calendarKindOf = (codec: object): CalendarKind | undefined => kinds.get(codec);
+
+/** The shorter range format of a `date()` that formats by default, for `dateRange`. */
+export type SpanFormat = (start: string, end: string, ctx: ResolvedCtx) => string | undefined;
+
+const spans = new WeakMap<object, SpanFormat>();
+
+/** The span format of a codec made by `date()` without a `format` option. */
+export const spanFormatOf = (codec: object): SpanFormat | undefined => spans.get(codec);
 
 const register = (kind: CalendarKind, codec: Codec<string>): Codec<string> => {
   kinds.set(codec, kind);
@@ -65,13 +73,16 @@ export function date(options?: DateOptions): Codec<string> {
     if (!moment?.date || moment.time || moment.offset) return unparseable(text, 'a date');
     return { ok: true, value: isoDate(moment.date) };
   };
-  return register('date', defineCodec<string>({
+  const codec = register('date', defineCodec<string>({
     id: 'date',
     parse,
     format: (value, ctx) => formatDate(parseIsoDate(value)!, ctx, names),
     check: (value): Problems => (typeof value === 'string' && parseIsoDate(value) ? [] : [{ message: 'Expected a date as YYYY-MM-DD.' }]),
     options: userOptions(options),
   }));
+  // A user's format has its own look, which a shortened range wouldn't match.
+  if (!options?.format) spans.set(codec, (start, end, ctx) => formatDateSpan(parseIsoDate(start)!, parseIsoDate(end)!, ctx, names));
+  return codec;
 }
 
 /** A wall-clock time, stored as `HH:MM:SS`: `3pm`, `3:30 p.m.`, `15:00`, `noon`. */

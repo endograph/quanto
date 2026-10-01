@@ -4,7 +4,7 @@
 import { resolve } from 'node:path';
 import type { BunPlugin } from 'bun';
 
-export const entrypoints = ['src/landing.ts', 'src/play.ts', 'src/demo.tsx'].map((p) => `${import.meta.dir}/${p}`);
+export const entrypoints = ['src/landing.tsx', 'src/play.ts', 'src/demo.tsx'].map((p) => `${import.meta.dir}/${p}`);
 
 const packages = resolve(import.meta.dir, '../../packages');
 const sources: BunPlugin = {
@@ -32,3 +32,9 @@ export async function bundle(minify: boolean): Promise<Map<string, Blob>> {
   if (!result.success) throw new AggregateError(result.logs, 'site: bundling failed');
   return new Map(result.outputs.map((o) => [o.path.replace(/^\.\//, ''), o]));
 }
+
+/** quanto's version, from its package.json. */
+const version: string = (await Bun.file(`${packages}/quanto/package.json`).json()).version;
+
+/** A page's HTML with `%version%` filled in. */
+export const stamp = (html: string): string => html.replaceAll('%version%', version);

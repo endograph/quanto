@@ -107,12 +107,18 @@ export interface RangeRules<T> {
   propose?(left: string, right: string, ctx: ResolvedCtx): readonly RangeProposal<T>[];
   /** Whether `start <= end`; undefined when it can't be told. Only used to choose between completions. */
   inOrder?(start: T, end: T): boolean | undefined;
+  /**
+   * A shorter text for a range with both sides, sharing what they have in common (`Oct 3–5, 2026`), or
+   * undefined for the default `start – end`. It must read back through `propose` to the same range.
+   */
+  format?(start: T, end: T, ctx: ResolvedCtx): string | undefined;
 }
 
 /**
  * Builds a range codec over any codec: `defineRange` does the splitting (`-`, `–`, `—`, `to`, `until`,
  * `through`, `between … and`), tries each split and completion, prefers the first in order, runs the
- * user's schema and formats `start – end`. `rules` say how sides complete and how values order. With no
+ * user's schema and formats `start – end`. `rules` say how sides complete, how values order and, optionally,
+ * a shorter format. With no
  * rules, both sides must be written in full. The id is `range(<inner id>)`.
  *
  * With `open: true` it also reads one bound (`5+ ft`, `at least 5 ft`, `under 7 ft`, `≤ 7 ft`), as an
@@ -254,7 +260,7 @@ export function defineRange<T>(codec: Codec<T>, rules?: RangeRules<T>, options?:
     if (userFormat) return userFormat(value, startSession(ctx).ctx);
     if (start === undefined) return `${value.endExclusive ? '<' : '≤'} ${end}`;
     if (end === undefined) return `${value.startExclusive ? '>' : '≥'} ${start}`;
-    return `${start} – ${end}`;
+    return rules?.format?.(value.start as T, value.end as T, startSession(ctx).ctx) ?? `${start} – ${end}`;
   };
 
   /** Validates one side with the inner schema: its output, or its issues with the side prefixed to their paths. */

@@ -1,7 +1,7 @@
 // Dev server for the site. Static files come straight from this folder; the page scripts are bundled
 // fresh on every request, so edits to the site or to the packages show up on reload.
 import { join, normalize } from 'node:path';
-import { bundle } from './bundle';
+import { bundle, stamp } from './bundle';
 
 const root = import.meta.dir;
 const port = Number(process.env.PORT ?? 4173);
@@ -18,6 +18,7 @@ Bun.serve({
     }
     const file = Bun.file(join(root, path));
     if (path.startsWith('/src/') || !(await file.exists())) return new Response('Not found', { status: 404 });
+    if (path.endsWith('.html')) return new Response(stamp(await file.text()), { headers: { ...headers, 'Content-Type': 'text/html; charset=utf-8' } });
     return new Response(file, { headers });
   },
 });

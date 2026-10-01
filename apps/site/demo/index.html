@@ -7,6 +7,7 @@
 <title>demo · quanto</title>
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="../quanto.css">
+<link rel="stylesheet" href="../omni.css">
 <style>
   header {
     display: flex;
@@ -67,59 +68,7 @@
     border-bottom: 1px solid var(--line);
   }
   .hero-inner { width: min(1080px, 100%); margin: 0 auto; padding: max(44px, var(--free) * 0.3) 28px 48px; }
-  .hero-field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px 32px; align-items: center; }
-  .hero-field.beside { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .hero-input { position: relative; display: block; }
-  .hero .text-field, .ghost { font: clamp(24px, 4vw, 36px)/1.25 var(--mono); }
-  .hero .text-field {
-    padding: 18px 22px;
-    border-color: var(--ink);
-    box-shadow: 6px 6px 0 var(--shade);
-    transition: transform 70ms ease-out, box-shadow 70ms ease-out;
-  }
-  .hero .text-field:focus { transform: translate(-1px, -1px); box-shadow: 7px 7px 0 var(--shade); }
-  .hero .text-field[aria-invalid='true'] { border-color: var(--danger); }
-  /* Format on blur: the reading waits inside the field, on the right, until the field becomes it. */
-  .ghost {
-    position: absolute;
-    top: 50%;
-    right: 23px;
-    max-width: 55%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    opacity: 0.4;
-    transform: translateY(-50%);
-    pointer-events: none;
-  }
-  /* Raw: the field keeps the typed text, so the value sits beside it, the way an app would show it. */
-  .reading { min-width: 0; margin: 0; font: 600 clamp(24px, 4vw, 36px)/1.25 var(--sans); letter-spacing: -0.03em; overflow-wrap: anywhere; }
-  /* An issue takes the reading's place, at reading size for a sentence rather than a value. */
-  .ghost.bad, .reading.bad { color: var(--danger); font: 500 16px/1.4 var(--sans); letter-spacing: 0; }
-  .ghost.bad { max-width: 45%; opacity: 1; text-align: right; white-space: normal; }
-  .hero .chips { margin-top: 18px; }
 
-  /* What the field makes of its text, a row per part. */
-  .status { min-height: 134px; margin-top: var(--gap); padding: 12px 16px 14px; background: var(--well); border: 1px solid var(--line); font: 13px/1.7 var(--mono); }
-  .status p { margin: 0; }
-  .status .idle { color: var(--muted); }
-  .status dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 20px; margin: 6px 0 0; }
-  .status dt { color: var(--muted); }
-  .status dd { margin: 0; overflow-wrap: anywhere; }
-  .status .bad { color: var(--danger); }
-  /* Token colours, for the status values only. The rest of the page stays in the three tones. */
-  .status { --string: #1a7f37; --number: #0550ae; --boolean: #8250df; }
-  @media (prefers-color-scheme: dark) {
-    .status { --string: #7ee787; --number: #79c0ff; --boolean: #d2a8ff; }
-  }
-  .j-p { color: var(--shade); }
-  .j-k { color: var(--muted); }
-  .j-s { color: var(--string); }
-  .j-n { color: var(--number); }
-  .j-b { color: var(--boolean); }
-  .codec { color: var(--ink); text-decoration: none; }
-  .codec::after { content: ' ↗'; color: var(--muted); }
-  .codec:hover { text-decoration: underline; text-underline-offset: 4px; }
 
   main { width: min(1080px, 100%); margin: 0 auto; padding: 48px 28px 72px; flex: 1; }
 
@@ -138,14 +87,6 @@
   .card .why { margin: 0 0 22px; color: var(--muted); font-size: 14px; }
   .card details { margin-top: 14px; }
 
-  /* Example chips: click one and it fills the field and puts you in it. */
-  .chips { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; margin-top: 12px; font: 13px/1.5 var(--mono); }
-  .chips .overline { margin-right: 4px; }
-  .chip { padding: 3px 9px; border: 1px dashed var(--field-border); background: none; font: 13px/1.5 var(--mono); cursor: pointer; }
-  .chip:hover { border-style: solid; border-color: var(--ink); }
-  .chip:active { background: var(--ink); color: var(--paper); }
-  .chip.bad { color: var(--muted); }
-  .chip.bad:active { color: var(--paper); }
 
   /* What onChange handed the app. A new envelope flashes in. */
   .stored { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: baseline; margin: 20px 0 0; padding: 10px 14px; background: var(--paper); font: 12.5px/1.65 var(--mono); }
@@ -229,7 +170,6 @@
     header, main, footer, .hero-inner { padding-left: 18px; padding-right: 18px; }
     .hero { --gap: 28px; min-height: 0; }
     .hero-inner { padding-top: 32px; padding-bottom: 36px; }
-    .hero-field.beside { grid-template-columns: minmax(0, 1fr); }
     .cards, .form { grid-template-columns: 1fr; }
     .ctx .label { display: none; }
   }

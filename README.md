@@ -16,7 +16,7 @@
 
 # quanto
 
-A forgiving and flexible input parser and formatter.
+A flexible input parser and formatter.
 
 People type `5'11"`, `180cm` and `1,8 m` and mean the same height. quanto turns that into a typed value you can store, compare and format back.
 

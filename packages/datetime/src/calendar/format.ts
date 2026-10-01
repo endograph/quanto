@@ -18,6 +18,21 @@ export function formatDate(date: CivilDate, ctx: ResolvedCtx, names: readonly Na
   return order === 'MDY' ? `${month} ${date.d}, ${year}` : `${date.d} ${month} ${year}`;
 }
 
+/**
+ * Two dates in one year, sharing it: `Oct 3–5, 2026` and `Oct 30 – Nov 2, 2026` (MDY), `3–5 Oct 2026`
+ * and `30 Oct – 2 Nov 2026` (DMY). Undefined for anything else (YMD regions, two years, one day, a
+ * backwards range), which keeps the full `start – end`. The range rules read each form back.
+ */
+export function formatDateSpan(start: CivilDate, end: CivilDate, ctx: ResolvedCtx, names: readonly Names[] = []): string | undefined {
+  const order = dateOrder(ctx.locale);
+  if (order === 'YMD' || start.y !== end.y || isoDate(start) >= isoDate(end)) return undefined;
+  const set = names.find((n) => n.language === ctx.locale.language) ?? en;
+  const [sm, em] = [monthAbbreviation(set, start.m), monthAbbreviation(set, end.m)];
+  const year = String(start.y).padStart(4, '0');
+  if (start.m === end.m) return order === 'MDY' ? `${sm} ${start.d}–${end.d}, ${year}` : `${start.d}–${end.d} ${sm} ${year}`;
+  return order === 'MDY' ? `${sm} ${start.d} – ${em} ${end.d}, ${year}` : `${start.d} ${sm} – ${end.d} ${em} ${year}`;
+}
+
 /** `3:00 PM` or `15:00`, by the region's hour cycle. Seconds only when they aren't zero. */
 export function formatTime(time: CivilTime, ctx: ResolvedCtx): string {
   const mm = String(time.mi).padStart(2, '0');
