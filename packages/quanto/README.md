@@ -39,7 +39,7 @@ if (result.ok) save({ raw: text, value: result.value });
 
 ### Optional extras
 
-- **`result.context`** (`{ locale, now? }`): what the parse was based on. Store it separately, only if you need to replay a parse later (audits, debugging, migrations): `codec.parse(raw, context)` reproduces the value on the same quanto version.
+- **`result.context`** (`{ locale, now? }`): what the parse was based on. Store it separately, only if you need to replay a parse later (audits, debugging, migrations): `codec.parse(raw, context)` reproduces the value on the same versions of quanto and the package that owns the codec (`@quanto/money`, `@quanto/datetime`).
 - **`{ raw, issues }`**: a field that didn't parse. Usually you block the submit instead of storing it. Keep it only for drafts, where the user's bad text must survive.
 
 ### Pass context on the server

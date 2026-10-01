@@ -58,7 +58,7 @@ export interface Ctx {
 
 /**
  * The context a parse was based on, whether passed in or inferred. Passing it back as `ctx`
- * reproduces the value on the same quanto version.
+ * reproduces the value on the same versions of quanto and the package that owns the codec.
  *
  * It is not part of the stored envelope. Store it separately, and only if you need replay
  * (audits, debugging, migrations).

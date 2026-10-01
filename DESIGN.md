@@ -154,11 +154,11 @@ if (result.ok) {
 }
 
 // later: replay
-height.parse(raw, storedContext);            // the same value, on the same quanto version
+height.parse(raw, storedContext);            // the same value, on the same package versions
 ```
 
 - `ParseContext` is assignable to `Ctx`, so replay needs no merging.
-- Replay is exact within one quanto version. A later version can differ where the parser or the bundled data changed, which is exactly what a migration wants to detect.
+- Replay is exact on the same versions of `quanto` and of the package that owns the codec: a date's result depends on `@quanto/datetime` as well as the core, a price's on `@quanto/money`. A later version of either can differ where its parser or bundled data changed, which is exactly what a migration wants to detect. `context` doesn't record versions; apps that need exact replay keep their dependency versions alongside (a lockfile in their history is usually enough).
 
 ### Issues
 
