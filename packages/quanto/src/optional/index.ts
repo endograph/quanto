@@ -1,16 +1,18 @@
 import { startSession } from '../core/context';
+import { isExternalCodec } from '../core/define-external-codec';
 import type { StandardSchemaV1 } from '../core/standard-schema';
-import type { Codec, Ctx, ParseResult } from '../core/types';
+import type { Codec, Ctx, ExternalCodec, ParseResult } from '../core/types';
 
 /**
  * Allows empty input: `''` and whitespace parse to `null`, and `null` formats as `''`. Keeps the
- * inner codec's `id`.
+ * inner codec's `id`. It's the one wrapper that also takes an external codec, since it never parses:
+ * empty input doesn't reach the service.
  */
-export function optional<T>(codec: Codec<T>): Codec<T | null> {
-  const parse = (text: string, ctx?: Ctx): ParseResult<T | null> => {
-    if (text.trim() === '') return { ok: true, value: null, context: startSession(ctx).context() };
-    return codec.parse(text, ctx);
-  };
+export function optional<T>(codec: ExternalCodec<T>): ExternalCodec<T | null>;
+export function optional<T>(codec: Codec<T>): Codec<T | null>;
+export function optional<T>(codec: Codec<T> | ExternalCodec<T>): Codec<T | null> | ExternalCodec<T | null> {
+  const empty = (ctx: Ctx | undefined): ParseResult<T | null> => ({ ok: true, value: null, context: startSession(ctx).context() });
+  const isEmpty = (text: string): boolean => text.trim() === '';
 
   const format = (value: T | null, ctx?: Ctx): string => (value === null ? '' : codec.format(value, ctx));
 
@@ -22,5 +24,16 @@ export function optional<T>(codec: Codec<T>): Codec<T | null> {
     },
   };
 
-  return { id: codec.id, parse, format, schema };
+  if (isExternalCodec(codec)) {
+    const external = codec;
+    const parse = async (text: string, ctx?: Ctx): Promise<ParseResult<T | null>> => {
+      if (ctx?.signal?.aborted) throw ctx.signal.reason;
+      return isEmpty(text) ? empty(ctx) : external.parse(text, ctx);
+    };
+    return { external: true, id: external.id, parse, format, schema };
+  }
+
+  const sync = codec;
+  const parse = (text: string, ctx?: Ctx): ParseResult<T | null> => (isEmpty(text) ? empty(ctx) : sync.parse(text, ctx));
+  return { id: sync.id, parse, format, schema };
 }

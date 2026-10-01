@@ -36,10 +36,18 @@ export function startSession(ctx: Ctx | undefined): Session {
       `quanto: ctx.now "${ctx.now}" is not an RFC 3339 timestamp with a UTC offset. Pass a string like "2026-09-30T14:02:11-04:00", or omit it to use the machine's clock.`,
     );
   }
+  const grammars = ctx?.grammars ?? [];
+  for (const grammar of grammars) {
+    if (typeof grammar?.language !== 'string' || (grammar.numbers !== undefined && typeof grammar.numbers.read !== 'function')) {
+      throw new Error('quanto: each of ctx.grammars must be a Grammar: { language, numbers?: { read(text, from) } }.');
+    }
+  }
   let now: string | undefined;
   return {
     ctx: {
       locale,
+      grammars,
+      ...(ctx?.signal ? { signal: ctx.signal } : {}),
       now() {
         now ??= ctx?.now ?? machineNow();
         return now;

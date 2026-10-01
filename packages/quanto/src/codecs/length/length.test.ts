@@ -1,5 +1,5 @@
 import { test } from 'vitest';
-import { roundTrip, runFixtures } from '../../testing';
+import { quantityWithin, roundTrip, runFixtures } from '../../testing';
 import fixtures from './fixtures.json';
 import { length } from './index';
 
@@ -14,4 +14,4 @@ const values = [
   { value: -5, unit: 'ft' },
   { value: 0.5, unit: 'mi' },
 ] as const;
-for (const locale of ['en-US', 'de-DE', 'fr-FR', 'de-CH', 'en-IN']) roundTrip(length(), values, { test, ctx: { locale } });
+for (const locale of ['en-US', 'de-DE', 'fr-FR', 'de-CH', 'en-IN']) roundTrip(length(), values, { test, ctx: { locale }, same: quantityWithin(length(), { places: 3 }) });

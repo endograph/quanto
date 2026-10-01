@@ -1,10 +1,11 @@
-// Codec testing helpers: runFixtures and roundTrip. See DESIGN.md, "Testing: fixtures are the spec".
+// Codec testing helpers: runFixtures, roundTrip and quantityWithin. See DESIGN.md, "Testing: fixtures are the spec".
 // Framework-agnostic: callers pass their test function (vitest's `test`, `node:test`, …).
 
-import type { Codec, Ctx, IssueCode, ParseContext } from '../core/types';
+import type { Codec, Ctx, ExternalCodec, IssueCode, ParseContext, ParseResult, Quantity } from '../core/types';
+import { convert, type QuantityTable } from '../quantity';
 
-/** Registers one test case. Matches vitest's and node:test's `test(name, fn)`. */
-export type TestFn = (name: string, fn: () => void) => unknown;
+/** Registers one test case. Matches vitest's and node:test's `test(name, fn)`; `fn` is async for external codecs. */
+export type TestFn = (name: string, fn: () => void | Promise<void>) => unknown;
 
 /** A parse fixture: `{ parse, ctx?, options?, value | issues, alternatives?, context? }`. */
 export interface ParseFixture {
@@ -30,8 +31,16 @@ export interface FormatFixture {
 
 export type Fixture = ParseFixture | FormatFixture;
 
-/** A codec factory. Fixture `options` are passed to it. */
-export type CodecFactory = (options?: never) => Codec<unknown>;
+/**
+ * A codec factory. Fixture `options` are passed to it. For an external codec, it closes over the
+ * codec's stub service.
+ */
+export type CodecFactory = (options?: never) => Codec<unknown> | ExternalCodec<unknown>;
+
+/** Calls `then` with a parse result, awaiting it first if the codec is external. */
+function whenParsed<T>(result: ParseResult<T> | Promise<ParseResult<T>>, then: (result: ParseResult<T>) => void): void | Promise<void> {
+  return result instanceof Promise ? result.then(then) : then(result);
+}
 
 const RELATIVE_TOLERANCE = 1e-9;
 
@@ -76,10 +85,12 @@ function checkShape(fixture: unknown, index: number): Fixture {
   return f as unknown as Fixture;
 }
 
-function runParseFixture(factory: CodecFactory, fixture: ParseFixture, name: string): void {
+function runParseFixture(factory: CodecFactory, fixture: ParseFixture, name: string): void | Promise<void> {
   const codec = factory(fixture.options as never);
-  const result = codec.parse(fixture.parse, fixture.ctx);
+  return whenParsed(codec.parse(fixture.parse, fixture.ctx), (result) => checkParse(fixture, name, result));
+}
 
+function checkParse(fixture: ParseFixture, name: string, result: ParseResult<unknown>): void {
   if (fixture.issues) {
     if (result.ok) fail(name, { issues: fixture.issues }, { value: result.value });
     const codes = result.issues.map((i) => i.code);
@@ -117,27 +128,53 @@ export function runFixtures(factory: CodecFactory, fixtures: readonly unknown[],
     }
     options.test(name, () => {
       const fixture = checkShape(raw, index);
-      if ('parse' in fixture) runParseFixture(factory, fixture, name);
-      else runFormatFixture(factory, fixture, name);
+      if ('parse' in fixture) return runParseFixture(factory, fixture, name);
+      runFormatFixture(factory, fixture, name);
     });
   });
 }
 
 /**
- * Registers one test per value, checking that the codec's formatter round-trips: `format(v)` parses,
- * and formatting the parsed value gives the same text. Equal formatted text is what "differs by no
- * more than the formatter's rounding" means, with no tolerance to pick.
+ * Registers one test per value, checking that the codec's formatter round-trips: `format(v)` parses
+ * to a value `same` as `v`, and formatting that value gives the same text. `same` defaults to deep
+ * equality (numbers to an ulp of conversion drift), which suits exact values: money, dates, text. For
+ * a formatter that rounds, pass what its rounding allows, such as `quantityWithin`.
  */
-export function roundTrip<T>(codec: Codec<T>, values: readonly T[], options: { readonly test: TestFn; readonly ctx?: Ctx }): void {
+export function roundTrip<T>(
+  codec: Codec<T> | ExternalCodec<T>,
+  values: readonly T[],
+  options: { readonly test: TestFn; readonly ctx?: Ctx; readonly same?: ((original: T, parsed: T) => boolean) | undefined },
+): void {
   const ctx: Ctx = { now: '2026-01-15T12:00:00+00:00', ...options.ctx };
+  const same = options.same ?? approxEqual;
   for (const value of values) {
     const name = `round-trips ${show(value)}${options.ctx ? ` (${show(options.ctx)})` : ''}`;
     options.test(name, () => {
       const text = codec.format(value, ctx);
-      const result = codec.parse(text, ctx);
-      if (!result.ok) fail(name, `a successful parse of ${show(text)}`, { issues: result.issues });
-      const again = codec.format(result.value, ctx);
-      if (again !== text) fail(name, text, again, `format(parse(${show(text)})) gives different text`);
+      return whenParsed(codec.parse(text, ctx), (result) => {
+        if (!result.ok) fail(name, `a successful parse of ${show(text)}`, { issues: result.issues });
+        if (!same(value, result.value)) fail(name, value, result.value, `parse(${show(text)}) gives a different value`);
+        const again = codec.format(result.value, ctx);
+        if (again !== text) fail(name, text, again, `format(parse(${show(text)})) gives different text`);
+      });
     });
   }
+}
+
+/**
+ * A `same` for quantity codecs whose formatter rounds: both values, converted to `unit` (default: the
+ * original's unit), differ by at most half a unit in the `places`-th decimal place. The default
+ * formatter prints 3 places; `feetInches` rounds to whole inches, so it's `{ unit: 'in', places: 0 }`.
+ */
+export function quantityWithin<U extends string>(
+  codec: QuantityTable<U>,
+  rounding: { readonly places: number; readonly unit?: NoInfer<U> | undefined },
+): (original: Quantity<U>, parsed: Quantity<U>) => boolean {
+  const tolerance = 0.5 * 10 ** -rounding.places * (1 + RELATIVE_TOLERANCE);
+  return (original, parsed) => {
+    const unit = rounding.unit ?? original.unit;
+    const a = convert(codec, original, unit).value;
+    const b = convert(codec, parsed, unit).value;
+    return Math.abs(a - b) <= tolerance + RELATIVE_TOLERANCE * Math.max(Math.abs(a), Math.abs(b));
+  };
 }

@@ -1,7 +1,7 @@
-import { startSession } from './context';
+import { startSession, type Session } from './context';
 import { InvalidValueError, isInvalidValueError } from './errors';
 import type { StandardSchemaV1 } from './standard-schema';
-import type { Codec, CodecOptions, Ctx, Issue, ParseOutcome, ParseResult, ResolvedCtx } from './types';
+import type { Codec, CodecOptions, Ctx, ExternalCodec, Issue, ParseOutcome, ParseResult, ResolvedCtx } from './types';
 
 /** A problem reported by a codec's structural check. */
 export interface CheckProblem {
@@ -39,7 +39,7 @@ const toPath = (path: StandardSchemaV1.Issue['path']): PropertyKey[] | undefined
 
 /**
  * Runs a user schema synchronously. Returns the schema's output or `invalid` issues; throws if the
- * schema is async, which v1 doesn't support.
+ * schema is async: schemas are always synchronous.
  */
 export function runUserSchema<T>(
   schema: StandardSchemaV1<T, T>,
@@ -49,7 +49,7 @@ export function runUserSchema<T>(
   const result = schema['~standard'].validate(value);
   if (result instanceof Promise) {
     throw new Error(
-      `quanto: the schema passed to codec "${codecId}" is async. quanto v1 supports only synchronous schemas; async schemas arrive with async codecs in v2.`,
+      `quanto: the schema passed to codec "${codecId}" is async. quanto supports only synchronous schemas: validation that needs a server belongs to the app, after parsing.`,
     );
   }
   if (result.issues) {
@@ -64,27 +64,33 @@ export function runUserSchema<T>(
   return { ok: true, value: result.value };
 }
 
+/** What every codec does the same way, sync or external, given what its author supplied. */
+export interface CodecParts<T> {
+  /** Checks and validates the author's outcome for `text`, and attaches `context`. */
+  finish(text: string, outcome: ParseOutcome<T>, session: Session): ParseResult<T>;
+  format(value: T, ctx?: Ctx): string;
+  readonly schema: StandardSchemaV1<T, T>;
+}
+
+/** The issue for empty or whitespace-only input, which never reaches the author's `parse`. */
+export const EMPTY: ParseResult<never> = { ok: false, issues: [{ code: 'empty', message: 'Enter a value.' }] };
+
 /**
- * Defines a codec. The author supplies what is specific to the value; `defineCodec` supplies what
- * every codec does the same way: empty input, context resolution, the structural check, the user's
- * schema, the parse `context`, the `format` override and the composed `schema`.
+ * The shared part of `defineCodec` and `defineExternalCodec`: the structural check, the user's schema,
+ * the parse `context`, the `format` override and the composed `schema`.
  */
-export function defineCodec<T>(definition: CodecDefinition<T>): Codec<T> {
+export function codecParts<T>(definition: Omit<CodecDefinition<T>, 'parse'>): CodecParts<T> {
   const { id, options } = definition;
   assertCodecId(id);
   const userSchema = options?.schema;
   const formatter = options?.format ?? definition.format;
 
-  const parse = (text: string, ctx?: Ctx): ParseResult<T> => {
-    const trimmed = text.trim();
-    if (trimmed === '') return { ok: false, issues: [{ code: 'empty', message: 'Enter a value.' }] };
-    const session = startSession(ctx);
-    const outcome = definition.parse(trimmed, session.ctx);
+  const finish = (text: string, outcome: ParseOutcome<T>, session: Session): ParseResult<T> => {
     if (!outcome.ok) return outcome;
     const problems = definition.check(outcome.value);
     if (problems.length > 0) {
       throw new Error(
-        `quanto: codec "${id}" parsed ${JSON.stringify(trimmed)} into a value its own check rejects (${problems[0]!.message}). This is a bug in the codec's parse or check.`,
+        `quanto: codec "${id}" parsed ${JSON.stringify(text)} into a value its own check rejects (${problems[0]!.message}). This is a bug in the codec's parse or check.`,
       );
     }
     let value = outcome.value;
@@ -118,14 +124,32 @@ export function defineCodec<T>(definition: CodecDefinition<T>): Codec<T> {
     },
   };
 
-  return { id, parse, format, schema };
+  return { finish, format, schema };
+}
+
+/**
+ * Defines a codec. The author supplies what is specific to the value; `defineCodec` supplies what
+ * every codec does the same way: empty input, context resolution, the structural check, the user's
+ * schema, the parse `context`, the `format` override and the composed `schema`.
+ */
+export function defineCodec<T>(definition: CodecDefinition<T>): Codec<T> {
+  const { finish, format, schema } = codecParts(definition);
+
+  const parse = (text: string, ctx?: Ctx): ParseResult<T> => {
+    const trimmed = text.trim();
+    if (trimmed === '') return EMPTY;
+    const session = startSession(ctx);
+    return finish(trimmed, definition.parse(trimmed, session.ctx), session);
+  };
+
+  return { id: definition.id, parse, format, schema };
 }
 
 /**
  * Formats a value that may be malformed (legacy rows, a unit since removed from the table). Returns
  * `fallback` where `format` would throw on a malformed value; any other error still throws.
  */
-export function formatWithFallback<T>(codec: Codec<T>, value: unknown, fallback: string, ctx?: Ctx): string {
+export function formatWithFallback<T>(codec: Codec<T> | ExternalCodec<T>, value: unknown, fallback: string, ctx?: Ctx): string {
   try {
     return codec.format(value as T, ctx);
   } catch (error) {

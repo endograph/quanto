@@ -16,9 +16,17 @@
     padding: 18px 28px;
     border-bottom: 1px solid var(--line);
   }
-  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font: 700 19px/1 var(--sans); letter-spacing: -0.05em; }
+  .brand { display: flex; align-items: center; gap: 10px; font: 700 19px/1 var(--sans); letter-spacing: -0.05em; }
+  .brand a { text-decoration: none; }
   .brand .mark { width: 20px; height: auto; }
-  .brand .where { color: var(--muted); font: 400 13px/1 var(--mono); letter-spacing: 0; }
+  /* The mark is a button, as on the landing page: a click presses it and swaps the glyph. */
+  .mark-button { padding: 0; border: 0; background: none; cursor: pointer; }
+  .mark-button:hover .face { transform: translate(-0.5px, -0.5px); }
+  .mark-button:hover .mark.pressed .face, .mark.pressed .face { transform: translate(2px, 2px); }
+  .views { display: flex; gap: 4px; margin: 0 auto 0 8px; font: 13px/1 var(--mono); }
+  .views a { padding: 6px 8px; color: var(--muted); text-decoration: none; }
+  .views a:hover { color: var(--ink); }
+  .views a[aria-current='page'] { color: var(--ink); text-decoration: underline; text-underline-offset: 6px; text-decoration-thickness: 2px; }
   .ctx { display: flex; align-items: center; gap: 10px; font: 13px/1 var(--mono); color: var(--muted); }
   .ctx select {
     padding: 6px 26px 6px 10px;
@@ -60,8 +68,7 @@
   .more:hover { color: var(--ink); border-color: var(--shade); }
   .more.active { color: var(--ink); border-style: solid; border-color: var(--ink); }
 
-  .slab > input { padding: 20px 22px; font-size: clamp(26px, 4.5vw, 40px); line-height: 1.2; }
-  .slab > input::placeholder { color: var(--shade); }
+  #input { padding: 14px 18px; font-size: clamp(22px, 3.4vw, 30px); line-height: 1.25; }
 
   .chips { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; margin-top: 18px; font: 13px/1.5 var(--mono); }
   .chips .overline { margin-right: 6px; }
@@ -113,13 +120,19 @@
 </head>
 <body>
 <header>
-  <a class="brand" href="../index.html">
-    <svg class="mark" viewBox="10 4 44 58" aria-hidden="true">
-      <path class="shade" d="M30 6h6l2 2v6l-2 2h-6l-2-2V8zM30 22h6l2 2v10l-2 2H24l-2 2v6l2 2h14l2-2v-6l2-2h6l2 2v14l-4 4H16l-4-4V30l4-4h12v-2z"/>
-      <path class="face" d="M30 6h6l2 2v6l-2 2h-6l-2-2V8zM30 22h6l2 2v10l-2 2H24l-2 2v6l2 2h14l2-2v-6l2-2h6l2 2v14l-4 4H16l-4-4V30l4-4h12v-2z"/>
-    </svg>
-    quanto <span class="where">/ playground</span>
-  </a>
+  <div class="brand">
+    <button class="mark-button" id="mark-button" type="button" aria-label="quanto mark. Click to change the glyph.">
+      <svg class="mark" id="mark" viewBox="10 4 44 58" aria-hidden="true">
+        <path class="shade" d="M30 6h6l2 2v6l-2 2h-6l-2-2V8zM30 22h6l2 2v10l-2 2H24l-2 2v6l2 2h14l2-2v-6l2-2h6l2 2v14l-4 4H16l-4-4V30l4-4h12v-2z"/>
+        <path class="face" d="M30 6h6l2 2v6l-2 2h-6l-2-2V8zM30 22h6l2 2v10l-2 2H24l-2 2v6l2 2h14l2-2v-6l2-2h6l2 2v14l-4 4H16l-4-4V30l4-4h12v-2z"/>
+      </svg>
+    </button>
+    <a href="../index.html">quanto</a>
+  </div>
+  <nav class="views" aria-label="Playground">
+    <a href="../demo/index.html">demo</a>
+    <a href="./index.html" aria-current="page">codecs</a>
+  </nav>
   <label class="ctx"><span class="label">ctx.locale</span>
     <select id="locale"></select>
   </label>
@@ -128,9 +141,7 @@
 <main>
   <div class="tabs" role="tablist" id="tabs" aria-label="Codec"></div>
 
-  <div class="slab">
-    <input id="input" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Text to parse" placeholder="type it like a person would">
-  </div>
+  <input id="input" class="text-field" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Text to parse" placeholder="enter a quantity">
   <div class="chips" id="chips"></div>
 
   <div class="panes" aria-live="polite">

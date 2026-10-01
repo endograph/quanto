@@ -26,10 +26,15 @@ interface Part {
 
 /**
  * Splits a quantity into whole parts, largest first (`[ft, in]`), rounding the smallest part to a
- * whole number and carrying into the larger ones. Leading zero parts are left out; the rest, including
- * trailing zeros, are kept (`6'0"`).
+ * whole number and carrying into the larger ones. Leading zero parts are left out. Later zero parts
+ * are kept (`6'0"`) unless `trailingZeros` is false, for notations that write a whole amount alone (`2h`).
  */
-function compound(name: string, units: UnitTable, parts: readonly Part[], separator = ' '): Formatter<Quantity<string>> {
+function compound(
+  name: string,
+  units: UnitTable,
+  parts: readonly Part[],
+  { separator = ' ', trailingZeros = true }: { readonly separator?: string; readonly trailingZeros?: boolean } = {},
+): Formatter<Quantity<string>> {
   const smallest = parts[parts.length - 1]!;
   const factor = (unit: string): number => units[unit]!.toBase as number;
   // How many of the smallest part make one of each part: [12, 1] for feet and inches.
@@ -46,7 +51,8 @@ function compound(name: string, units: UnitTable, parts: readonly Part[], separa
       return n;
     });
     const first = counts.findIndex((n) => n !== 0);
-    const shown = first === -1 ? [counts.length - 1] : counts.map((_, i) => i).slice(first);
+    const from = first === -1 ? counts.length - 1 : first;
+    const shown = counts.map((_, i) => i).filter((i) => i >= from && (trailingZeros || i === from || counts[i] !== 0));
     const text = shown.map((i) => parts[i]!.text(formatNumber(counts[i]!, ctx, { maxFractionDigits: 0 }))).join(separator);
     return value.value < 0 && total !== 0 ? `-${text}` : text;
   };
@@ -60,7 +66,7 @@ export const feetInches: Formatter<Quantity<string>> = compound(
     { unit: 'ft', text: (n) => `${n}'` },
     { unit: 'in', text: (n) => `${n}"` },
   ],
-  '',
+  { separator: '' },
 );
 
 /** Masses as pounds and whole ounces: `1 lb 4 oz`, `12 oz`. For `mass()`. */
@@ -75,11 +81,16 @@ export const stonesPounds: Formatter<Quantity<string>> = compound('stonesPounds'
   { unit: 'lb', text: (n) => `${n} lb` },
 ]);
 
-/** Durations as hours and whole minutes: `2 h 30 min`, `45 min`. Days show as hours. For `duration()`. */
-export const hoursMinutes: Formatter<Quantity<string>> = compound('hoursMinutes', durationUnits, [
-  { unit: 'h', text: (n) => `${n} h` },
-  { unit: 'min', text: (n) => `${n} min` },
-]);
+/** Durations as hours and whole minutes, written compactly: `2h 30min`, `2h`, `45min`. Days show as hours. For `duration()`. */
+export const hoursMinutes: Formatter<Quantity<string>> = compound(
+  'hoursMinutes',
+  durationUnits,
+  [
+    { unit: 'h', text: (n) => `${n}h` },
+    { unit: 'min', text: (n) => `${n}min` },
+  ],
+  { trailingZeros: false },
+);
 
 // Intl formatters (display-only) ---------------------------------------------------------------------
 

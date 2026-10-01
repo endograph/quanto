@@ -2,6 +2,7 @@
 import type { Codec, ParseResult, Quantity } from 'quanto';
 import { convert } from 'quanto/quantity';
 import { byId, entries, leafById, locales, type Entry } from './codecs';
+import { cycleOnClick } from './mark';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
 const input = $<HTMLInputElement>('input');
@@ -201,6 +202,7 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+cycleOnClick($('mark-button'), $('mark'));
 renderTabs();
 renderChips();
 render();

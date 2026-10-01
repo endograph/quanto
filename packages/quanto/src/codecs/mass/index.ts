@@ -11,11 +11,11 @@ export const massUnits: {
   readonly st: UnitDefinition;
 } = {
   mg: { toBase: 0.000001, aliases: ['mg', 'milligram', 'milligrams', 'milligramme', 'milligrammes'] },
-  g: { toBase: 0.001, aliases: ['g', 'gram', 'grams', 'gramme', 'grammes'] },
+  g: { toBase: 0.001, aliases: ['g', 'gm', 'gms', 'gram', 'grams', 'gramme', 'grammes'] },
   kg: { toBase: 1, aliases: ['kg', 'kgs', 'kilogram', 'kilograms', 'kilogramme', 'kilogrammes', 'kilo', 'kilos'] },
   t: { toBase: 1000, aliases: ['t', 'tonne', 'tonnes', 'metric ton', 'metric tons'] },
-  oz: { toBase: 0.028349523125, aliases: ['oz', 'ounce', 'ounces'] },
-  lb: { toBase: 0.45359237, aliases: ['lb', 'lbs', 'pound', 'pounds'], subunit: 'oz' },
+  oz: { toBase: 0.028349523125, aliases: ['oz', 'ozs', 'ounce', 'ounces'] },
+  lb: { toBase: 0.45359237, aliases: ['lb', 'lbs', 'pound', 'pounds', '#'], subunit: 'oz' },
   st: { toBase: 6.35029318, aliases: ['st', 'stone', 'stones'], subunit: 'lb' },
 };
 

@@ -1,5 +1,5 @@
 // The mark and its siblings, drawn on the favicon's grid: same strokes, clipped corners and
-// offset shadow as the ¿. Clicking the mark on the landing page cycles through them.
+// offset shadow as the ¿. Clicking the mark, on any page, cycles through them.
 export const glyphs: readonly string[] = [
   'M30 6h6l2 2v6l-2 2h-6l-2-2V8zM30 22h6l2 2v10l-2 2H24l-2 2v6l2 2h14l2-2v-6l2-2h6l2 2v14l-4 4H16l-4-4V30l4-4h12v-2z', // ¿
   'M28 50L30 48L36 48L38 50L38 56L36 58L30 58L28 56ZM28 8L30 6L36 6L38 8L38 40L36 42L30 42L28 40Z', // !

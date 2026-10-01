@@ -1,0 +1,34 @@
+{
+  "name": "quanto-react",
+  "version": "0.0.0",
+  "description": "React input for quanto: a text field that parses on commit, echoes its interpretation and stores { raw, value }.",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "quanto": "workspace:^",
+    "react": "^19"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "quanto": "workspace:*",
+    "react": "^19",
+    "react-dom": "^19"
+  }
+}

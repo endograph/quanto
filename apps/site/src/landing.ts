@@ -1,10 +1,11 @@
 // The landing page: a ticker that types example input and shows what the real codecs parse it to,
-// and the mark, which presses into its shadow and cycles glyphs when clicked.
+// and the mark, which presses into its shadow. The two move together: each new example swaps in the
+// next glyph, and a click on the mark moves on to the next example.
 import type { Codec } from 'quanto';
 import { dataSize, duration, length, speed, temperature } from 'quanto/codecs';
 import { money } from 'quanto/money';
 import { date, dateTime } from 'quanto-datetime';
-import { glyphs } from './glyphs';
+import { cycler } from './mark';
 
 const examples: readonly [string, Codec<unknown>, string][] = [
   ['length', length(), `5'11"`],
@@ -30,44 +31,46 @@ const value = el('value');
 const codecLabel = el('codec');
 const mark = el('mark');
 
-const press = (swap?: () => void): void => {
-  mark.classList.add('pressed');
-  setTimeout(() => {
-    swap?.();
-    mark.classList.remove('pressed');
-  }, 110);
-};
-
-let glyph = 0;
-el('mark-button').addEventListener('click', () => {
-  press(() => {
-    glyph = (glyph + 1) % glyphs.length;
-    for (const path of mark.querySelectorAll('path')) path.setAttribute('d', glyphs[glyph]!);
-  });
-});
+const nextGlyph = cycler(mark);
 
 const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function run(): Promise<never> {
-  for (let i = 0; ; i = (i + 1) % examples.length) {
-    const [id, codec, text] = examples[i]!;
-    const result = codec.parse(text);
-    ticker.href = `play/index.html?codec=${id}&q=${encodeURIComponent(text)}`;
-    ticker.classList.remove('done');
-    value.textContent = result.ok ? show(result.value) : result.issues[0]!.code;
-    codecLabel.textContent = `// ${id}`;
-    raw.textContent = '';
-    if (still) raw.textContent = text;
-    else
-      for (const ch of text) {
-        raw.textContent += ch;
-        await wait(70 + Math.random() * 60);
-      }
-    await wait(still ? 0 : 260);
-    ticker.classList.add('done');
-    press();
-    await wait(2400);
-  }
+let example = 0;
+// Counts the examples shown. A run that's no longer the latest stops, so a click cuts the current
+// example short and the wait before the next automatic one starts over.
+let turn = 0;
+
+/** Types the current example, shows its value, and after a pause moves on. */
+async function play(): Promise<void> {
+  const mine = ++turn;
+  const [id, codec, text] = examples[example]!;
+  const result = codec.parse(text);
+  ticker.href = `play/index.html?codec=${id}&q=${encodeURIComponent(text)}`;
+  ticker.classList.remove('done');
+  value.textContent = result.ok ? show(result.value) : result.issues[0]!.code;
+  codecLabel.textContent = `// ${id}`;
+  raw.textContent = '';
+  if (still) raw.textContent = text;
+  else
+    for (const ch of text) {
+      raw.textContent += ch;
+      await wait(70 + Math.random() * 60);
+      if (mine !== turn) return;
+    }
+  await wait(still ? 0 : 260);
+  if (mine !== turn) return;
+  ticker.classList.add('done');
+  await wait(2400);
+  if (mine === turn) advance();
 }
-run();
+
+/** Moves to the next example and the next glyph, together. */
+function advance(): void {
+  example = (example + 1) % examples.length;
+  nextGlyph();
+  void play();
+}
+
+el('mark-button').addEventListener('click', advance);
+void play();

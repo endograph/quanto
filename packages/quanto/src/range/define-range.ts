@@ -1,9 +1,11 @@
 import { mergeContexts, startSession } from '../core/context';
 import { runUserSchema } from '../core/define-codec';
-import { InvalidValueError } from '../core/errors';
+import { assertNotExternal } from '../core/define-external-codec';
+import { InvalidValueError, isInvalidValueError } from '../core/errors';
 import type { StandardSchemaV1 } from '../core/standard-schema';
-import type { Codec, CodecOptions, Ctx, Issue, ParseResult, ResolvedCtx } from '../core/types';
+import type { Codec, CodecOptions, Ctx, Issue, ParseContext, ParseResult, ResolvedCtx } from '../core/types';
 import { normalize } from '../primitives/normalize';
+import { numberWordSpans, type LocaleCtx } from '../primitives/number';
 
 /** A range value: two values of the inner codec. */
 export interface Range<T> {
@@ -11,12 +13,72 @@ export interface Range<T> {
   readonly end: T;
 }
 
-const SEPARATOR = /–|—|-|\s(?:to|until|through)\s/gi;
+/**
+ * A range that may be open at one end: `5+ ft` is `{ start: 5 ft, end: null }`, `under 7 ft` is
+ * `{ start: null, end: 7 ft, endExclusive: true }`. An exclusive flag is set only on the bound of an
+ * open range, and only when the bound itself is excluded (`>`, `under`, `before`).
+ */
+export interface OpenRange<T> {
+  readonly start: T | null;
+  readonly end: T | null;
+  readonly startExclusive?: true;
+  readonly endExclusive?: true;
+}
 
-/** Every way to split the text at a separator, left to right, with both sides non-empty. */
-function splits(text: string): Array<readonly [string, string]> {
+/** Options for a range codec. `open: true` also accepts ranges open at one end, as `OpenRange<T>`. */
+export interface RangeOptions<V> extends CodecOptions<V> {
+  readonly open?: boolean | undefined;
+}
+
+const SEPARATOR = /–|—|-|\s(?:to|until|through)\s/gi;
+const BETWEEN_SEPARATOR = /–|—|-|\s(?:to|until|through|and)\s/gi;
+
+type Bound = { readonly side: 'start' | 'end'; readonly exclusive: boolean };
+
+/** Words and symbols that make one bound, before the value (`at least 5 ft`) or after it (`5 ft or more`). */
+const BOUND_PREFIXES: ReadonlyArray<readonly [RegExp, Bound]> = [
+  [/^(?:>=|≥|at least\s|min\.?\s|minimum\s|from\s|since\s|no less than\s)/i, { side: 'start', exclusive: false }],
+  [/^(?:>|over\s|above\s|more than\s|greater than\s|after\s)/i, { side: 'start', exclusive: true }],
+  [/^(?:<=|≤|up to\s|at most\s|max\.?\s|maximum\s|until\s|till\s|by\s|no more than\s)/i, { side: 'end', exclusive: false }],
+  [/^(?:<|under\s|below\s|less than\s|fewer than\s|before\s)/i, { side: 'end', exclusive: true }],
+];
+const BOUND_SUFFIXES: ReadonlyArray<readonly [RegExp, Bound]> = [
+  [/\s(?:or more|or above|or over|or greater|or later|and up|and above|and over|onwards)$/i, { side: 'start', exclusive: false }],
+  [/\s(?:or less|or fewer|or under|or below|or earlier|and under|and below)$/i, { side: 'end', exclusive: false }],
+];
+
+/**
+ * The bound and the value's text, if the text is one bound. A `+` after the number or at the end is a
+ * lower bound: `5+ ft`, `5 ft+`, `$500+`; a leading `+` is a sign.
+ */
+function readBound(text: string): { bound: Bound; side: string } | undefined {
+  for (const [pattern, bound] of BOUND_PREFIXES) {
+    const m = pattern.exec(text);
+    if (m) return { bound, side: text.slice(m[0].length).trim() };
+  }
+  for (const [pattern, bound] of BOUND_SUFFIXES) {
+    const m = pattern.exec(text);
+    if (m) return { bound, side: text.slice(0, m.index).trim() };
+  }
+  const lower: Bound = { side: 'start', exclusive: false };
+  if (text.length > 1 && text.endsWith('+')) return { bound: lower, side: text.slice(0, -1).trim() };
+  const plus = /(\d[\p{L}]*)\+(?=\s)/u.exec(text);
+  if (plus) return { bound: lower, side: text.slice(0, plus.index + plus[1]!.length) + text.slice(plus.index + plus[0].length) };
+  return undefined;
+}
+
+/**
+ * Every way to split the text at a separator, left to right, with both sides non-empty. `between 5
+ * and 7` and `from 5 to 7` drop the leading word, and `between` makes `and` a separator. A separator
+ * inside a number in words isn't one: `twenty-five`, `one hundred and five`.
+ */
+function splits(text: string, ctx: LocaleCtx): Array<readonly [string, string]> {
+  const between = /^between\s/i.exec(text);
+  if (between || /^from\s/i.test(text)) text = text.replace(/^\S+\s+/, '');
+  const words = numberWordSpans(text, ctx);
   const out: Array<readonly [string, string]> = [];
-  for (const match of text.matchAll(SEPARATOR)) {
+  for (const match of text.matchAll(between ? BETWEEN_SEPARATOR : SEPARATOR)) {
+    if (words.some(([start, end]) => match.index > start && match.index < end)) continue;
     const left = text.slice(0, match.index).trim();
     const right = text.slice(match.index + match[0].length).trim();
     if (left && right) out.push([left, right]);
@@ -38,7 +100,9 @@ export interface RangeProposal<T> {
 export interface RangeRules<T> {
   /**
    * Textual completions of the two sides, most preferred first: a side borrows what it's missing from
-   * the other (`5-7 ft` → `5 ft`, `7 ft`). The sides as typed are always tried after these.
+   * the other (`5-7 ft` → `5 ft`, `7 ft`). The sides as typed are always tried after these. Completion
+   * is textual, so `ctx.now()` throws here: leave relative words (`tomorrow`) for the sides' parse,
+   * which reads the clock once for both sides and reports it in the result's `context`.
    */
   propose?(left: string, right: string, ctx: ResolvedCtx): readonly RangeProposal<T>[];
   /** Whether `start <= end`; undefined when it can't be told. Only used to choose between completions. */
@@ -47,13 +111,22 @@ export interface RangeRules<T> {
 
 /**
  * Builds a range codec over any codec: `defineRange` does the splitting (`-`, `–`, `—`, `to`, `until`,
- * `through`), tries each split and completion, prefers the first in order, runs the user's schema and
- * formats `start – end`. `rules` say how sides complete and how values order. With no rules, both sides
- * must be written in full. The id is `range(<inner id>)`.
+ * `through`, `between … and`), tries each split and completion, prefers the first in order, runs the
+ * user's schema and formats `start – end`. `rules` say how sides complete and how values order. With no
+ * rules, both sides must be written in full. The id is `range(<inner id>)`.
+ *
+ * With `open: true` it also reads one bound (`5+ ft`, `at least 5 ft`, `under 7 ft`, `≤ 7 ft`), as an
+ * `OpenRange<T>`, and formats it with `≥`, `>`, `≤` or `<`.
  */
-export function defineRange<T>(codec: Codec<T>, rules?: RangeRules<T>, options?: CodecOptions<Range<T>>): Codec<Range<T>> {
+export function defineRange<T>(codec: Codec<T>, rules: RangeRules<T> | undefined, options: RangeOptions<OpenRange<T>> & { readonly open: true }): Codec<OpenRange<T>>;
+export function defineRange<T>(codec: Codec<T>, rules?: RangeRules<T>, options?: RangeOptions<Range<T>> & { readonly open?: false | undefined }): Codec<Range<T>>;
+export function defineRange<T>(codec: Codec<T>, rules?: RangeRules<T>, options?: RangeOptions<OpenRange<T>> | RangeOptions<Range<T>>): Codec<OpenRange<T>> | Codec<Range<T>> {
+  assertNotExternal(codec, 'range');
   const id = `range(${codec.id})`;
-  const userSchema = options?.schema;
+  const open = options?.open === true;
+  // A closed range is an open range with both sides set, so one implementation handles both shapes.
+  const userSchema = options?.schema as StandardSchemaV1<OpenRange<T>, OpenRange<T>> | undefined;
+  const userFormat = options?.format as ((value: OpenRange<T>, ctx: ResolvedCtx) => string) | undefined;
   const inOrder = (start: T, end: T): boolean => rules?.inOrder?.(start, end) ?? true;
   const proposals = (left: string, right: string, ctx: ResolvedCtx): readonly RangeProposal<T>[] => {
     const proposed = rules?.propose?.(left, right, ctx) ?? [];
@@ -61,12 +134,29 @@ export function defineRange<T>(codec: Codec<T>, rules?: RangeRules<T>, options?:
     return typed ? proposed : [...proposed, { sides: [left, right] }];
   };
 
-  const parse = (text: string, ctx?: Ctx): ParseResult<Range<T>> => {
+  /** Runs the user's schema on a parsed range and returns the result. */
+  const finish = (value: OpenRange<T>, context: ParseContext): ParseResult<OpenRange<T>> => {
+    if (!userSchema) return { ok: true, value, context };
+    const validated = runUserSchema(userSchema, value, id);
+    return validated.ok ? { ok: true, value: validated.value, context } : validated;
+  };
+
+  const parse = (text: string, ctx?: Ctx): ParseResult<OpenRange<T>> => {
     if (text.trim() === '') return { ok: false, issues: [{ code: 'empty', message: 'Enter a value.' }] };
-    const session = startSession(ctx);
-    const candidates = splits(normalize(text).trim());
-    if (candidates.length === 0) {
-      return { ok: false, issues: [{ code: 'unparseable', message: `Enter a range, like "5-7" or "5 to 7".` }] };
+    // Completion gets the locale but not the clock, so every clock reading comes from the sides' parses.
+    const resolved = startSession(ctx).ctx;
+    const completionCtx: ResolvedCtx = {
+      locale: resolved.locale,
+      grammars: resolved.grammars,
+      now: () => {
+        throw new Error(`quanto: range completion for codec "${id}" read the clock. Completion is textual: leave relative words for the sides' parse.`);
+      },
+    };
+    const normalized = normalize(text).trim();
+    const candidates = splits(normalized, resolved);
+    const bound = open ? readBound(normalized) : undefined;
+    if (candidates.length === 0 && !bound) {
+      return { ok: false, issues: [{ code: 'unparseable', message: open ? `Enter a range, like "5-7", "5+" or "under 7".` : `Enter a range, like "5-7" or "5 to 7".` }] };
     }
 
     // Every parse in one range sees the same clock: once a parse reads it, later parses get that
@@ -80,7 +170,7 @@ export function defineRange<T>(codec: Codec<T>, rules?: RangeRules<T>, options?:
       // Parse every proposal, then prefer: in order as parsed; in order after adjusting the end
       // (Dec 30 - Jan 2, Oct 3 10pm-1am); and finally the first that parsed at all.
       const parsed: Array<{ a: ParseResult<T> & { ok: true }; b: ParseResult<T> & { ok: true }; adjustEnd: RangeProposal<T>['adjustEnd'] }> = [];
-      for (const { sides: [l, r], adjustEnd } of proposals(left, right, session.ctx)) {
+      for (const { sides: [l, r], adjustEnd } of proposals(left, right, completionCtx)) {
         const a = codec.parse(l, pinned);
         pin(a);
         if (!a.ok) {
@@ -111,55 +201,91 @@ export function defineRange<T>(codec: Codec<T>, rules?: RangeRules<T>, options?:
       const first = parsed[0]!;
       chosen ??= { start: first.a.value, end: first.b.value, a: first.a, b: first.b };
 
-      let value: Range<T> = { start: chosen.start, end: chosen.end };
-      if (userSchema) {
-        const validated = runUserSchema(userSchema, value, id);
-        if (!validated.ok) return validated;
-        value = validated.value;
-      }
-      return { ok: true, value, context: mergeContexts([chosen.a.context, chosen.b.context]) };
+      return finish({ start: chosen.start, end: chosen.end }, mergeContexts([chosen.a.context, chosen.b.context]));
+    }
+    if (bound) {
+      // One bound: its issues are the ones to report, since the text was written as one.
+      if (bound.side === '') return { ok: false, issues: [{ code: 'unparseable', message: `Add a value, like "${normalized} 5".` }] };
+      const side = codec.parse(bound.side, ctx);
+      if (!side.ok) return side;
+      const exclusive = bound.bound.exclusive;
+      const value: OpenRange<T> = bound.bound.side === 'start'
+        ? { start: side.value, end: null, ...(exclusive ? { startExclusive: true } : {}) }
+        : { start: null, end: side.value, ...(exclusive ? { endExclusive: true } : {}) };
+      return finish(value, side.context);
     }
     return { ok: false, issues: firstIssues ?? [{ code: 'unparseable', message: `Couldn't understand "${text}" as a range.` }] };
   };
 
-  const isRange = (value: unknown): value is Range<T> =>
-    typeof value === 'object' && value !== null && 'start' in value && 'end' in value;
-
-  const format = (value: Range<T>, ctx?: Ctx): string => {
-    if (!isRange(value)) throw new InvalidValueError(id, [{ message: 'Expected { start, end }.' }]);
-    if (options?.format) {
-      innerSchemaCheck(value);
-      return options.format(value, startSession(ctx).ctx);
+  /**
+   * The shape of a range: both sides, or with `open`, one side null and an exclusive flag (`true`) on
+   * the other at most. Returns a problem, or undefined.
+   */
+  const shapeProblem = (value: unknown): string | undefined => {
+    const expected = open ? 'Expected { start, end }, with at most one of them null.' : 'Expected { start, end }.';
+    if (typeof value !== 'object' || value === null || !('start' in value) || !('end' in value)) return expected;
+    const v = value as Record<string, unknown>;
+    const nulls = (v.start === null ? 1 : 0) + (v.end === null ? 1 : 0);
+    if (nulls > (open ? 1 : 0)) return expected;
+    for (const [flag, side, other] of [['startExclusive', 'start', 'end'], ['endExclusive', 'end', 'start']] as const) {
+      if (v[flag] === undefined) continue;
+      if (!open || v[flag] !== true || v[side] === null || v[other] !== null) return `"${flag}" is only allowed, as true, on the bound of a range open at the other end.`;
     }
-    return `${codec.format(value.start, ctx)} – ${codec.format(value.end, ctx)}`;
+    return undefined;
   };
 
-  const validateSide = (value: unknown, side: 'start' | 'end'): readonly StandardSchemaV1.Issue[] => {
+  /** Formats one side with the inner codec, so a malformed side throws with its path prefixed. */
+  const formatSide = (value: T, side: 'start' | 'end', ctx: Ctx | undefined): string => {
+    try {
+      return codec.format(value, ctx);
+    } catch (error) {
+      if (!isInvalidValueError(error)) throw error;
+      throw new InvalidValueError(id, error.problems.map((p) => ({ message: p.message, path: [side, ...(p.path ?? [])] })));
+    }
+  };
+
+  // Like every codec's format, this checks structure only, never the user's schema, so a stored range
+  // a later, stricter schema rejects still displays (DESIGN.md).
+  const format = (value: OpenRange<T>, ctx?: Ctx): string => {
+    const problem = shapeProblem(value);
+    if (problem) throw new InvalidValueError(id, [{ message: problem }]);
+    const start = value.start === null ? undefined : formatSide(value.start, 'start', ctx);
+    const end = value.end === null ? undefined : formatSide(value.end, 'end', ctx);
+    if (userFormat) return userFormat(value, startSession(ctx).ctx);
+    if (start === undefined) return `${value.endExclusive ? '<' : '≤'} ${end}`;
+    if (end === undefined) return `${value.startExclusive ? '>' : '≥'} ${start}`;
+    return `${start} – ${end}`;
+  };
+
+  /** Validates one side with the inner schema: its output, or its issues with the side prefixed to their paths. */
+  const validateSide = (value: unknown, side: 'start' | 'end'): StandardSchemaV1.Result<T> => {
     const result = codec.schema['~standard'].validate(value);
-    if (result instanceof Promise) throw new Error(`quanto: the schema of codec "${codec.id}" is async, which quanto v1 doesn't support.`);
-    return (result.issues ?? []).map((issue) => ({ ...issue, path: [side, ...(issue.path ?? [])] }));
+    if (result instanceof Promise) throw new Error(`quanto: the schema of codec "${codec.id}" is async. quanto supports only synchronous schemas.`);
+    if (!result.issues) return result;
+    return { issues: result.issues.map((issue) => ({ ...issue, path: [side, ...(issue.path ?? [])] })) };
   };
 
-  const innerSchemaCheck = (value: Range<T>): void => {
-    const problems = [...validateSide(value.start, 'start'), ...validateSide(value.end, 'end')];
-    if (problems.length > 0) {
-      throw new InvalidValueError(
-        id,
-        problems.map((p) => ({ message: p.message, path: p.path?.map((s) => (typeof s === 'object' ? s.key : s)) })),
-      );
-    }
-  };
-
-  const schema: StandardSchemaV1<Range<T>, Range<T>> = {
+  const schema: StandardSchemaV1<OpenRange<T>, OpenRange<T>> = {
     '~standard': {
       version: 1,
       vendor: 'quanto',
-      validate(value: unknown): StandardSchemaV1.Result<Range<T>> {
-        if (!isRange(value)) return { issues: [{ message: 'Expected { start, end }.', code: 'invalid' } as Issue] };
-        const issues = [...validateSide(value.start, 'start'), ...validateSide(value.end, 'end')];
+      validate(input: unknown): StandardSchemaV1.Result<OpenRange<T>> {
+        const problem = shapeProblem(input);
+        if (problem) return { issues: [{ message: problem, code: 'invalid' } as Issue] };
+        const value = input as OpenRange<T>;
+        const start: StandardSchemaV1.Result<T | null> = value.start === null ? { value: null } : validateSide(value.start, 'start');
+        const end: StandardSchemaV1.Result<T | null> = value.end === null ? { value: null } : validateSide(value.end, 'end');
+        const issues = [...(start.issues ?? []), ...(end.issues ?? [])];
         if (issues.length > 0) return { issues: issues.map((i) => ({ ...i, code: 'invalid' })) };
-        if (!userSchema) return { value };
-        const validated = runUserSchema(userSchema, value, id);
+        // The range schema sees each side's output, so the inner schemas' transforms are kept.
+        const sides: OpenRange<T> = {
+          start: (start as { value: T | null }).value,
+          end: (end as { value: T | null }).value,
+          ...(value.startExclusive ? { startExclusive: true } : {}),
+          ...(value.endExclusive ? { endExclusive: true } : {}),
+        };
+        if (!userSchema) return { value: sides };
+        const validated = runUserSchema(userSchema, sides, id);
         return validated.ok ? { value: validated.value } : { issues: validated.issues };
       },
     },

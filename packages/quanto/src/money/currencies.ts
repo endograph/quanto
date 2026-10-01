@@ -49,6 +49,15 @@ export const CURRENCY_TOKENS: Readonly<Record<string, readonly string[]>> = {
   yen: ['JPY'], yuan: ['CNY'], rmb: ['CNY'], rupee: RUPEES, rupees: RUPEES, peso: PESOS, pesos: PESOS,
 };
 
+/**
+ * Minor-unit symbols and names, mapped like `CURRENCY_TOKENS`: `50¢`, `50 cents`, `5p`. Cents are a
+ * hundredth of a dollar (those with cents; not CLP) or a euro, and pence of a pound.
+ */
+export const MINOR_TOKENS: Readonly<Record<string, readonly string[]>> = (() => {
+  const cents = [...DOLLARS.filter((c) => c !== 'CLP'), 'EUR'];
+  return { '¢': cents, c: cents, cent: cents, cents, p: ['GBP'], pence: ['GBP'], penny: ['GBP'], pennies: ['GBP'] };
+})();
+
 /** The symbol `format` tries for a currency; currencies without one print their ISO code. */
 export const DISPLAY_SYMBOLS: Readonly<Record<string, string>> = {
   ...Object.fromEntries(DOLLARS.map((c) => [c, '$'])),

@@ -1,4 +1,4 @@
-import { defineRange, type Codec, type CodecOptions, type Range, type RangeProposal } from 'quanto';
+import { defineRange, type Codec, type OpenRange, type Range, type RangeOptions, type RangeProposal } from 'quanto';
 import { instantSeconds, rollIso } from './calendar/civil';
 import { calendarKindOf } from './calendar/codecs';
 
@@ -139,13 +139,16 @@ const STRATEGIES = { date, time, localDateTime: dateTime, dateTime } as const;
  * A range of dates, times or date-times, for any of `date()`, `time()`, `localDateTime()` and
  * `dateTime()`: `Oct 3-5`, `Oct 30 - Nov 2, 2027`, `Dec 30 - Jan 2`, `9-5pm`, `Oct 3 3-5pm`,
  * `Oct 3 10pm-1am`. A side borrows what it's missing from the other; an end that would come before the
- * start rolls into the next day or year. See the repository's DESIGN.md, Ranges.
+ * start rolls into the next day or year. With `open: true`, also one bound: `after Oct 3`, `until Friday`.
+ * See the repository's DESIGN.md, Ranges.
  */
-export function dateRange(codec: Codec<string>, options?: CodecOptions<Range<string>>): Codec<Range<string>> {
+export function dateRange(codec: Codec<string>, options: RangeOptions<OpenRange<string>> & { readonly open: true }): Codec<OpenRange<string>>;
+export function dateRange(codec: Codec<string>, options?: RangeOptions<Range<string>> & { readonly open?: false | undefined }): Codec<Range<string>>;
+export function dateRange(codec: Codec<string>, options?: RangeOptions<OpenRange<string>> | RangeOptions<Range<string>>): Codec<OpenRange<string>> | Codec<Range<string>> {
   const kind = calendarKindOf(codec);
   if (!kind) {
     throw new Error('quanto: dateRange works with codecs made by date(), time(), localDateTime() or dateTime() from quanto-datetime. For other codecs, use defineRange from quanto.');
   }
   const strategy = STRATEGIES[kind];
-  return defineRange(codec, { propose: (left, right) => strategy(left, right), inOrder }, options);
+  return defineRange(codec, { propose: (left, right) => strategy(left, right), inOrder }, options as RangeOptions<OpenRange<string>> & { readonly open: true });
 }

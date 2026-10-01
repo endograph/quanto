@@ -1,0 +1,8 @@
+[
+  {"parse": "1:00-1:30", "value": {"start": {"value": 60, "unit": "min"}, "end": {"value": 90, "unit": "min"}}},
+  {"parse": "1:00-1:30 min", "value": {"start": {"value": 60, "unit": "s"}, "end": {"value": 90, "unit": "s"}}},
+  {"parse": "1:00 - 1:30 h", "value": {"start": {"value": 60, "unit": "min"}, "end": {"value": 90, "unit": "min"}}},
+  {"parse": "0:45 to 1:30", "value": {"start": {"value": 45, "unit": "min"}, "end": {"value": 90, "unit": "min"}}},
+  {"parse": "1:00-1:30", "options": {"clock": "m:ss"}, "value": {"start": {"value": 60, "unit": "s"}, "end": {"value": 90, "unit": "s"}}},
+  {"parse": "1-2 h", "value": {"start": {"value": 1, "unit": "h"}, "end": {"value": 2, "unit": "h"}}}
+]

@@ -1,0 +1,8 @@
+[
+  {"parse": "about 5-7 ft", "value": {"value": {"start": {"value": 5, "unit": "ft"}, "end": {"value": 7, "unit": "ft"}}, "approximate": true}},
+  {"parse": "5-7 ft", "value": {"value": {"start": {"value": 5, "unit": "ft"}, "end": {"value": 7, "unit": "ft"}}, "approximate": false}},
+  {"parse": "~5-7 ft", "value": {"value": {"start": {"value": 5, "unit": "ft"}, "end": {"value": 7, "unit": "ft"}}, "approximate": true}},
+  {"parse": "5-7 ft-ish", "value": {"value": {"start": {"value": 5, "unit": "ft"}, "end": {"value": 7, "unit": "ft"}}, "approximate": true}},
+  {"parse": "about 5 ft", "issues": ["unparseable"]},
+  {"format": {"value": {"start": {"value": 5, "unit": "ft"}, "end": {"value": 7, "unit": "ft"}}, "approximate": true}, "text": "~5 ft – 7 ft"}
+]

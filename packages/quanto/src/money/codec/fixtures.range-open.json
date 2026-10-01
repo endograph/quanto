@@ -1,0 +1,12 @@
+[
+  {"parse": "$500+", "value": {"start": {"minorUnits": 50000, "currency": "USD"}, "end": null}},
+  {"parse": "under $20", "value": {"start": null, "end": {"minorUnits": 2000, "currency": "USD"}, "endExclusive": true}},
+  {"parse": "at least 1k EUR", "value": {"start": {"minorUnits": 100000, "currency": "EUR"}, "end": null}},
+  {"parse": "$1.5M+", "value": {"start": {"minorUnits": 150000000, "currency": "USD"}, "end": null}},
+  {"parse": "up to $12 million", "value": {"start": null, "end": {"minorUnits": 1200000000, "currency": "USD"}}},
+  {"parse": "$10-20k", "value": {"start": {"minorUnits": 1000000, "currency": "USD"}, "end": {"minorUnits": 2000000, "currency": "USD"}}},
+  {"parse": "($12)+", "value": {"start": {"minorUnits": -1200, "currency": "USD"}, "end": null}},
+  {"parse": "under 20", "issues": ["missing_currency"]},
+  {"format": {"start": {"minorUnits": 50000, "currency": "USD"}, "end": null}, "text": "≥ $500.00"},
+  {"format": {"start": null, "end": {"minorUnits": 2000, "currency": "USD"}, "endExclusive": true}, "text": "< $20.00"}
+]

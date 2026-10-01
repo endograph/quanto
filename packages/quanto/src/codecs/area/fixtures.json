@@ -32,6 +32,21 @@
   { "parse": "500 ft", "issues": ["unknown_unit"] },
   { "parse": "", "issues": ["empty"] },
 
+  { "parse": "10² m²", "value": { "value": 100, "unit": "m2" } },
+  { "parse": "10^2 sq ft", "value": { "value": 100, "unit": "ft2" } },
+  { "parse": "80m²", "value": { "value": 80, "unit": "m2" } },
+  { "parse": "2*40 m²", "value": { "value": 80, "unit": "m2" } },
+
+  { "parse": "500 sq. ft.", "value": { "value": 500, "unit": "ft2" } },
+  { "parse": "500 sq.ft", "value": { "value": 500, "unit": "ft2" } },
+  { "parse": "80 sq.m", "value": { "value": 80, "unit": "m2" } },
+  { "parse": "80 sq. m.", "value": { "value": 80, "unit": "m2" } },
+  { "parse": "2 sq. mi.", "value": { "value": 2, "unit": "mi2" } },
+  { "parse": "500 ft^2", "value": { "value": 500, "unit": "ft2" } },
+  { "parse": "80 m^2", "value": { "value": 80, "unit": "m2" } },
+  { "parse": "500 sf", "value": { "value": 500, "unit": "ft2" } },
+  { "parse": "500 SF", "value": { "value": 500, "unit": "ft2" } },
+
   { "format": { "value": 500, "unit": "ft2" }, "text": "500 ft²" },
   { "format": { "value": 80, "unit": "m2" }, "text": "80 m²" },
   { "format": { "value": 80.5, "unit": "m2" }, "ctx": { "locale": "de-DE" }, "text": "80,5 m²" },

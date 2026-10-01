@@ -25,3 +25,9 @@ test('compare treats equal efficiencies in different units as equal', () => {
 test('convert throws where there is no finite result', () => {
   expect(() => convert(fe, { value: 0, unit: 'mpg' }, 'lp100km')).toThrow(/no finite result/);
 });
+
+test('compare throws on a value with no finite base value', () => {
+  // 0 L/100km is infinitely efficient: it compared equal to 5 km/L, and greater than itself.
+  expect(() => compare(fe, { value: 0, unit: 'lp100km' }, { value: 5, unit: 'kmpl' })).toThrow(/no value in the other units/);
+  expect(() => compare(fe, { value: 5, unit: 'kmpl' }, { value: 1e-320, unit: 'lp100km' })).toThrow(/no value in the other units/);
+});

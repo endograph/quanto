@@ -49,6 +49,12 @@ export function compare<U extends string>(codec: QuantityTable<U>, a: Quantity<U
   const db = unitOf(codec, b, 'compare');
   const x = toBaseValue(a.value, da);
   const y = toBaseValue(b.value, db);
+  // An infinite base value would compare equal to everything (0 L/100km is infinitely efficient).
+  for (const [q, base] of [[a, x], [b, y]] as const) {
+    if (!Number.isFinite(base)) {
+      throw new Error(`quanto: compare got ${q.value} ${q.unit}, which has no value in the other units of codec "${codec.id}" (like 0 L/100km). Validate it with codec.schema first.`);
+    }
+  }
   if (Math.abs(x - y) <= COMPARE_TOLERANCE * Math.max(Math.abs(x), Math.abs(y))) return 0;
   return x < y ? -1 : 1;
 }

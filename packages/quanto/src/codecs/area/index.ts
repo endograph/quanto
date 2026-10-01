@@ -12,15 +12,15 @@ export const areaUnits: {
   readonly ac: UnitDefinition;
   readonly mi2: UnitDefinition;
 } = {
-  cm2: { toBase: 0.0001, aliases: ['cm²', 'sq cm', 'square centimeter', 'square centimeters', 'square centimetre', 'square centimetres'] },
-  m2: { toBase: 1, aliases: ['m²', 'sq m', 'sqm', 'square meter', 'square meters', 'square metre', 'square metres'] },
+  cm2: { toBase: 0.0001, aliases: ['cm²', 'sq cm', 'sq. cm', 'sq.cm', 'square centimeter', 'square centimeters', 'square centimetre', 'square centimetres'] },
+  m2: { toBase: 1, aliases: ['m²', 'sq m', 'sq. m', 'sq.m', 'sqm', 'square meter', 'square meters', 'square metre', 'square metres'] },
   ha: { toBase: 10000, aliases: ['ha', 'hectare', 'hectares'] },
-  km2: { toBase: 1000000, aliases: ['km²', 'sq km', 'square kilometer', 'square kilometers', 'square kilometre', 'square kilometres'] },
-  in2: { toBase: 0.00064516, aliases: ['in²', 'sq in', 'square inch', 'square inches'] },
-  ft2: { toBase: 0.09290304, aliases: ['ft²', 'sq ft', 'sqft', 'square foot', 'square feet'] },
-  yd2: { toBase: 0.83612736, aliases: ['yd²', 'sq yd', 'square yard', 'square yards'] },
+  km2: { toBase: 1000000, aliases: ['km²', 'sq km', 'sq. km', 'sq.km', 'square kilometer', 'square kilometers', 'square kilometre', 'square kilometres'] },
+  in2: { toBase: 0.00064516, aliases: ['in²', 'sq in', 'sq. in', 'sq.in', 'square inch', 'square inches'] },
+  ft2: { toBase: 0.09290304, aliases: ['ft²', 'sq ft', 'sq. ft', 'sq.ft', 'sqft', 'sf', 'square foot', 'square feet'] },
+  yd2: { toBase: 0.83612736, aliases: ['yd²', 'sq yd', 'sq. yd', 'sq.yd', 'square yard', 'square yards'] },
   ac: { toBase: 4046.8564224, aliases: ['ac', 'acre', 'acres'] },
-  mi2: { toBase: 2589988.110336, aliases: ['mi²', 'sq mi', 'square mile', 'square miles'] },
+  mi2: { toBase: 2589988.110336, aliases: ['mi²', 'sq mi', 'sq. mi', 'sq.mi', 'square mile', 'square miles'] },
 };
 
 export type AreaUnit = keyof typeof areaUnits;

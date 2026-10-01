@@ -38,3 +38,4 @@ export { volume, volumeUnits } from './volume';
 export type { VolumeUnit } from './volume';
 
 export { percent } from './percent';
+export { text } from './text';

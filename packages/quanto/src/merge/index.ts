@@ -1,4 +1,5 @@
 import { mergeContexts, startSession } from '../core/context';
+import { assertNotExternal } from '../core/define-external-codec';
 import { InvalidValueError } from '../core/errors';
 import type { StandardSchemaV1 } from '../core/standard-schema';
 import type { Codec, Ctx, Issue, ParseContext, ParseResult } from '../core/types';
@@ -25,6 +26,7 @@ const isMerged = (codec: Codec<unknown>): codec is MergedCodec<unknown> => Array
  */
 export function merge<const Cs extends readonly Codec<unknown>[]>(codecs: Cs): MergedCodec<LeafValue<Cs[number]>> {
   type T = LeafValue<Cs[number]>;
+  for (const c of codecs) assertNotExternal(c, 'merge');
   const members: Codec<unknown>[] = codecs.flatMap((c) => (isMerged(c) ? [...c.codecs] : [c as Codec<unknown>]));
   if (members.length === 0) throw new Error('quanto: merge() needs at least one codec.');
   const ids = new Set<string>();
@@ -76,7 +78,7 @@ export function merge<const Cs extends readonly Codec<unknown>[]>(codecs: Cs): M
           return { issues: [{ message: `Expected a value tagged with one of: ${[...ids].join(', ')}.`, path: ['codec'], code: 'invalid' } as Issue] };
         }
         const inner = member.schema['~standard'].validate((value as Tagged<unknown>).value);
-        if (inner instanceof Promise) throw new Error(`quanto: the schema of codec "${member.id}" is async, which quanto v1 doesn't support.`);
+        if (inner instanceof Promise) throw new Error(`quanto: the schema of codec "${member.id}" is async. quanto supports only synchronous schemas.`);
         if (inner.issues) return { issues: inner.issues.map((issue) => ({ ...issue, path: ['value', ...(issue.path ?? [])] })) };
         return { value: { codec: member.id, value: inner.value as T } };
       },

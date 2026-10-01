@@ -1,5 +1,10 @@
 [
   { "parse": "60 mph", "value": { "value": 60, "unit": "mph" }, "context": { "locale": "en-US" } },
+  { "parse": "100 km/hr", "value": { "value": 100, "unit": "kmh" } },
+  { "parse": "5 ft/s", "value": { "value": 5, "unit": "fps" } },
+  { "parse": "5 fps", "value": { "value": 5, "unit": "fps" } },
+  { "parse": "5 feet per second", "value": { "value": 5, "unit": "fps" } },
+  { "parse": "10 ft/s", "options": { "canonicalUnit": "mps" }, "value": { "value": 3.048, "unit": "mps" } },
   { "parse": "60mph", "value": { "value": 60, "unit": "mph" } },
   { "parse": "60 MPH", "value": { "value": 60, "unit": "mph" } },
   { "parse": "60 miles per hour", "value": { "value": 60, "unit": "mph" } },
@@ -30,5 +35,6 @@
   { "format": { "value": 12.5, "unit": "kmh" }, "ctx": { "locale": "de-DE" }, "text": "12,5 km/h" },
   { "format": { "value": 96.56064, "unit": "kmh" }, "text": "96.561 km/h" },
   { "format": { "value": 10, "unit": "mps" }, "text": "10 m/s" },
-  { "format": { "value": 20, "unit": "kn" }, "text": "20 kn" }
+  { "format": { "value": 20, "unit": "kn" }, "text": "20 kn" },
+  { "format": { "value": 5, "unit": "fps" }, "text": "5 ft/s" }
 ]

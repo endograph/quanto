@@ -1,0 +1,13 @@
+[
+  { "parse": "hello", "value": "hello" },
+  { "parse": "  hello world  ", "value": "hello world" },
+  { "parse": "5'11\"", "value": "5'11\"" },
+  { "parse": "Ünïcödé — “as typed”", "value": "Ünïcödé — “as typed”" },
+  { "parse": "line one\nline two", "value": "line one\nline two" },
+  { "parse": "1,5", "ctx": { "locale": "de-DE" }, "value": "1,5", "context": { "locale": "de-DE" } },
+  { "parse": "", "issues": ["empty"] },
+  { "parse": "   ", "issues": ["empty"] },
+
+  { "format": "hello", "text": "hello" },
+  { "format": "“as typed”", "text": "“as typed”" }
+]

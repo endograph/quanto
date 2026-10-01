@@ -9,6 +9,8 @@
   --shade: #969696;
   --line: #e1e1dd;
   --muted: #6b6b68;
+  --field-border: #c8c8c3;
+  --danger: #b42318;
   --sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --mono: 'Berkeley Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --c: 6px;
@@ -21,6 +23,8 @@
     --shade: #5a5a58;
     --line: #2f2f2d;
     --muted: #a3a3a0;
+    --field-border: #3e3e3b;
+    --danger: #f97066;
   }
 }
 
@@ -43,8 +47,6 @@ code, .mono { font-family: var(--mono); }
 .chamfer,
 .btn::before,
 .tab[aria-selected='true']::before,
-.slab::before,
-.slab > input,
 .tag {
   clip-path: polygon(
     var(--c) 0, calc(100% - var(--c)) 0, 100% var(--c), 100% calc(100% - var(--c)),
@@ -74,20 +76,25 @@ code, .mono { font-family: var(--mono); }
 .btn:hover { transform: translate(-1px, -1px); filter: drop-shadow(4px 4px 0 var(--shade)); }
 .btn:active { transform: translate(3px, 3px); filter: drop-shadow(0 0 0 var(--shade)); }
 
-/* Inset field with an ink edge, sitting on the shadow. */
-.slab { --c: 8px; position: relative; filter: drop-shadow(5px 5px 0 var(--shade)); }
-.slab::before { content: ''; position: absolute; inset: 0; background: var(--ink); }
-.slab > input {
-  --c: 7px;
-  position: relative;
+/* A standard text field: the one input style both playground pages use. */
+.text-field {
   display: block;
-  width: calc(100% - 4px);
-  margin: 2px;
-  border: 0;
-  outline: 0;
+  width: 100%;
+  min-width: 0;
+  padding: 11px 14px;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
   background: var(--well);
-  font-family: var(--mono);
+  color: var(--ink);
+  font: 17px/1.4 var(--mono);
+  outline: 0;
+  transition: border-color 100ms, box-shadow 100ms;
 }
+.text-field::placeholder { color: var(--muted); opacity: 0.75; }
+.text-field:hover { border-color: var(--shade); }
+.text-field:focus { border-color: var(--ink); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 14%, transparent); }
+.text-field[aria-invalid='true'] { border-color: var(--danger); }
+.text-field[aria-invalid='true']:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 22%, transparent); }
 
 /* Small inverted label, used for issue codes and codec ids. */
 .tag {

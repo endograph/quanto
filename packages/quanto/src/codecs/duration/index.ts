@@ -1,3 +1,4 @@
+import { normalize } from '../../primitives/normalize';
 import { quantity, type QuantityCodec, type QuantityOptions, type UnitDefinition } from '../quantity';
 
 /**
@@ -22,6 +23,37 @@ export const durationUnits: {
 
 export type DurationUnit = keyof typeof durationUnits;
 
-/** Durations: `90 min`, `1.5 h`, `2h30m`, `1 wk 2 d`. */
-export const duration = <C extends DurationUnit = DurationUnit>(options?: QuantityOptions<DurationUnit, C>): QuantityCodec<DurationUnit, C> =>
-  quantity<typeof durationUnits, C>({ id: 'duration', units: durationUnits, ...options });
+/** Options for `duration`. */
+export interface DurationOptions<C extends DurationUnit = DurationUnit> extends QuantityOptions<DurationUnit, C> {
+  /** What two-part clock notation with no unit means: `1:30` as 1 h 30 min (`'h:mm'`, the default) or 1 min 30 s (`'m:ss'`). */
+  readonly clock?: 'h:mm' | 'm:ss' | undefined;
+}
+
+/** Clock notation: `1:30`, `1:30:15`, `1:30.5`, with an optional unit after it that says what the first part is. */
+const CLOCK = /^([-+]?)(\d+):([0-5]\d)(?::([0-5]\d))?([.,]\d+)?(?: ?([\p{L}]+)\.?)?$/u;
+const HOURS = new Set(durationUnits.h.aliases);
+const MINUTES = new Set(durationUnits.min.aliases);
+
+/**
+ * Rewrites clock notation as compound input, so it sums exactly like `1 h 30 min`: `h:mm:ss` always,
+ * and `a:b` as `h:mm` or `m:ss` by the unit after it, a fraction (`1:30.5` is m:ss), or `clock`. Other
+ * text, and clock notation with any other unit, is returned as is.
+ */
+function fromClock(text: string, clock: 'h:mm' | 'm:ss'): string {
+  const m = CLOCK.exec(normalize(text).trim());
+  if (!m) return text;
+  const [, sign, a, b, c, fraction = '', word] = m;
+  const unit = word?.toLowerCase();
+  const hours = unit !== undefined && HOURS.has(unit);
+  const minutes = unit !== undefined && MINUTES.has(unit);
+  if (unit !== undefined && !hours && !minutes) return text;
+  if (c !== undefined) return minutes ? text : `${sign}${a} h ${b} min ${c}${fraction} s`;
+  return hours || (!minutes && !fraction && clock === 'h:mm') ? `${sign}${a} h ${b}${fraction} min` : `${sign}${a} min ${b}${fraction} s`;
+}
+
+/** Durations: `90 min`, `1.5 h`, `2h30m`, `1 wk 2 d`, and clock notation: `1:30`, `1:30:15`, `1:30 min`. */
+export const duration = <C extends DurationUnit = DurationUnit>(options?: DurationOptions<C>): QuantityCodec<DurationUnit, C> => {
+  const { clock = 'h:mm', ...rest } = options ?? {};
+  const codec = quantity<typeof durationUnits, C>({ id: 'duration', units: durationUnits, ...rest });
+  return { ...codec, parse: (text, ctx) => codec.parse(fromClock(text, clock), ctx) };
+};

@@ -1,5 +1,6 @@
 [
   {"parse": "5:30 /km", "value": {"value": 330, "unit": "sPerKm"}},
+  {"parse": "5k /km", "issues": ["unknown_unit"]},
   {"parse": "5:30/km", "value": {"value": 330, "unit": "sPerKm"}},
   {"parse": "5:30 / km", "value": {"value": 330, "unit": "sPerKm"}},
   {"parse": "5:30 min/km", "value": {"value": 330, "unit": "sPerKm"}},

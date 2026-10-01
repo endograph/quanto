@@ -43,6 +43,8 @@
   {"format": {"value": 30, "unit": "mpg"}, "text": "30 mpg"},
   {"format": {"value": 40, "unit": "mpgImp"}, "text": "40 mpg (imp)"},
   {"format": {"value": 7.8, "unit": "lp100km"}, "text": "7.8 L/100km"},
+  {"format": {"value": 0.0001, "unit": "lp100km"}, "text": "0.0001 L/100km"},
+  {"format": {"value": 0.0001, "unit": "kmpl"}, "text": "0.0001 km/L"},
   {"format": {"value": 7.8, "unit": "lp100km"}, "ctx": {"locale": "de-DE"}, "text": "7,8 L/100km"},
   {"format": {"value": 7.840486111111111, "unit": "lp100km"}, "text": "7.84 L/100km"},
   {"format": {"value": 15, "unit": "kmpl"}, "text": "15 km/L"}

@@ -1,17 +1,11 @@
-import type { Codec, CodecOptions, ResolvedCtx } from '../core/types';
+import type { Codec, ResolvedCtx } from '../core/types';
 import { readNumber } from '../primitives/number';
-import { defineRange, type Range, type RangeProposal } from '../range';
+import { defineRange, numberSpan, type OpenRange, type Range, type RangeOptions, type RangeProposal } from '../range';
 import type { Money } from './types';
 
 const MAGNITUDE = /^(bn|k|m|b|t)(?![\p{L}])/iu;
 
-/** Where the first number in a side starts and ends. */
-function numberSpan(side: string, ctx: ResolvedCtx): { start: number; end: number } | undefined {
-  const start = side.search(/\d|[.,]\d/);
-  if (start < 0) return undefined;
-  const n = readNumber(side, ctx, { from: start });
-  return n ? { start, end: n.end } : undefined;
-}
+const readPlain = (text: string, ctx: ResolvedCtx, from: number) => readNumber(text, ctx, { from });
 
 /**
  * A side with no currency borrows the other side's (`$10-20`, `10-20 EUR`). A side with no magnitude
@@ -20,7 +14,7 @@ function numberSpan(side: string, ctx: ResolvedCtx): { start: number; end: numbe
  */
 function propose(left: string, right: string, ctx: ResolvedCtx): RangeProposal<Money>[] {
   const analyze = (side: string) => {
-    const span = numberSpan(side, ctx);
+    const span = numberSpan(side, ctx, readPlain);
     if (!span) return undefined;
     const prefix = side.slice(0, span.start);
     const rest = side.slice(span.end);
@@ -55,8 +49,11 @@ const inOrder = (start: Money, end: Money): boolean | undefined => (start.curren
 
 /**
  * A range of money: `$10-20`, `10-20 EUR`, `$10-20k`, `$500-1k`. A side borrows the other's currency
- * and, where that keeps the range in order, its magnitude suffix.
+ * and, where that keeps the range in order, its magnitude suffix. With `open: true`, also one bound:
+ * `$500+`, `under $20`.
  */
-export function moneyRange(codec: Codec<Money>, options?: CodecOptions<Range<Money>>): Codec<Range<Money>> {
-  return defineRange(codec, { propose, inOrder }, options);
+export function moneyRange(codec: Codec<Money>, options: RangeOptions<OpenRange<Money>> & { readonly open: true }): Codec<OpenRange<Money>>;
+export function moneyRange(codec: Codec<Money>, options?: RangeOptions<Range<Money>> & { readonly open?: false | undefined }): Codec<Range<Money>>;
+export function moneyRange(codec: Codec<Money>, options?: RangeOptions<OpenRange<Money>> | RangeOptions<Range<Money>>): Codec<OpenRange<Money>> | Codec<Range<Money>> {
+  return defineRange(codec, { propose, inOrder }, options as RangeOptions<OpenRange<Money>> & { readonly open: true });
 }

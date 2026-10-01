@@ -9,6 +9,14 @@
   },
   "dependencies": {
     "quanto": "workspace:*",
-    "quanto-datetime": "workspace:*"
+    "quanto-datetime": "workspace:*",
+    "quanto-react": "workspace:*",
+    "react": "^19",
+    "react-dom": "^19",
+    "zod": "^4"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "@types/react-dom": "^19"
   }
 }

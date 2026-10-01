@@ -49,6 +49,33 @@ You write:
 
 `defineCodec` handles the rest: empty input, running `check` and the user's `schema` (keeping its output), throwing from `format` on a malformed value, reporting the parse `context`, the `format` override and the composed `schema`. Don't reimplement any of it.
 
+## External codecs
+
+When parsing has to call out (a model, a server), use `defineExternalCodec`. It takes the same fields as `defineCodec`, but `parse` is async:
+
+```ts
+import { defineExternalCodec, type CodecOptions, type ParseOutcome } from 'quanto';
+
+interface Options extends CodecOptions<Recipe> {
+  service(text: string, init: { signal?: AbortSignal }): Promise<ParseOutcome<Recipe>>;
+}
+
+export const recipe = (options: Options) =>
+  defineExternalCodec<Recipe>({
+    id: 'recipe',
+    parse: (text, ctx) => options.service(text, { signal: ctx.signal }),
+    format: (value) => formatRecipe(value),
+    check: checkRecipe,
+    options,
+  });
+```
+
+- **The codec owns its whole parse.** `merge`, `range` and `approx` don't take an external codec, so whatever they would do (several kinds of value, ranges, `about 5`) happens in the service.
+- **Resolve with issues for bad input; reject when the service can't answer.** Never turn a network error or timeout into issues.
+- **Pass `ctx.signal`** to whatever you call. An aborted parse rejects with `signal.reason` either way.
+- **`format`, `check` and the `schema` option stay sync.**
+- **Inject the service** as an option, and ship a deterministic stub next to the fixtures (`stub.ts`). Fixtures and `roundTrip` run through a factory that passes the stub: `runFixtures((o) => recipe({ ...o, service: stub }), fixtures, { test })`.
+
 ## Quantity codecs
 
 For a number with a unit, don't write a parser: define a unit table and call `quantity()` (or extend a built-in table with an object spread).
@@ -67,6 +94,7 @@ export const horseHeight = quantity({
 - **Conversions that are neither use a function pair**, like L/100km over a km/L base: `{ toBase: (v) => 100 / v, fromBase: (b) => 100 / b, aliases: […] }`. Both functions are required, must invert each other and must be strictly monotonic; `quantity()` spot-checks this. Pick a base where bigger means more, since `compare` orders by it.
 - **The first alias is what `format` prints.** Aliases match case-insensitively, except those that differ only by case from another unit's alias (`mW` and `MW`), which match exactly as written. Adding such a unit can change what existing input means: next to megabit `Mb`, typing `mb` no longer matches megabyte `MB` unless you list `mb` as an alias of `MB`.
 - **`subunit`** makes a trailing bare number work: `ft: { …, subunit: 'in' }` reads `5'11` as 5 ft 11 in.
+- **`markers`** are words that can follow a number without naming a unit, so it reads as a bare number and takes the default unit: `quantity({ …, markers: ['°', 'degrees'] })` makes `20°` work in `temperature`. Aliases take precedence.
 - **`number`** gives a quantity its own number syntax when people don't write plain numbers: `quantity({ …, number: { read, format } })`. The built-in `pace` uses it to read `5:30` as 330 seconds. Everything else (aliases, default and canonical units, issues, conversion) still comes from `quantity()`.
 
 ## Ranges
@@ -84,7 +112,7 @@ export const percentRange = (codec = percent()) =>
   });
 ```
 
-With no rules, both sides must be written in full. `moneyRange` (`quanto/money`) and `dateRange` (`quanto-datetime`) are written the same way.
+With no rules, both sides must be written in full. Pass `{ open: true }` as the third argument to also accept one bound (`10%+`, `under 20%`), as an `OpenRange`. `moneyRange` (`quanto/money`) and `dateRange` (`quanto-datetime`) are written the same way.
 
 ## Context and primitives
 
@@ -95,8 +123,9 @@ With no rules, both sides must be written in full. `moneyRange` (`quanto/money`)
 
 Use the exported primitives rather than writing your own lexing:
 
-- **`normalize(text)`**: smart quotes, primes, Unicode fractions, odd spaces. It doesn't fold case.
-- **`readNumber(text, ctx, { from?, suffixes? })`**: reads one locale-aware number and returns `{ value, end }` or `undefined`.
+- **`normalize(text)`**: smart quotes, primes, Unicode fractions, superscript exponents (`10³` → `10^3`), odd spaces. It doesn't fold case.
+- **`readNumber(text, ctx, { from?, suffixes? })`**: reads one locale-aware number and returns `{ value, end }` or `undefined`. It also reads a product of powers (`10^3`, `2*5`), unless `suffixes` is set, and numbers in words through `ctx.grammars` and the built-in English grammar (`twenty-five`, `three quarters`). Use it rather than lexing digits yourself, and your codec reads dictated numbers too.
+- **Grammars** (`Grammar`, `NumberGrammar`) teach quanto another language. A number grammar's `read(text, from)` returns the number as plain digit text (`"1500.5"`, `"2/3"`, `"2 3/4"`) and the index past the words, or undefined, including when the words aren't one well-formed number. Apps pass grammars in `ctx.grammars`.
 - **`formatNumber(n, ctx, { maxFractionDigits? })`**: formats a number so `readNumber` reads it back.
 
 Don't use `Intl` in `parse` or default `format`: its output varies between runtimes.
@@ -120,7 +149,7 @@ Messages are English. UIs localize by `code`.
 
 - **Format should round-trip.** `parse(format(v))` should succeed and differ from `v` by no more than the formatter's rounding. That's what makes formatted text safe to edit: the component shows it in the input and pickers set `raw` from it. A display-only formatter (prose, heavy rounding) is allowed, but say so in the codec's doc comment, skip `roundTrip` for it, and don't show its output as editable text.
 - **Values are plain JSON data.** No classes, no `Date`, no `bigint`.
-- **Deterministic.** The same text and context give the same value on every runtime.
+- **Deterministic.** The same text and context give the same value on every runtime. (An external codec's service may not be; its stub must be.)
 
 ## Fixtures
 
@@ -152,5 +181,7 @@ import { percent } from './index';
 runFixtures(percent, fixtures, { test });
 roundTrip(percent(), [0, 12.5, -3, 1_234_567.89], { test });
 ```
+
+`roundTrip` checks that `parse(format(v))` gives back `v`, not just the same text, by deep equality. If your formatter rounds, say how much with `same`: `quantityWithin(codec, { places: 3 })` for a quantity printed to 3 places, or your own `(original, parsed) => boolean`.
 
 Don't write tests of plumbing (that the factory returns a codec, that options are wired). Fixtures and the typechecker cover what matters.

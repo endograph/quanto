@@ -42,6 +42,15 @@ if (result.ok) save({ raw: text, value: result.value });
 - **`result.context`** (`{ locale, now? }`): what the parse was based on. Store it separately, only if you need to replay a parse later (audits, debugging, migrations): `codec.parse(raw, context)` reproduces the value on the same versions of quanto and the package that owns the codec (`quanto-datetime` for dates).
 - **`{ raw, issues }`**: a field that didn't parse. Usually you block the submit instead of storing it. Keep it only for drafts, where the user's bad text must survive.
 
+### External codecs
+
+An external codec (`defineExternalCodec`) parses through a service: a model, a server, a worker. Its `parse` returns a Promise; `format` and `schema` are sync, as for any codec.
+
+- **Bad input resolves with `issues`; a failed service rejects.** Don't store an outage as issues: keep the text and retry when it suits you.
+- **Pass `ctx.signal`** to cancel a parse in flight. It rejects with `signal.reason`.
+- **It owns its whole parse.** `merge`, `range` and `approx` don't take one; `optional` does.
+- Store `{ raw, value }` exactly as above. In React, use `QuantoInput` or `useExternalQuanto` from `quanto-react`.
+
 ### Pass context on the server
 
 In a browser, omit `ctx.now`: the machine clock is what the user means. When parsing on a user's behalf on a server, pass the user's `locale` and `now` (with their UTC offset), or `tomorrow` resolves in the server's time zone.

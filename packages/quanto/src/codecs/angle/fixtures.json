@@ -1,5 +1,7 @@
 [
   {"parse": "45°", "value": {"value": 45, "unit": "deg"}},
+  { "parse": "90º", "value": { "value": 90, "unit": "deg" } },
+  { "parse": "90˚", "value": { "value": 90, "unit": "deg" } },
   {"parse": "45 °", "value": {"value": 45, "unit": "deg"}},
   {"parse": "45 deg", "value": {"value": 45, "unit": "deg"}},
   {"parse": "45 degrees", "value": {"value": 45, "unit": "deg"}},

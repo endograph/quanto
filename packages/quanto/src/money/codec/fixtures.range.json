@@ -1,5 +1,7 @@
 [
   { "parse": "$10-20", "value": { "start": { "minorUnits": 1000, "currency": "USD" }, "end": { "minorUnits": 2000, "currency": "USD" } } },
+  {"parse": "twenty-thirty dollars", "value": {"start": {"minorUnits": 2000, "currency": "USD"}, "end": {"minorUnits": 3000, "currency": "USD"}}},
+  {"parse": "twenty-five to thirty dollars", "value": {"start": {"minorUnits": 2500, "currency": "USD"}, "end": {"minorUnits": 3000, "currency": "USD"}}},
   { "parse": "$10 - $20", "value": { "start": { "minorUnits": 1000, "currency": "USD" }, "end": { "minorUnits": 2000, "currency": "USD" } } },
   { "parse": "$10 to $20", "value": { "start": { "minorUnits": 1000, "currency": "USD" }, "end": { "minorUnits": 2000, "currency": "USD" } } },
   { "parse": "10-20 EUR", "value": { "start": { "minorUnits": 1000, "currency": "EUR" }, "end": { "minorUnits": 2000, "currency": "EUR" } } },

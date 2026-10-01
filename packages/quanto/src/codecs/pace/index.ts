@@ -37,6 +37,8 @@ const CLOCK = /^(\d+):([0-5]\d)(?::([0-5]\d))?(?:[.,](\d+))?/;
  * locale's decimal comma where it has one.
  */
 const clockSyntax: NumberSyntax = {
+  // Clock notation has no negative form, so a negative pace fails the structural check.
+  min: 0,
   read(text, ctx, from) {
     let i = from;
     while (text[i] === ' ') i++;

@@ -4,7 +4,7 @@ These instructions are for agents working on this repository. They are not shipp
 
 ## Packages
 
-- This is a bun workspace. The core, `quanto`, is `packages/quanto`. Dates are a separate package, `quanto-datetime` (`packages/datetime`). New first-party codecs go in the core when their behaviour is complete and settled (a unit table, a small parser, or a finished domain like money), and in a dedicated package when they're intentionally incomplete or still evolving, so their parse results are expected to change between releases. The site is `apps/site`. The root is private: shared tooling and the repo docs.
+- This is a bun workspace. The core, `quanto`, is `packages/quanto`. Dates are a separate package, `quanto-datetime` (`packages/datetime`). New first-party codecs go in the core when their behaviour is complete and settled (a unit table, a small parser, or a finished domain like money), and in a dedicated package when they're intentionally incomplete or still evolving, so their parse results are expected to change between releases. The React input is `quanto-react` (`packages/react`). The site is `apps/site`. The root is private: shared tooling and the repo docs.
 - Separate packages import quanto only by name, through its public API (`quanto`, `quanto/codecs`, `quanto/quantity`, `quanto/testing`), never by relative path into `packages/quanto/src`. If it needs something that isn't public, raise it as an API question.
 - `bun run typecheck` and `bun run build` at the root cover every package.
 

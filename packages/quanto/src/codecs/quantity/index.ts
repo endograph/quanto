@@ -2,7 +2,7 @@ import { defineCodec } from '../../core/define-codec';
 import type { Codec, CodecOptions, Issue, ParseOutcome, Quantity, ResolvedCtx } from '../../core/types';
 import type { MeasurementSystem } from '../../locale';
 import { normalize } from '../../primitives/normalize';
-import { formatNumber, readNumber, type NumberMatch } from '../../primitives/number';
+import { AND_FRACTION, andFraction, formatNumber, readNumber, type NumberMatch } from '../../primitives/number';
 import { convertValue, factorOf, isLinear, sumLinear, toBaseValue, type ToBase } from './convert';
 
 export type { ToBase } from './convert';
@@ -48,11 +48,20 @@ export interface QuantityOptions<U extends string, C extends U = U> extends Code
 export interface NumberSyntax {
   read(text: string, ctx: ResolvedCtx, from: number): NumberMatch | undefined;
   format(value: number, ctx: ResolvedCtx): string;
+  /** The smallest value `format` can print readably, if there is one. Smaller values fail the structural check. */
+  readonly min?: number | undefined;
 }
+
+/**
+ * The fraction digits that show a value: 3, or for a non-zero value that would round to 0 at 3, enough
+ * to show three significant digits, so `0.0001 L/100km` doesn't print as `0 L/100km`, which means nothing.
+ */
+const fractionDigits = (value: number): number =>
+  value !== 0 && Math.abs(value) < 0.0005 ? -Math.floor(Math.log10(Math.abs(value))) + 2 : 3;
 
 const DEFAULT_SYNTAX: NumberSyntax = {
   read: (text, ctx, from) => readNumber(text, ctx, { from }),
-  format: (value, ctx) => formatNumber(value, ctx),
+  format: (value, ctx) => formatNumber(value, ctx, { maxFractionDigits: fractionDigits(value) }),
 };
 
 /** A quantity codec. It carries its unit table, which the operations in `quanto/quantity` use. */
@@ -63,7 +72,15 @@ export interface QuantityCodec<U extends string, C extends U = U> extends Codec<
 }
 
 export interface QuantityDefinition<T extends UnitTable, C extends keyof T & string> extends QuantityOptions<keyof T & string, C> {
-  /** A different number syntax, for quantities written like `5:30 /km`. Defaults to `readNumber`/`formatNumber`. */
+  /**
+   * Words that can follow a number without naming a unit, so it reads as a bare number: temperature's
+   * `°` and `degrees` (`20°` is 20 of the default unit). Matched like aliases, which take precedence.
+   */
+  readonly markers?: readonly string[] | undefined;
+  /**
+   * A different number syntax, for quantities written like `5:30 /km`. Defaults to `readNumber`/`formatNumber`.
+   * Magnitude suffixes (`2k ft`) are read only with the default syntax.
+   */
   readonly number?: NumberSyntax | undefined;
   readonly id: string;
   readonly units: T;
@@ -83,6 +100,22 @@ interface AliasEntry {
   readonly caseSensitive: boolean;
 }
 const isLetter = (c: string | undefined): boolean => c !== undefined && /\p{L}/u.test(c);
+
+/**
+ * Magnitudes on a quantity's number: the suffixes `k`, `m` and `bn`, attached, and the words `thousand`,
+ * `million` and `billion`. `t` and `b` are left out (tonnes, bytes).
+ */
+const MAGNITUDE = /^(?:(bn|k|m)| ?(thousand|million|billion))(?![\p{L}\p{N}])/iu;
+const MAGNITUDE_EXPONENT: Readonly<Record<string, number>> = { k: 3, m: 6, bn: 9, thousand: 3, million: 6, billion: 9 };
+
+/** Between the parts of compound input: `5 ft, 11 in`, `1 hour and 30 minutes`, `5 ft & 11 in`. */
+const CONNECTOR = /^(?:,|&|and(?![\p{L}\p{N}]))/iu;
+
+/** `value` × 10^`exponent`, exact in decimal: `1.1k` is 1100, not 1100.0000000000002. */
+const shift = (value: number, exponent: number): number => {
+  const [mantissa, exp = '0'] = String(value).split('e');
+  return Number(`${mantissa}e${Number(exp) + exponent}`);
+};
 
 /**
  * Builds the alias index, checking the table at definition time. Aliases match case-insensitively,
@@ -176,12 +209,13 @@ export const resolveDefaultUnit = <U extends string>(defaultUnit: DefaultUnit<U>
  * The structural check of a quantity value: a finite number, a unit in the table (the canonical unit,
  * if set), and a finite base value, so nothing passes that `parse` would reject (`0 L/100km`).
  */
-export function checkQuantity(units: UnitTable, canonicalUnit: string | undefined, value: unknown): Array<{ message: string; path?: PropertyKey[] }> {
+export function checkQuantity(units: UnitTable, canonicalUnit: string | undefined, value: unknown, min?: number): Array<{ message: string; path?: PropertyKey[] }> {
   if (typeof value !== 'object' || value === null) return [{ message: 'Expected { value, unit }.' }];
   const v = value as Record<string, unknown>;
   const problems: Array<{ message: string; path?: PropertyKey[] }> = [];
   const finite = typeof v.value === 'number' && Number.isFinite(v.value);
   if (!finite) problems.push({ message: 'Expected a finite number.', path: ['value'] });
+  else if (min !== undefined && (v.value as number) < min) problems.push({ message: `Expected a number of at least ${min}.`, path: ['value'] });
   if (typeof v.unit !== 'string' || !Object.hasOwn(units, v.unit)) {
     problems.push({ message: `Expected one of the units: ${Object.keys(units).join(', ')}.`, path: ['unit'] });
   } else if (canonicalUnit !== undefined && v.unit !== canonicalUnit) {
@@ -208,13 +242,19 @@ export function quantity<const T extends UnitTable, C extends keyof T & string =
   type U = keyof T & string;
   const { id, units, defaultUnit, canonicalUnit, schema, format } = definition;
   const number = definition.number ?? DEFAULT_SYNTAX;
+  const magnitudes = definition.number === undefined;
   const aliases = indexAliases(id, units);
+  const markers: AliasEntry[] = (definition.markers ?? []).map((m) => ({ key: foldedKey(m), unit: '', caseSensitive: false }));
+  for (const { key } of markers) {
+    if (aliases.some((a) => foldedKey(a.key) === key)) throw new Error(`quanto: marker "${key}" of codec "${id}" is also a unit alias. Remove one of them.`);
+  }
+  markers.sort((a, b) => b.key.length - a.key.length);
   assertQuantityOptions(id, units, defaultUnit, canonicalUnit);
   const exampleAlias = units[Object.keys(units)[0]!]!.aliases[0]!;
 
 
-  const matchAlias = (s: string, lower: string, at: number): { unit: string; end: number } | undefined => {
-    for (const { key, unit, caseSensitive } of aliases) {
+  const matchEntry = (entries: readonly AliasEntry[], s: string, lower: string, at: number): { unit: string; end: number } | undefined => {
+    for (const { key, unit, caseSensitive } of entries) {
       if (!(caseSensitive ? s : lower).startsWith(key, at)) continue;
       let end = at + key.length;
       if (isLetter(key[key.length - 1]) && isLetter(s[end])) continue;
@@ -223,6 +263,23 @@ export function quantity<const T extends UnitTable, C extends keyof T & string =
       return { unit, end };
     }
     return undefined;
+  };
+  const matchAlias = (s: string, lower: string, at: number): { unit: string; end: number } | undefined => matchEntry(aliases, s, lower, at);
+
+  /**
+   * A magnitude suffix on the number ending at `end`. It counts when a unit follows it (`2k ft`, `2m ft`,
+   * which can't be "2 m" then "ft"), or when it ends the text and isn't a unit itself: `2k` is 2000 of
+   * the default unit, but `2m` in a length field is 2 meters.
+   */
+  const readMagnitude = (s: string, lower: string, value: number, end: number): { value: number; end: number } | undefined => {
+    const suffix = MAGNITUDE.exec(s.slice(end));
+    if (!suffix) return undefined;
+    let next = end + suffix[0].length;
+    while (s[next] === ' ') next++;
+    const unitFollows = matchAlias(s, lower, next) !== undefined;
+    const bare = next >= s.length && matchAlias(s, lower, end) === undefined;
+    if (!unitFollows && !bare) return undefined;
+    return { value: shift(value, MAGNITUDE_EXPONENT[(suffix[1] ?? suffix[2])!.toLowerCase()]!), end: next };
   };
 
   const unparseable = (text: string): ParseOutcome<Quantity<C>> => ({
@@ -234,19 +291,56 @@ export function quantity<const T extends UnitTable, C extends keyof T & string =
     const s = normalize(text);
     const lower = s.toLowerCase();
     const components: Component[] = [];
+    let scaled = false;
     let pos = 0;
+    // Whether the text starts with a minus, which readNumber drops from -0: "-0 ft 6 in" is -6 in.
+    const minus = /^ *-/.test(s);
     while (pos < s.length) {
       while (s[pos] === ' ') pos++;
       if (pos >= s.length) break;
-      if (components.length > 0 && (s[pos] === '-' || s[pos] === '+')) return unparseable(text);
-      const n = number.read(s, ctx, pos);
+      // "an hour and a half", "2 miles and a quarter": a fraction of the one unit written.
+      const fraction = components.length === 1 && components[0]!.unit !== undefined ? AND_FRACTION.exec(s.slice(pos)) : null;
+      if (fraction) {
+        const { value, unit } = components[0]!;
+        components[0] = { value: value + (value < 0 ? -1 : 1) / andFraction(fraction), unit };
+        pos += fraction[0].length;
+        while (s[pos] === ' ') pos++;
+        if (pos < s.length) return unparseable(text);
+        break;
+      }
+      if (components.length > 0) {
+        // A connector goes between two parts with units: "5 ft, 11 in", not "5, 11" or a trailing "5 ft,".
+        const connector = CONNECTOR.exec(s.slice(pos));
+        if (connector) {
+          if (components[components.length - 1]!.unit === undefined) return unparseable(text);
+          pos += connector[0].length;
+          while (s[pos] === ' ') pos++;
+          if (pos >= s.length) return unparseable(text);
+        }
+        if (s[pos] === '-' || s[pos] === '+') return unparseable(text);
+      }
+      let n = number.read(s, ctx, pos);
       if (!n) return unparseable(text);
+      // Only the first number takes a magnitude suffix, and then it must stand alone: "2k ft 6 in" is rejected.
+      // An expression doesn't: "2*3k ft" would leave it unclear what the k applies to.
+      const expression = /[\^*×·⋅]/.test(s.slice(pos, n.end));
+      const magnitude = magnitudes && components.length === 0 && !expression ? readMagnitude(s, lower, n.value, n.end) : undefined;
+      if (magnitude) {
+        n = magnitude;
+        scaled = true;
+      }
       pos = n.end;
       while (s[pos] === ' ') pos++;
       const match = matchAlias(s, lower, pos);
       if (match) {
         components.push({ value: n.value, unit: match.unit });
         pos = match.end;
+        continue;
+      }
+      const marker = matchEntry(markers, s, lower, pos);
+      if (marker) {
+        components.push({ value: n.value, unit: undefined });
+        pos = marker.end;
         continue;
       }
       if (pos < s.length) {
@@ -258,7 +352,7 @@ export function quantity<const T extends UnitTable, C extends keyof T & string =
       }
       components.push({ value: n.value, unit: undefined });
     }
-    if (components.length === 0) return unparseable(text);
+    if (components.length === 0 || (scaled && components.length > 1)) return unparseable(text);
 
     // Resolve a trailing bare number: the default unit when alone, the previous unit's subunit otherwise.
     const resolved: Array<{ value: number; unit: string }> = [];
@@ -293,8 +387,8 @@ export function quantity<const T extends UnitTable, C extends keyof T & string =
     } else {
       // Summed into the smallest unit (the last), or straight into a linear canonicalUnit.
       unit = canonicalUnit !== undefined && isLinear(units[canonicalUnit]!.toBase) ? canonicalUnit : resolved[resolved.length - 1]!.unit;
-      // The first component's sign applies to the whole: "-5 ft 6 in" is -66 in.
-      const sign = first.value < 0 ? -1 : 1;
+      // The first component's sign applies to the whole: "-5 ft 6 in" is -66 in, "-0 ft 6 in" -6 in.
+      const sign = first.value < 0 || (first.value === 0 && minus) ? -1 : 1;
       value = sumLinear(
         resolved.map((c, i) => ({ value: i === 0 ? c.value : sign * c.value, factor: factorOf(units[c.unit]!.toBase) })),
         factorOf(units[unit]!.toBase),
@@ -315,7 +409,7 @@ export function quantity<const T extends UnitTable, C extends keyof T & string =
     return { ok: true, value: { value: value === 0 ? 0 : value, unit: target as C } };
   };
 
-  const check = (value: unknown): Array<{ message: string; path?: PropertyKey[] }> => checkQuantity(units, canonicalUnit, value);
+  const check = (value: unknown): Array<{ message: string; path?: PropertyKey[] }> => checkQuantity(units, canonicalUnit, value, number.min);
 
   const defaultFormat = (value: Quantity<C>, ctx: ResolvedCtx): string => {
     const alias = units[value.unit]!.aliases[0]!;

@@ -7,6 +7,7 @@ import { quantity, type QuantityCodec, type QuantityOptions, type UnitDefinition
 export const volumeUnits: {
   readonly ml: UnitDefinition;
   readonly cl: UnitDefinition;
+  readonly dl: UnitDefinition;
   readonly l: UnitDefinition;
   readonly m3: UnitDefinition;
   readonly tsp: UnitDefinition;
@@ -17,8 +18,9 @@ export const volumeUnits: {
   readonly qt: UnitDefinition;
   readonly gal: UnitDefinition;
 } = {
-  ml: { toBase: 0.001, aliases: ['ml', 'milliliter', 'milliliters', 'millilitre', 'millilitres'] },
+  ml: { toBase: 0.001, aliases: ['ml', 'milliliter', 'milliliters', 'millilitre', 'millilitres', 'cc', 'cm³'] },
   cl: { toBase: 0.01, aliases: ['cl', 'centiliter', 'centiliters', 'centilitre', 'centilitres'] },
+  dl: { toBase: 0.1, aliases: ['dl', 'deciliter', 'deciliters', 'decilitre', 'decilitres'] },
   l: { toBase: 1, aliases: ['l', 'liter', 'liters', 'litre', 'litres', 'ltr'] },
   m3: { toBase: 1000, aliases: ['m³', 'cubic meter', 'cubic meters', 'cubic metre', 'cubic metres'] },
   tsp: { toBase: 0.00492892159375, aliases: ['tsp', 'teaspoon', 'teaspoons'] },

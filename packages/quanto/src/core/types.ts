@@ -29,6 +29,30 @@ export interface Codec<T> {
 }
 
 /**
+ * A codec whose parse happens outside the field: a model, a server, a worker. Build one with
+ * `defineExternalCodec`. Only `parse` is async; `format` and `schema` are sync, like every codec's.
+ *
+ * An external codec owns its whole parse, so `merge`, `range` and `approx` don't take one: do that
+ * inside the service. `optional` does, since it never parses.
+ */
+export interface ExternalCodec<T> {
+  /** Marks the codec as external, for code that accepts either kind. */
+  readonly external: true;
+  /** Identifies the codec, e.g. `'recipe-yield'`. */
+  readonly id: string;
+  /**
+   * Parses text a person typed. Resolves with `issues` for bad input, like any codec. Rejects when the
+   * service can't answer (network error, rate limit, timeout), and with `ctx.signal.reason` when
+   * aborted: an outage isn't the user's mistake, so it never becomes issues. Retrying is up to you.
+   */
+  parse(text: string, ctx?: Ctx): Promise<ParseResult<T>>;
+  /** Formats a value for display. Sync, and throws on a malformed value, like `Codec.format`. */
+  format(value: T, ctx?: Ctx): string;
+  /** Validates a structured `T`, like `Codec.schema`. Servers validate stored values with it. */
+  readonly schema: StandardSchemaV1<T, T>;
+}
+
+/**
  * The result of `codec.parse`.
  *
  * On success, store `{ raw, value }`. `context` is optional extra: keep it separately, and only if
@@ -54,6 +78,47 @@ export interface Ctx {
   readonly locale?: string | undefined;
   /** RFC 3339 timestamp with a UTC offset. Missing → the machine's clock and local offset. */
   readonly now?: string | undefined;
+  /**
+   * Grammars for other languages, tried before the built-in English one. Opt-in, so an app's fields
+   * change only when it passes a different set. Not recorded in `ParseContext`: pass the same
+   * grammars to replay a parse.
+   */
+  readonly grammars?: readonly Grammar[] | undefined;
+  /**
+   * Cancels an external codec's parse in flight, which then rejects with `signal.reason`. Sync codecs
+   * ignore it. Not recorded in `ParseContext`.
+   */
+  readonly signal?: Signal | undefined;
+}
+
+/**
+ * The platform's `AbortSignal` wherever it's declared (DOM or Node types), and otherwise the part of it
+ * quanto reads, so the core needs neither.
+ */
+export type Signal = typeof globalThis extends { readonly AbortSignal: { readonly prototype: infer S } }
+  ? S
+  : { readonly aborted: boolean; readonly reason: unknown };
+
+/**
+ * The way one language writes things codecs read. Each part is optional, and each codec uses the parts
+ * it knows: `numbers` is read wherever a number is (`readNumber`, money). English is built in.
+ */
+export interface Grammar {
+  /** The language, as a BCP 47 language subtag (`de`). */
+  readonly language: string;
+  readonly numbers?: NumberGrammar | undefined;
+}
+
+/** Reads numbers written in words: `fünfundzwanzig`, `vingt-cinq`. */
+export interface NumberGrammar {
+  /**
+   * Reads a number in words starting at `from` (normalized text, original case; leading spaces skipped
+   * by the caller). Returns the number as plain digit text, which quanto reads exactly: an integer or
+   * decimal with a `.` (`-1500.5`), a fraction (`2/3`), or a whole number and a fraction (`2 3/4`). And
+   * `end`, the index just past the words. Returns undefined if there's no number there, and should also
+   * when the words don't form one number (`two fifty`), so nothing is guessed.
+   */
+  read(text: string, from: number): { readonly text: string; readonly end: number } | undefined;
 }
 
 /**
@@ -79,6 +144,10 @@ export interface ResolvedCtx {
    * through this: it records `now` in the result's `context`.
    */
   now(): string;
+  /** `ctx.grammars`, or none. */
+  readonly grammars: readonly Grammar[];
+  /** `ctx.signal`: an external codec passes it to whatever it calls. */
+  readonly signal?: Signal | undefined;
 }
 
 export type IssueCode =
@@ -113,7 +182,7 @@ export type QuantoValue<T> = { readonly raw: string; readonly value: T } | { rea
 /** Options every codec factory accepts. Codec-specific options extend it. */
 export interface CodecOptions<T> {
   /**
-   * A synchronous Standard Schema from `T` to `T`. `parse` runs it and keeps its output, so it may
+   * A synchronous Standard Schema from `T` to `T`, for every codec, external ones included. `parse` runs it and keeps its output, so it may
    * normalize as well as validate. Transforms must be idempotent: the schema runs again on values
    * that already went through it.
    */

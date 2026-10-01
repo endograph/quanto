@@ -39,12 +39,13 @@ interface Codec<T> {
 }
 
 type ParseResult<T> =
-  | { ok: true; value: T; context: ParseContext; alternatives?: T[] }  // alternatives: set only by merge()
-  | { ok: false; issues: Issue[] };
+  | { ok: true; value: T; context: ParseContext; alternatives?: T[] }
+  | { ok: false; issues: Issue[]; alternatives?: T[] };  // alternatives: other readings of the text; see Alternatives
 
 type Ctx = {
   locale?: string;  // BCP 47. Missing → en-US. See Locales.
   now?: string;     // RFC 3339 timestamp with a UTC offset. Missing → the machine's clock and local offset.
+  grammars?: Grammar[];  // other languages' grammars, tried before the built-in English. See Grammars.
 };
 
 // The context a parse was based on, whether passed in or inferred.
@@ -58,8 +59,8 @@ type ParseContext = {
 
 - **`parse` never throws** on bad input. Every failure is a `ParseResult` with issues. Programmer errors throw, with a message that says what is wrong and what to do about it. Almost all are raised by factory functions at definition time (unknown unit, alias collisions, a malformed `id`…). Two can only surface when parse runs: an async `schema` (see below), and a custom codec whose `parse` returns a value its own `check` rejects.
 - **`format` throws on a malformed value**, one that fails the codec's structural check (a unit not in the table, a non-finite number, a malformed date string). That is a programmer error, like an operation given a mismatched currency. `format` doesn't run the user's `schema`, so a stored value that a later, stricter schema rejects still displays.
-- **`formatWithFallback(codec, value, fallback, ctx?)`** is for displaying data that may be malformed (legacy rows, a unit since removed from the table). It returns `fallback` where `format` would throw on a malformed value. Any other error, such as a bug in a formatter, still throws, so the fallback never hides bugs. `value` is typed `unknown`, since the point is untrusted data.
-- **`parse` and `format` are synchronous** in v1. Async codecs are planned for v2 as a separate, additive interface (see [Async codecs (v2)](#async-codecs-v2)); the sync `Codec` interface will not change.
+- **`formatWithFallback(codec, value, fallback, ctx?)`** is for displaying data that may be malformed (legacy rows, a unit since removed from the table). It returns `fallback` where `format` would throw on a malformed value. `isInvalidValueError(error)` tells that error apart for callers that handle it themselves. Any other error, such as a bug in a formatter, still throws, so the fallback never hides bugs. `value` is typed `unknown`, since the point is untrusted data.
+- **`parse` and `format` are synchronous.** Parsing that has to call out (a model, a server) uses a separate interface, external codecs, with an async `parse` and the same sync `format` and `schema` (see [External codecs](#external-codecs)); `Codec` will not change.
 - **Round-trip.** A formatter round-trips when `parse(format(v))` succeeds and differs from `v` by no more than the formatter's rounding. Formatting is the only place precision is lost.
   - **Built-in default formatters must round-trip.** That matters wherever formatted text becomes editable `raw`: a picker or `defaultValue` sets `raw = format(value)`, and formatted display shows text the user then edits. A formatter that doesn't round-trip turns one keystroke and a blur into a silently changed value (`1.83 m` shown as `2 m`, re-parsed as 2 m).
   - **Custom formatters should round-trip**, whether a custom codec's default or a `format` option. Display-only formatters (prose, heavy rounding) are allowed. A field using one must not show formatted text as editable (use `display="raw"` in the component) and must not set `raw` from it.
@@ -102,7 +103,7 @@ The author supplies:
 | Field | Meaning |
 |---|---|
 | `id` | Letters, digits, `_`, `-` and `.`. Parentheses and commas are reserved for derived ids (see [Merging codecs](#merging-codecs)). |
-| `parse(text, ctx)` | Returns `ParseOutcome<T>`: `{ ok: true; value } \| { ok: false; issues }`. No `context`, no `alternatives`. |
+| `parse(text, ctx)` | Returns `ParseOutcome<T>`: `{ ok: true; value; alternatives? } \| { ok: false; issues; alternatives? }`. No `context`. |
 | `format(value, ctx)` | The default formatter. |
 | `check(value: unknown)` | The structural check: returns `{ message, path? }[]`, empty when `value` is a well-formed `T`. |
 | `options?` | The caller's `CodecOptions<T>`, passed through. |
@@ -113,6 +114,7 @@ The author supplies:
 - Resolves `ctx` into a `ResolvedCtx` (below) and passes it to `parse` and `format`.
 - Runs `check` on the parsed value. A failure is a bug in the codec, so it throws.
 - Runs `options.schema` and keeps its output as the value. Its issues are wrapped with `code: 'invalid'`; a Promise throws.
+- Runs `check` and `options.schema` on each alternative the same way, keeping the schema's output. A `check` failure throws; an alternative the schema rejects is dropped, since it can't be chosen.
 - Attaches `context` to a successful result.
 - Uses `options.format` in place of the author's `format` when given.
 - Runs `check` before formatting, and throws quanto's invalid-value error when it fails. That is the error `formatWithFallback` catches.
@@ -123,6 +125,7 @@ interface ResolvedCtx {
   locale: Locale;  // the resolved bundled data for ctx.locale; see Locales
   now(): string;   // ctx.now, or the machine's clock and local offset.
                    // Calling it records `now` in the result's context.
+  grammars: Grammar[];  // ctx.grammars, or none
 }
 ```
 
@@ -132,8 +135,8 @@ Reading the clock through `ctx.now()` is what keeps `context` accurate without a
 
 The lexing built-ins use is exported from `quanto`, so custom codecs get the same locale behaviour and the same determinism:
 
-- **`normalize(text)`**: the input normalization described under [Locale-aware number parsing](#locale-aware-number-parsing): quotes and primes, Unicode fractions (`5½` → `5 1/2`), NFKC (so full-width digits read as digits), the Unicode minus sign, and runs of any whitespace to one space. It doesn't fold case or trim.
-- **`readNumber(text, ctx, { from?, suffixes? })`**: reads one number starting at `from` (default 0, leading spaces skipped) using the locale rules, and returns `{ value, end }` or `undefined`. It accepts a leading `-` or `+`; whether negatives make sense is the codec's call. `suffixes: true` accepts `k`, `m`, `b`/`bn` and `t`, attached to the number and case-insensitive. When the locale's reading of an ambiguous separator gives invalid grouping, the other reading is used (`1234,567` in en-US is 1234.567).
+- **`normalize(text)`**: the input normalization described under [Locale-aware number parsing](#locale-aware-number-parsing): quotes and primes, Unicode fractions (`5½` → `5 1/2`, and typeset `1¹⁄₂` → `1 1/2`), superscript exponents on a number (`10³` → `10^3`), NFKC (so full-width digits read as digits), the Unicode minus sign, and runs of any whitespace to one space. It doesn't fold case or trim.
+- **`readNumber(text, ctx, { from?, suffixes? })`**: reads one number starting at `from` (default 0, leading spaces skipped) using the locale rules, and returns `{ value, end }` or `undefined`. It accepts a leading `-` or `+`; whether negatives make sense is the codec's call. `suffixes: true` accepts `k`, `m`, `b`/`bn` and `t`, attached to the number and case-insensitive. Without `suffixes`, it reads a product of powers (`10^3`, `2*5`, `6.02×10^23`); see [Locale-aware number parsing](#locale-aware-number-parsing). When the locale's reading of an ambiguous separator gives invalid grouping, the other reading is used (`1234,567` in en-US is 1234.567).
 - **`formatNumber(n, ctx, { maxFractionDigits?, minFractionDigits? })`**: formats with the region's bundled separators and grouping, so the result reads back with `readNumber`. Defaults: at most 3 fraction digits, at least 0; rounding is half away from zero, on the number's shortest decimal representation (`1.005` → `1.01` at two digits). Space and apostrophe grouping print as plain ` ` and `'`.
 - **`ctx.locale`**: the resolved language and region, the number separators and grouping, and the measurement system, for codecs that need them directly.
 - **`lookupRegional(locale, regions, exceptions?)`**: looks up a codec's own region-keyed data (the `language-region` row if there is one, otherwise the region's), so every codec resolves a locale the same way. `quanto/money` uses it for currencies, `quanto-datetime` for date orders and clocks, and custom codecs for their own tables.
@@ -157,8 +160,34 @@ if (result.ok) {
 height.parse(raw, storedContext);            // the same value, on the same package versions
 ```
 
-- `ParseContext` is assignable to `Ctx`, so replay needs no merging.
+- `ParseContext` is assignable to `Ctx`, so replay needs no merging. It doesn't record `grammars`, which are code, not data: replay passes the same grammars alongside it.
 - Replay is exact on the same versions of `quanto` and of the package that owns the codec: a date's result depends on `quanto-datetime` as well as the core. A later version of either can differ where its parser or bundled data changed, which is exactly what a migration wants to detect. `context` doesn't record versions; apps that need exact replay keep their dependency versions alongside (a lockfile in their history is usually enough).
+
+### Grammars
+
+A **grammar** is how one language writes the things codecs read. English is built in and always on; other languages are opt-in, passed in `ctx`:
+
+```ts
+const ctx = { locale: 'de-DE', grammars: [de] };
+length().parse('fünfundzwanzig m', ctx);   // 25 m; "twenty-five m" still reads too
+```
+
+```ts
+interface Grammar {
+  language: string;          // BCP 47 language subtag: 'de'
+  numbers?: NumberGrammar;   // numbers in words
+}
+interface NumberGrammar {
+  // A number in words at `from`, as plain digit text ("1500.5", "2/3", "2 3/4") and the index past the words.
+  read(text: string, from: number): { text: string; end: number } | undefined;
+}
+```
+
+- **Open-ended by design.** Every part of a grammar is optional, and each codec uses the parts it knows. `numbers` is the first; others (unit words, relative dates) can be added as new optional parts without changing the API.
+- **A grammar returns digits, not a number.** quanto reads the digit text with its own exact lexer, so money stays exact and thirds stay fractions, and a grammar can't produce a value quanto couldn't read from digits. Text that isn't plain digit text throws, naming the grammar.
+- **A grammar reads one well-formed number or nothing.** It should return undefined for words that don't form one number (`two fifty`), so nothing is guessed.
+- **In `ctx`, not on each codec**, unlike month names: number words matter to every codec, and `ctx` reaches through `merge`, `range` and `approx`, and through the React provider, so an app sets them once. Being opt-in keeps the rule that a field changes only when the app passes something different.
+- `ctx.grammars` are tried in order, then English; the first that reads a number wins.
 
 ### Issues
 
@@ -173,6 +202,7 @@ type IssueCode =
   | 'missing_currency'  // bare number and the codec has no defaultCurrency
   | 'unknown_currency'  // a currency was written but isn't known ("12 XYZ", "12 bananas")
   | 'excess_precision'  // "$3.459" for a two-decimal currency
+  | 'ambiguous'         // the text reads several ways and the codec won't choose; see Alternatives
   | 'invalid';          // the user's schema rejected the value (or, server-side, the codec's structural check did)
 
 type Issue = {
@@ -194,7 +224,7 @@ type Issue = {
 
 Both are reported as Standard Schema–shaped issues, so a UI renders them the same way. quanto has no constraint API of its own: no `min`, no `max`, no chaining.
 
-`schema` must be synchronous in v1. Standard Schema has no async flag, so an async schema can't be detected at definition time: if its `validate()` returns a Promise, `parse` throws, saying that async schemas arrive with async codecs in v2.
+`schema` must be synchronous, for every codec, external ones included: quanto has no async validation, and checks that need a server belong to the app after commit. Standard Schema has no async flag, so an async schema can't be detected at definition time: if its `validate()` returns a Promise, `parse` throws.
 
 ### Empty input and optional fields
 
@@ -205,7 +235,39 @@ const maybeHeight = optional(length({ defaultUnit: 'in' }));
 maybeHeight.parse('');   // { ok: true, value: null }
 ```
 
-`optional` is a wrapper, like `range`. It keeps the inner codec's `id`. Its value type is `T | null` and its `schema` accepts `null`.
+`optional` is a wrapper, like `range`. It keeps the inner codec's `id`. Its value type is `T | null` and its `schema` accepts `null`. It is the one wrapper that also takes an external codec, since it never parses (see [External codecs](#external-codecs)).
+
+### Approximate values
+
+```ts
+const height = approx(length({ defaultUnit: 'ft' }));
+height.parse('about 6 ft');   // { ok: true, value: { value: { value: 6, unit: 'ft' }, approximate: true } }
+height.parse('6 ft');         // approximate: false
+```
+
+- `approx(codec, options?)` is a wrapper whose value is `{ value: T; approximate: boolean }`, so the inner codec and its values are untouched, and only fields that want the distinction pay for it.
+- Markers: `~`, `∼`, `≈`, `about`, `around`, `approx.`, `approximately`, `roughly`, `circa`, `ca.` before the value; `or so` and `-ish`/`ish` after it (`5 ft-ish`, `5ish`), or `-ish` on the number (`10-ish minutes`). At most one before and one after; anything else goes to the inner codec, which rejects it.
+- Text without a marker parses as `approximate: false`. Formatting prefixes `~` when approximate (`~5 ft`). The id is `approx(<inner id>)`; the inner codec's alternatives are wrapped too.
+- It composes over ranges: `approx(range(length()))` reads `about 5-7 ft`. `5+` isn't an approximation: it's an open range.
+
+### Alternatives
+
+Status: designed, not built. Today only `merge` sets `alternatives`, and only on success.
+
+An **alternative** is another reading of the text as typed: a whole value, not a guess at what the text might grow into (that's a completion; see [Completions](#completions)). Any codec can report them, on either branch:
+
+```ts
+postalCode().parse('90210');
+// { ok: false, issues: [{ code: 'ambiguous', … }],
+//   alternatives: [{ country: 'US', code: '90210' }, { country: 'DE', code: '90210' }, { country: 'FR', code: '90210' }] }
+```
+
+- **On success**, the codec chose and is saying what else it could have meant: merge's later codecs, or a codec's own second reading.
+- **On failure**, with an `ambiguous` issue, the codec won't choose: the readings are equally good, and picking one would be a silent guess. The person chooses.
+- **Choosing one** replaces `value` and keeps `raw`, on either branch: `raw` is still what was typed, and the alternative is a reading of it. It commits without parsing again.
+- Alternatives are values, so they go through the codec's `check` and schema like the value (see [Defining a codec](#defining-a-codec)), and they are a parse-time hint: never stored. A failed commit stores `{ raw, issues }`; choosing an alternative afterwards stores `{ raw, value }`.
+- Alternatives are plain `T`s, JSON-safe and compared by fixtures. Candidates that are only labels until fetched are completions, which only external codecs have.
+- **Wrappers:** `merge` tags them (below); `approx` and `optional` wrap them; `range` and `defineRange` don't report their sides' alternatives, since a range already chooses between readings by its completion rules.
 
 ### Merging codecs
 
@@ -215,13 +277,13 @@ const heightOrWeight = merge([length(), mass()]);
 
 - Takes an array of codecs. Earlier codecs win: the first whose `parse` succeeds provides the value. The order therefore also decides what bare input means.
 - The result is tagged by `id`: `{ codec: 'length', value: … } | { codec: 'mass', value: … }`. `format` dispatches on the tag.
-- **Alternatives are reported.** A successful `ParseResult` also carries `alternatives`: the tagged values from every later codec that also parsed, in codec order. `1m` under `merge([length(), duration()])` returns length as `value` and duration in `alternatives`, so a UI can offer a chooser instead of guessing silently. Alternatives are a parse-time hint, not part of the value, and are never stored. Choosing one replaces `value` and keeps `raw`.
-- **Failures report everything.** If every codec fails, the result carries all of their issues, in codec order, each with `codec` set to the id that reported it.
+- **Alternatives are reported.** A successful `ParseResult` also carries `alternatives`, tagged: the winning codec's own alternatives first, then the values from every later codec that also parsed, in codec order. `1m` under `merge([length(), duration()])` returns length as `value` and duration in `alternatives`, so a UI can offer a chooser instead of guessing silently. See [Alternatives](#alternatives).
+- **Failures report everything.** If every codec fails, the result carries all of their issues, in codec order, each with `codec` set to the id that reported it, and all of their alternatives, tagged, in the same order.
 - Two codecs with the same `id` are a definition-time error.
 - **Its `id` is derived**, so it is deterministic: `merge(length,mass)`, from the inner ids in order. Nested merges flatten: `merge([merge([a, b]), c])` is the same codec as `merge([a, b, c])`, and tags are always leaf ids. Custom ids can't contain parentheses or commas, so derived ids never collide with them.
 - **Empty input** is one `empty` issue, not one per codec.
 - **`context`** combines the contexts of the codecs that parsed: the locale, and `now` if any of them read the clock.
-- **One clock per parse.** Without `ctx.now`, the first member to read the machine clock pins that reading: later members get it as `ctx.now`, so they all agree. `defineRange` does the same across both sides and every completion, so `today-tomorrow` can't straddle midnight.
+- **One clock per parse.** Without `ctx.now`, the first member to read the machine clock pins that reading: later members get it as `ctx.now`, so they all agree. `defineRange` does the same across both sides, so `today-tomorrow` can't straddle midnight. Completion doesn't read the clock at all (see Ranges).
 - **Types:** the value is `Tagged<T> = { codec: string; value: T }`, where `T` is the union of the leaf codecs' value types. Codec ids are plain strings at the type level, so narrowing on `codec` doesn't narrow `value`; check the value's shape or cast after checking the tag. The merged codec exposes its leaf codecs as `codecs`.
 - Merge is expected to be uncommon. Custom codecs are the primary extension mechanism.
 
@@ -300,7 +362,7 @@ compare(len, a, b);      // -1 | 0 | 1
 - **Arithmetic is left to apps.** Whether adding two values means anything is a domain question (`300 K + 5 K`, `30 mpg + 40 mpg`, an absolute temperature plus a difference), and the app knows its domain. With `convert` it's one line: `{ value: a.value + convert(len, b, a.unit).value, unit: a.unit }`.
 
 - A value whose unit isn't in the codec's table is a type error, and throws at runtime (covering untyped JSON).
-- **`compare` uses a relative tolerance** of `1e-9` on base-unit values. Five feet and sixty inches differ by an ulp after conversion; without tolerance they would compare unequal. It orders values in the base unit: with a base where bigger means more, bigger compares greater.
+- **`compare` uses a relative tolerance** of `1e-9` on base-unit values. Five feet and sixty inches differ by an ulp after conversion; without tolerance they would compare unequal. It orders values in the base unit: with a base where bigger means more, bigger compares greater. Like `convert`, it throws on a value with no finite base value (`0 L/100km`), which would otherwise compare equal to everything.
 - Values aren't tied to the codec that parsed them. A `height` value and a `roadDistance` value are both lengths, and any codec whose table contains both units can convert and compare them. The results of operations are not re-validated against any codec's schema.
 - Out of scope: dimensional algebra (length ÷ time = speed, compound SI units).
 
@@ -317,25 +379,35 @@ const height = length({
 
 - **`defaultUnit`** is required to accept bare numbers. Without it, `70` yields a `missing_unit` issue; this is the only way to express "a unit is required".
 - **Locale-dependent defaults** are an explicit opt-in: pass a table keyed by measurement system, e.g. `defaultUnit: { us: 'in', uk: 'in', metric: 'cm' }`. The system comes from the locale's region (see [Locales](#locales)). Because the table lives on the codec, height and road distance can default differently.
-- **`number`** (on `quantity()`'s definition, not a user option) replaces how numbers are read and printed, for quantities with their own number syntax. It's `{ read(text, ctx, from), format(value, ctx) }`, with `read` returning `{ value, end }` like `readNumber`, in the unit's own terms, and `format` printing something `read` reads back. It's used for every number in the input, including compound input and the `missing_unit` example, and the codec exposes it as `codec.number` so range completion can find each side's number. `pace` is the built-in user (`5:30` is 330 seconds).
+- **`number`** (on `quantity()`'s definition, not a user option) replaces how numbers are read and printed, for quantities with their own number syntax. It's `{ read(text, ctx, from), format(value, ctx) }`, with `read` returning `{ value, end }` like `readNumber`, in the unit's own terms, and `format` printing something `read` reads back. An optional `min` is the smallest value `format` can print; smaller values fail the structural check, so `format` never prints text `read` rejects. It's used for every number in the input, including compound input and the `missing_unit` example, and the codec exposes it as `codec.number` so range completion can find each side's number. `pace` is the built-in user (`5:30` is 330 seconds).
 - **`canonicalUnit`** narrows the value type to that unit (`Quantity<'in'>`) and turns unit-aware constraints into plain number checks that any validator can express. It is the recommended way to validate quantities.
 - Without `canonicalUnit`, cross-unit constraints are written as refinements that use quanto's math, e.g. `.refine((h) => compare(len, h, { value: 8, unit: 'ft' }) <= 0)`.
 - **Compound input** (`5'11"`, `5 ft 11 in`, `1 lb 4 oz`, `2h30m`) is summed into the **smallest** unit mentioned (71 in, 20 oz, 150 min), or into `canonicalUnit` if set. The smallest unit usually gives an exact integer, and it's what `canonicalUnit` users expect.
   - Components go from larger to smaller units, without repeats; `11 in 5 ft` is unparseable. Only linear units compound.
-  - Only the first component carries a sign, and it applies to the whole: `-5 ft 6 in` is -66 in.
+  - Only the first component carries a sign, and it applies to the whole: `-5 ft 6 in` is -66 in. That includes a minus on a zero first component: `-0 ft 6 in` is -6 in.
   - A trailing bare number takes the previous unit's `subunit`; without one it's unparseable.
+  - Parts can be joined by `,`, `and` or `&` (`5 feet, 11 inches`, `1 hour and 30 minutes`), but only after a part with a unit: `5 ft,` and `5, 11` are unparseable.
   - Conversions scale decimal factors to integers before dividing, so `5 ft 11 in` is exactly 71 in and 1 in is exactly 25.4 mm. Factors are taken as the decimals they're written as; when the scaled integers would pass 2^53 (`hp`'s 745.69987158227022), conversion falls back to plain division, accurate to float precision.
+- **Magnitude suffixes**: the first number can carry `k`, `m` or `bn`, attached and case-insensitive (`2k ft`, `2M lbs`, `1.5k km`), or the words `thousand`, `million` or `billion` (`2 million ft`), which follow the same rules. `t` and `b` are left out: they're tonnes and bytes, and nobody types trillions of feet. The suffix's value is exact in decimal (`1.1k` is 1100).
+  - **A unit follows**: it's a magnitude. This is never ambiguous, since a unit must be followed by a number, so `2m ft` can only be 2,000,000 ft.
+  - **Bare** (`2k`, `2M`): if the letter is one of the codec's own aliases, the unit wins: `2M` in a length field is 2 meters, `2t` in mass is 2 tonnes, `2m` in duration is 2 minutes. Otherwise it's a magnitude of the `defaultUnit` (`2M` in a mass field defaulting to lb is 2,000,000 lb), and without one it's `missing_unit`.
+  - A suffixed number can't start compound input (`2k ft 6 in` is unparseable), and later components never take a suffix.
+  - Only the default number syntax reads suffixes; a codec with its own `number` (like `pace`) doesn't. Formatting never prints them.
+- **`markers`** (on `quantity()`'s definition) are words that can follow a number without naming a unit, so it reads as a bare number. `temperature` uses them: `20°`, `20 deg` and `20 degrees` take the `defaultUnit` (`72°` is °F in en-US with `{ us: 'F', uk: 'C', metric: 'C' }`), and are `missing_unit` without one. Aliases take precedence (`20°C`, `20 degrees F`), and a marker that's also an alias is a definition-time error.
 - **Unit matching**: the longest alias wins (`miles` before `mi` before `m`), aliases may contain spaces and `/` (`fl oz`, `km/h`), and a word alias can't run into a following letter (`5 ms` is not `5 m` + `s`). A period after a word alias is skipped (`5 ft. 11 in.`). A word that matches no alias, alone or after a slash (`70 kg` in a length field, `5:30 /yd` for pace), is `unknown_unit`; anything else left over is `unparseable`.
-- Default formatting prints at most 3 fraction digits, then the unit's first alias, separated by a space unless the alias is `'`, `"` or `°` (`45°`, `30'`).
-- Built-in quantity codecs in `quanto/codecs`: `length`, `mass`, `duration`, `temperature`, `volume`, `area`, `speed` (its own unit table, not derived), `dataSize`, `dataRate`, `energy`, `power`, `pressure`, `angle`, `frequency`, `fuelEconomy` and `pace`, each exported alongside its unit table (`lengthUnits`, …). The core also has `percent`. Money and dates are in their own packages.
-- `percent` is a plain number in percentage points (`12.5`, not `0.125`): a bare number, or one followed by `%`, `percent`, `per cent` or `pct`. A bare fraction (`3/4`) is unparseable, since it could mean 75% or 0.75%; `3/4%` is fine. Ratios (`3 in 10`), basis points and per mille are left to custom codecs.
-- `duration` covers fixed-length units only (ms through weeks). Calendar durations (months, years) are not quantities because they have no fixed length. Clock notation (`1:30`) isn't accepted in v1.
+- Default formatting prints at most 3 fraction digits, or, for a non-zero value that would round to 0, enough for three significant digits (`0.000123 m`, since `0 L/100km` wouldn't parse back), then the unit's first alias, separated by a space unless the alias is `'`, `"` or `°` (`45°`, `30'`).
+- Built-in quantity codecs in `quanto/codecs`: `length`, `mass`, `duration`, `temperature`, `volume`, `area`, `speed` (its own unit table, not derived), `dataSize`, `dataRate`, `energy`, `power`, `pressure`, `angle`, `frequency`, `fuelEconomy` and `pace`, each exported alongside its unit table (`lengthUnits`, …). The core also has `percent` and `text`. Money and dates are in their own packages.
+- `percent` is a plain number in percentage points (`12.5`, not `0.125`): a bare number, one followed by `%`, `percent`, `per cent` or `pct`, or one after `%` (`%50`, as written in Turkish). A bare fraction (`3/4`) is unparseable, since it could mean 75% or 0.75%; `3/4%` is fine. Ratios (`3 in 10`), basis points and per mille are left to custom codecs.
+- `text` is the identity codec: the value is the trimmed string as typed, with no other parsing. Blank is an `empty` issue, as everywhere; `optional(text())` allows it, and `schema` validates. It's what a field with no codec uses.
+- `duration` covers fixed-length units only (ms through weeks). Calendar durations (months, years) are not quantities because they have no fixed length.
+- `duration` reads clock notation as compound input, so it sums exactly: `1:30:15` is always h:mm:ss (5415 s). Two parts depend on what follows: `1:30 h` is h:mm (90 min), `1:30 min` is m:ss (90 s), and a fraction means seconds (`1:30.5` is 90.5 s). Bare `1:30` follows the `clock` option, `'h:mm'` (the default; meeting lengths, cook times) or `'m:ss'` (lap times). Minutes and seconds must be two digits under 60, and clock notation followed by any other unit is unparseable.
+- `length` has no `nm`: it's nanometers in one field and nautical miles in another, so nautical miles are `nmi`. `mass` reads `#` as pounds (`150#`). `volume` reads `cc` and `cm³` as milliliters.
 - `mass` has no `ton`: it means different masses in US, UK and metric use (`t`/`tonne` is the metric ton). `volume`'s customary units are US measures; UK imperial pints and gallons need a custom table.
 - `dataSize` is bytes only: `KB`, `MB`, … are decimal (1000) and `KiB`, `MiB`, … binary (1024). With no bit units, a lowercase `b` means bytes too (`100b`, `Mb`). `dataRate` has both: bit and byte aliases that differ only by case match exactly, all-lowercase `mbps`, `kbps` and `gbps` are listed as bits, and `mb/s` is ambiguous and rejected.
 - `energy`'s `cal`, `Cal` and `calories` are kilocalories, as on food labels; the small calorie isn't included. `power` has both `mW` and `MW`, matched exactly. `pressure` and `frequency` have no milli- units, so `mpa` and `mhz` mean mega-. `frequency` has `rpm` but not beats per minute, which nobody converts to hertz.
 - `angle` uses arcseconds as its base, so `40°26'46"` compounds exactly (degrees take arcminutes as their subunit, arcminutes take arcseconds).
 - `fuelEconomy` has km/L as its base; L/100km is a function unit. `mpg` is US; UK mpg is `mpg (imp)`, as with `volume`.
-- `pace` is a `quantity()` with its own number syntax: it reads clock notation (`5:30 /km`, `1:05:00 /mi`) as seconds and a plain number (`5.5 min/km`) as minutes, and formats to a tenth of a second. Its unit table is seconds per km and per mile, with the minutes word folded into the aliases (`min/km`, `minutes per mile`). A negative pace is rejected when typed; a stored negative is left to the user's schema, as for every quantity.
+- `pace` is a `quantity()` with its own number syntax: it reads clock notation (`5:30 /km`, `1:05:00 /mi`) as seconds and a plain number (`5.5 min/km`) as minutes, and formats to a tenth of a second. Its unit table is seconds per km and per mile, with the minutes word folded into the aliases (`min/km`, `minutes per mile`). A negative pace is rejected when typed, and clock notation has no negative form, so a stored negative fails the structural check (its syntax has `min: 0`): `schema` rejects it and `format` throws, rather than printing `-6:-30 /km`.
 
 ## Money
 
@@ -354,7 +426,7 @@ type Money<C extends string = string> = { minorUnits: number; currency: C }; // 
 
 - Amounts are **integers in the currency's minor unit**, never floats. Floats can't represent most decimal fractions (`0.1 + 0.2 !== 0.3`). Unlike measurement drift, money errors survive summing, comparison and storage, so "round in format" isn't enough.
 - The number of decimal places comes from a **bundled** ISO 4217 minor-units table (two decimals by default plus the known exceptions). `Intl` is not consulted: unknown codes make it throw, and small-ICU builds report wrong digits.
-- A JS number holds integers exactly up to 2^53 (~$90 trillion in cents), which is enough. `bigint` is not JSON-safe and is avoided.
+- A JS number holds integers exactly up to 2^53 (~$90 trillion in cents), which is enough. `bigint` is used only for exact internal arithmetic; public values stay JSON-safe numbers.
 - The field name `minorUnits` is deliberately explicit, so nobody mistakes 1234 for $1234.
 
 ### Operations
@@ -369,7 +441,7 @@ import { add, subtract, compare, scale, allocate, convert } from 'quanto/money';
 - `scale(m, factor, { rounding })` and `convert(m, 'EUR', { rate, rounding })` always round to a whole minor unit of the result currency. The caller must choose the rounding mode, because the right one depends on the domain (tax, invoicing, display). Modes use `Intl.NumberFormat`'s `roundingMode` names (`halfExpand`, `halfEven`, `trunc`, …).
 - `convert`'s `rate` is how many major units of the target currency one major unit of the source buys. Differing minor units (USD → JPY) are handled. quanto never fetches rates.
 - `allocate(m, ratios)` splits without losing a cent (e.g. $10 three ways → 334 / 333 / 333): each share gets its rounded-down part, and the remainder goes one minor unit at a time to shares with non-zero ratios, in order.
-- Before rounding, float noise below 15 significant digits is removed, so `scale` treats `1005 × 1.1` as exactly 1105.5.
+- Factors, rates and ratios are interpreted as their shortest decimal representations. Arithmetic uses exact integer fractions internally and rounds once, so `scale` treats `1005 × 1.1` as exactly 1105.5 without losing safe-integer digits. A computed factor such as `0.1 + 0.2` means the decimal `0.30000000000000004`; quanto does not infer a different intended factor.
 - `scale` and `convert` round to a whole minor unit only; the operations never produce fractional minor units.
 
 ### Parsing
@@ -377,11 +449,16 @@ import { add, subtract, compare, scale, allocate, convert } from 'quanto/money';
 The codec is `money({ defaultCurrency?, schema?, format? })`.
 
 - Accepts `$12`, `12 USD`, `USD 12`, `€12,50`, `12.50 eur`, `$1.2k`, `$3M`, `$1.5bn`, and names (`12 dollars`, `12 bucks`, `12 euros`, `12 quid`, `500 yen`). Suffixes (`k`, `m`, `b`/`bn`, `t`) are case-insensitive and attached to the number: `3m` and `3M` both mean million in a money field.
+- Magnitude words follow the number: `thousand`, `grand`, `million`, `mil`, `mn`, `mm` (finance's million, attached or not), `billion` and `trillion` (`$12 million`, `12 grand`, `$12mm`). Once only, and not after a suffix (`$12k grand` is unparseable).
+- Minor units: `50¢`, `50c`, `50 cents`, `5p`, `50 pence`. Cents resolve like `$` (dollars with cents, plus the euro), so `50 cents` is USD by default, CAD in en-CA and EUR in en-IE; pence are GBP. A minor unit stands alone, with no symbol or code (`$50¢` is unparseable), and has no decimals.
+- Accounting negatives: `($12)` is -$12.
+- Amounts in words (`twenty dollars`, `five hundred bucks`, `half a million dollars`), and cents after an amount: `five dollars and fifty cents`, `$5 and 50 cents`, `ten pounds five pence`. The cents must be a whole number under 100 of the same currency's minor unit. The inside can't have its own sign (`(-$12)` is unparseable).
 - A currency can be written before the number, after it, or both, if they agree: `$12 CAD` is CAD, `€12 USD` is unparseable. Disambiguated symbols are accepted (`US$`, `C$`, `CA$`, `A$`, `NZ$`, `HK$`, `R$`, `CN¥`…).
 - A sign goes before the symbol or the number (`-$12`, `$-12`), not both.
 - A bare number takes `defaultCurrency`; without it, it's a `missing_currency` issue.
 - A three-letter word that isn't an ISO 4217 code, or any other word in a currency position, is `unknown_currency`.
 - Ambiguous symbols (`$` is used by USD, CAD, AUD, MXN…; `kr` by SEK, NOK, DKK, ISK; `¥` by JPY and CNY) resolve to the codec's `defaultCurrency` if that currency uses the symbol, then to `ctx.locale`'s currency if it does (`$` in en-CA → CAD, `$` in de-DE → USD), then to the symbol's first currency (USD, SEK, JPY).
+- Parsing retains the written digits until exact minor units are computed; formatting inserts the decimal point into minor-unit digits without converting to a floating-point major amount. Every safe-integer amount round-trips exactly.
 - Input with more precision than the currency allows (`$3.459`) is an `excess_precision` issue. Sub-minor-unit prices are deferred (see below).
 
 ## Dates and times
@@ -453,6 +530,7 @@ The core resolves a tag to a **language and region**, and owns the data every co
 | Currency symbol position (before or after the amount) | `quanto/money` | region, with language exceptions | Every region |
 | Numeric date order (MDY, DMY, YMD) | `quanto-datetime` | region, with language exceptions | Every region |
 | Hour cycle (12- or 24-hour clock) | `quanto-datetime` | region, with language exceptions | Every region |
+| Numbers in words | `quanto` | language | English built in; other languages are opt-in grammars passed in `ctx.grammars`. |
 | Month and weekday names | `quanto-datetime` | language | English built in; `es`, `fr`, `de`, `it`, `pt`, `nl` exported as opt-in name sets, passed with the codecs' `names` option. |
 
 - Region data is small (about 250 regions, a few fields each), so it ships complete. Only the language data needs a supported list.
@@ -469,9 +547,24 @@ Always make a best effort:
 - Both separator characters present: the last one is the decimal separator. `1.234,5` → 1234.5; `1,234.5` → 1234.5, regardless of locale.
 - A single separator followed by **exactly three digits** is ambiguous (`1,500`, `1.500`). The locale decides; en-US reads `1,500` as 1500 and `1.500` as 1.5.
 - A single separator followed by **one, two, or four or more digits** is a decimal separator in any locale: `1,5 m` → 1.5 m, `2,25` → 2.25.
-- Thousands grouping must be consistent (`1,50,000` is valid in en-IN, not in en-US).
+- Thousands grouping must be consistent: every group three digits, or the Indian grouping by two (`1,50,000`), which is accepted in every locale since it has no other reading.
+- Space grouping (`1 000 000`) is accepted in every locale; it's unambiguous. Apostrophe grouping (`1'000`) only where the locale groups with it, and in money, where there are no feet to confuse it with (`CHF 1'234.50`).
+- A mixed fraction can be written with a hyphen, as in US building trades (`5-1/2 in`), and a whole number can end with a period (`5. ft`).
 - Other accepted forms: fractions (`1/2`, `5½`), exponents (`1e3`), suffixes (`1.2k`, `3M`) where the codec allows them.
-- Input is normalized before lexing (`normalize`): smart quotes (`’ ”` → `' "`), prime marks (`′ ″`), Unicode fractions, non-breaking and thin spaces. Case is handled by matching (see [Unit tables](#unit-tables)), not by normalization.
+- **Numbers in words**, for dictation as much as typing, through [grammars](#grammars). The built-in English grammar reads one well-formed number, strictly:
+  - Cardinals: `zero`–`nineteen`, tens and their compounds (`twenty-five`, `twenty five`), `hundred` with an optional British `and` (`one hundred and five`, `a hundred`), hundreds of 11–99 (`fifteen hundred`), and `thousand`, `million`, `billion`, `trillion` in decreasing order (`three hundred thousand and five`).
+  - Decimals with `point` and one digit word per place (`one point two five`, `point five`), signs (`minus five`, `negative two`), and a scale after a decimal or fraction (`one point five million`, `half a million`).
+  - Fractions: `half`, `third`, `quarter`, `fourth`, `fifth`, `eighth`, `sixteenth` and their plurals, with a numerator, spaced or hyphenated (`three quarters`, `three-quarters`, `five sixteenths`), an article (`a third`), or alone (`half`), and `of`/`a`/`an` after them (`three quarters of an inch`, `half a mile`); mixed with `and` (`two and three quarters`).
+  - `a`/`an` as one before a word that isn't a number (`a mile`, `an hour`), and `and a half`/`and a quarter` after a single quantity (`an hour and a half`).
+  - Rejected rather than guessed: two numbers in a row (`two fifty`, `nineteen eighty four`, `five eleven`), scales out of order (`two million thousand`), a bare `hundred`, homophones (`to`, `too`, `for` aren't numbers; dictation already chooses), `oh` for zero, and ordinals (`second` stays a unit of time).
+  - Where words meet existing syntax: `and` is inside a number only after `hundred` or a scale and before a smaller number, or before a fraction; elsewhere it joins compound input (`five feet and eleven inches`). A hyphen is inside a number only between a tens word and a unit (`twenty-five`), and range splitting skips separators inside a number in words, so `twenty-five to thirty feet` and `five-ten feet` both read as ranges.
+  - `percent` rejects a bare fraction in words, since `half` is more likely 50% than 0.5%; `fifty` is 50%.
+- **Arithmetic**: `readNumber` reads a product of powers: `10^3`, `10^-3`, `2*5`, `6.02×10^23`, with `*`, `×`, `·` or `⋅` for multiplication and optional spaces around operators. Only `^` and multiplication, because the other operators already mean something: `-` is a sign and a range separator, `+` a sign, `/` a fraction and a unit separator (`km/h`), `x` a dimension (`2x4`).
+  - Exponents are integers, and a power can't chain (`2^3^2`) or have a signed base (`-2^2` could mean 4 or -4). A fraction after a power is rejected (`2^3/4`). Any of these makes the number unreadable, so the codec's usual issue applies.
+  - The result is computed exactly and rounded once (`1.1*3` is 3.3). A result that overflows or underflows to zero is unreadable (`10^400`).
+  - A superscript exponent right after a digit is normalized to `^` (`10³`, `6.02×10²³`, `10⁻³`); after a letter it stays part of the unit (`m²`).
+  - Money reads its numbers exactly through its own lexer and doesn't accept arithmetic (`$10^6`, `$2*3`); it has magnitude suffixes for large amounts. A quantity's magnitude suffix doesn't apply to an expression (`2*3k ft` is `unknown_unit`). Formatting never prints expressions.
+- Input is normalized before lexing (`normalize`): smart quotes (`’ ”` → `' "`), prime marks (`′ ″`), two apostrophes as inches (`5' 11''`), the degree sign's look-alikes (`º` from Spanish and Portuguese keyboards, `˚` from iOS) to `°`, `^` after a letter as part of the unit (`m^2` → `m2`, like `m²`), Unicode fractions (`5½`, `1¹⁄₂`), superscript exponents (`10³` → `10^3`), non-breaking and thin spaces. Case is handled by matching (see [Unit tables](#unit-tables)), not by normalization.
 
 ## Formatting
 
@@ -485,7 +578,7 @@ Default formatters use only bundled data, so they're deterministic and round-tri
 
 `quanto/formats` has ready-made formatters for a codec's `format` option:
 
-- **Compound formatters**, from bundled data only, so they're deterministic and round-trip: `feetInches` (`5'11"`, `6'0"`, `11"`), `poundsOunces` (`1 lb 4 oz`), `stonesPounds` (`11 st 4 lb`) and `hoursMinutes` (`2 h 30 min`; days show as hours). The smallest part is rounded to a whole number and carried (`71.6 in` is `6'0"`), leading zero parts are left out, and later zero parts are kept (`6'0"`, `2 lb 0 oz`). Each works with its built-in codec (`length`, `mass`, `duration`); given a unit outside that table, it throws.
+- **Compound formatters**, from bundled data only, so they're deterministic and round-trip: `feetInches` (`5'11"`, `6'0"`, `11"`), `poundsOunces` (`1 lb 4 oz`), `stonesPounds` (`11 st 4 lb`) and `hoursMinutes` (`2h 30min`; days show as hours). The smallest part is rounded to a whole number and carried (`71.6 in` is `6'0"`), leading zero parts are left out, and later zero parts are kept (`6'0"`, `2 lb 0 oz`). `hoursMinutes` is the exception: durations are written compactly and a whole number of hours stands alone (`2h`, not `2h 0min`). It writes `min` rather than `m` so its output isn't a length when the codec is one of several in a `merge`. Each works with its built-in codec (`length`, `mass`, `duration`); given a unit outside that table, it throws.
 - **`Intl` formatters**, opt-in, for richer output: `intlUnit({ unitDisplay })` in `quanto/formats` (localized unit names: `5 feet`, `5 Fuß`), `intlMoney({ currencyDisplay })` in `quanto/money` (`12.34 US dollars`), and `intlDate({ dateStyle })`, `intlTime({ timeStyle })` and `intlDateTime({ dateStyle, timeStyle })` in `quanto-datetime`. They're outside the determinism guarantee and display-only: their output varies between ICU versions and isn't guaranteed to parse back, so a field using one shows raw text for editing (`display="raw"`). `intlMoney` takes decimal places from quanto's bundled table, not Intl's. `intlUnit` covers built-in units that Intl knows, and prints the number and unit ID for the rest. `intlDateTime` shows a date-time's wall-clock time as entered, without its offset. They have no fixtures, since exact output depends on the runtime.
 
 ## Ranges
@@ -504,18 +597,24 @@ dateRange(date()).parse('Oct 3-5');
 
 - **`range(codec)`** takes a quantity codec (one with a unit table, including `pace`); the type system enforces it. **`moneyRange`** and **`dateRange`** (for all four date and time codecs) come from their packages.
 - **`defineRange(codec, rules?, options?)`** is what they're all built on, and it's public, like `defineCodec`. It does everything that isn't domain-specific: splitting, trying completions, choosing between them, the user's schema, the `start`/`end` schema and formatting. `rules` supply the domain part:
-  - `propose(left, right, ctx)` returns textual completions of the two sides, most preferred first. The sides as typed are always tried after them.
+  - `propose(left, right, ctx)` returns textual completions of the two sides, most preferred first. The sides as typed are always tried after them. Completion is textual, so `ctx.now()` throws in it: relative words (`tomorrow`) are left for the sides' parse, which is where the one clock reading for the range happens and is reported.
   - A proposal may carry `adjustEnd(end)`: if the sides parse out of order, try this end instead (checked against the inner codec's schema). Dates use it to roll into the next day or year, since "the next day" can't be written back into text like `tomorrow`.
   - `inOrder(start, end)` says whether the range is in order, or `undefined` when it can't tell.
   - With no rules, both sides must be written in full. That's the right default for a custom codec with no shorthand.
 - The value is `{ start: T; end: T }` using the inner codec's values. There is one `raw` for the whole field, not one per endpoint.
+- **Open ranges** are opt-in: `range(codec, { open: true })` (and the same option on `moneyRange`, `dateRange` and `defineRange`) also reads one bound, and its value type widens to `OpenRange<T>`: `{ start: T | null; end: T | null; startExclusive?: true; endExclusive?: true }`. It's an option rather than always on because the wider type would make every consumer handle a missing end, and a schema can't narrow a TypeScript type.
+  - Lower bounds: `5+ ft`, `5 ft+`, `$500+`, `≥5`, `>=5`, `at least`, `min`, `minimum`, `from`, `since`, `no less than`, and after the value `or more`, `or above`, `or over`, `or greater`, `or later`, `and up`, `and above`, `and over`, `onwards`. Exclusive: `>5`, `over`, `above`, `more than`, `greater than`, `after`.
+  - Upper bounds: `≤7`, `<=7`, `up to`, `at most`, `max`, `maximum`, `until`, `till`, `by`, `no more than`, and after the value `or less`, `or fewer`, `or under`, `or below`, `or earlier`, `and under`, `and below`. Exclusive: `<7`, `under`, `below`, `less than`, `fewer than`, `before`.
+  - An exclusive flag is set only when the bound itself is excluded, and only on the bound of an open range; the schema rejects it anywhere else. Both sides null is malformed.
+  - Formatting uses symbols, which read back in any language: `≥ 5 ft`, `> 5 ft`, `≤ 7 ft`, `< 7 ft`.
+  - Closed ranges are tried first, so `from 5 to 7 ft` is closed and `from 5 ft` is open.
 - Every range function takes the shared options (`{ schema?, format? }`). The `id` is derived like merge's, `range(length)`, so `merge([length(), range(length())])` is valid and can accept both `5 ft` and `5-7 ft`.
 - **Inner codecs know nothing about ranges.** Codecs have no range hook; range rules live with the range function of their domain.
 - Parsing is **two passes**:
-  1. **Split.** Separators: `-`, `–`, `—`, `to`, `until`, `through`. Hyphens also appear inside values (negative numbers, ISO dates `2026-10-03`), so every candidate split is tried.
+  1. **Split.** Separators: `-`, `–`, `—`, `to`, `until`, `through`, and `and` after a leading `between` (`between 5 and 7 ft`). A leading `from` is dropped (`from 5 to 7 ft`). Hyphens also appear inside values (negative numbers, ISO dates `2026-10-03`), so every candidate split is tried.
   2. **Complete and parse.** For each split, the rules propose completions. Both sides of each are parsed with the inner codec, and the first completion where both parse and `start <= end` wins; then the first that's in order after `adjustEnd`; then the first that parsed at all.
 - **The completion rules of each domain.** The rule throughout: a side borrows what it's missing from the other side, and when borrowing could go two ways, the reading that keeps `start <= end` wins.
-  - Quantities (`range`): a side with no unit borrows the other side's unit text. `5-7 ft` → 5 ft–7 ft; `5'10"-6'` needs nothing. Each side's number is read with the codec's own number syntax, so pace ranges complete too: `5:00-5:30 /km`.
+  - Quantities (`range`): a side with no unit borrows the other side's unit text. `5-7 ft` → 5 ft–7 ft; `5'10"-6'` needs nothing. Each side's number is read with the codec's own number syntax, so pace ranges complete too: `5:00-5:30 /km`, as do duration's clock times: `1:00-1:30 min`. A side with no magnitude borrows the other side's only if the result stays in order, as for money: `2-3k ft` → 2,000–3,000 ft, `2-3 million ft`, but `500-1k ft` → 500–1,000 ft.
   - Money (`moneyRange`): a side with no currency (symbol or code) borrows the other side's: `$10-20` → $10–$20, `10-20 EUR` → €10–€20. A side with no magnitude suffix borrows the other side's only if the result stays in order: `$10-20k` → $10k–$20k and `$1.5-2M` → $1.5M–$2M, but `$500-1k` → $500–$1,000.
   - Dates (`dateRange` over `date()`): a side with only a day number borrows the other side's month and year: `Oct 3-5` → Oct 3–Oct 5. A side with no year borrows the other side's. When neither side has a year and the end would fall before the start, the end moves to the next year: `Dec 30 - Jan 2` → Dec 30, 2026–Jan 2, 2027.
   - Times (`dateRange` over `time()`): a side with no meridiem borrows the other side's, unless that would put the start after the end, in which case the start takes the opposite meridiem. `9-11pm` → 9pm–11pm; `9-5pm` → 9am–5pm.
@@ -546,48 +645,68 @@ type QuantoValue<T> =
 
 ## The input component
 
-`<QuantoInput />` is a thin UI over a codec's `parse` and `format`. It lives in a separate package (`quanto-react`, name TBD), so the core package has no UI code and no React dependency. Everything UI-specific (accessories, keyboard hints, display modes, echo) is a component prop, never a codec property.
+`quanto-react` is a thin UI over a codec's `parse` and `format`, so the core package has no UI code and no React dependency. Everything UI-specific (accessories, keyboard hints, display modes, echo) is a component prop, never a codec property. It has three layers:
+
+1. **The field state machine** (`reduce`, `initialState`, `echo`): plain TypeScript, `(state, event) → { state, commit? }`. It holds every rule below, so a React Native adapter can share it later; it moves to its own package when there's a second user. Its spec is a JSON fixtures file of event scripts, like a codec's.
+2. **`useQuanto(codec, options)`**, the real API: it owns the text and returns `inputProps` to spread on any `<input>`, plus `echo`, `showEcho`, `issues`, `value`, `pick` and `commit`, for building your own field.
+3. **`<QuantoInput>`**, an unstyled default built on the hook: an input, the echo, the issues and an optional accessory, targeted by `data-quanto` attributes. It takes sync and external codecs alike (see [External codecs](#external-codecs)).
+
+**Features go in the hook; the component is the minimal default.** Most apps are expected to build their field on the hook, with their own markup or a form library's. `<QuantoInput>` exists for the quickstart and as the reference wiring (its `aria-describedby` always points at elements that exist), and grows only when the default experience needs it. Anything an app's markup decides (where a list goes, how it looks, how it's positioned) stays out of it: completions, for instance, are in the hook only.
 
 ```tsx
-import { QuantoInput } from 'quanto-react';
+import { QuantoInput, QuantoProvider } from 'quanto-react';
 import { length } from 'quanto/codecs';
-import { feetInches } from 'quanto/formats';
 
-<QuantoInput
-  codec={length({ defaultUnit: 'in', format: feetInches })}
-  defaultValue={{ value: 70, unit: 'in' }}  // raw = format(value)
-  defaultRaw={`5'10"`}                       // with defaultValue: restore exactly, no re-parse
-  onChange={(v: QuantoValue<T>, { context }) => {}}  // fires on commit: blur, Enter, picker selection
-  display="formatted-on-blur"               // | 'raw' | 'formatted'; use 'raw' with a display-only formatter
-  inputMode="text"                          // mobile keyboard; see below
-  accessory={CalendarPicker}                // optional
-/>
+<QuantoProvider ctx={{ locale: 'de-DE' }}>
+  <QuantoInput
+    codec={length({ defaultUnit: 'in' })}
+    defaultValue={{ value: 70, unit: 'in' }}  // raw = format(value)
+    defaultRaw={`5'10"`}                       // with defaultValue: restore exactly, no re-parse
+    onChange={(v, { context }) => {}}          // QuantoValue<T>, on commit only: blur, Enter, a pick
+    display="formatted-on-blur"               // | 'raw' | 'formatted'
+    restoreOnEdit                             // focus puts back the typed text; off by default
+    inputMode="text"                          // mobile keyboard; see below
+    accessory={CalendarPicker}                // optional
+  />
+</QuantoProvider>
 ```
 
-- **Uncontrolled by default**, since it owns the envelope internally. An optional controlled `value: QuantoValue<T>` is available.
+- **Uncontrolled by default**, since it owns the envelope internally. An optional controlled `value: QuantoValue<T>` is available; `null` clears the field. While someone is editing, their text wins: a new controlled value that arrives then is dropped, not queued, and their commit on blur settles it (the parent gets it through `onChange` and can set `value` again). Passing back the envelope the field just emitted is a no-op. A parent that rejects a commit by leaving `value` unchanged doesn't reset the text, since an unchanged `value` isn't an update; to reject one, set a different `value`.
+- **Commits** happen on blur, Enter and a pick, never per keystroke. A commit emits the stored envelope: `{ raw, value }`, or `{ raw, issues }` when the text didn't parse or the schema rejected it. Text that wasn't edited since the last commit, default or controlled value never commits again, so focusing and leaving a field can't change its value. An untouched empty field doesn't commit. Clearing the text commits whatever the codec makes of `''`: an `empty` issue, or `null` for an `optional` codec. Enter is left to bubble, so a form still submits.
 - **`onChange`'s second argument** carries the parse `context` (absent when the value didn't parse), for apps that store it for replay.
-- **No `codec`** means plain text: the value is the text itself (`{ raw, value: raw }`), and no codecs are bundled. An "accept anything" codec is deferred (see `auto` under [Deferred](#deferred)).
-- **Live echo**: the component may parse on every keystroke to show its interpretation (`5 ft 11 in · 180 cm`), but only emits `onChange` on commit. There is no "incomplete" parse state; while the text doesn't parse, the echo simply shows nothing, and errors are shown only on commit.
+- **Issues** show after a failed commit and clear as soon as the text parses again, rather than waiting for the next commit.
+- **Display modes** say what the input shows after a commit. The stored `raw` is always what was typed.
+  - `formatted-on-blur` (default): a commit on blur replaces the text with `format(value)`; Enter leaves the typed text. Focusing again keeps the formatted text, which is safe because built-in formatters round-trip.
+  - `formatted`: every commit, including Enter, shows `format(value)`.
+  - `raw`: the text stays as typed. Use it with a display-only formatter (`feetInches` rounds, so `180 cm` would show as `5'11"`).
+- **`restoreOnEdit`** (off by default) is for the formatted modes: focusing the field puts back the committed `raw`, so people edit the text they typed rather than the formatted value. The restored text counts as unedited, so it isn't re-parsed, it echoes the stored value, and leaving it untouched shows `format(value)` again without committing. A pick or a default has no typed text, so there is nothing to restore. With it on, a display-only formatter is safe in a formatted mode, since the rounded text is never what gets edited.
+- **Live echo**: the hook parses on every keystroke to show its interpretation (`5'11` → `5'11"`), but only emits on commit. There is no "incomplete" parse state; while the text doesn't parse, there's simply no echo. The hook's `showEcho` says whether to display the echo: not when it only repeats the text, and not while issues show, so every field built on it follows the same rule. `echo` itself stays set either way, since its value and alternatives are still the reading. The echo carries alternatives, so a field can offer a chooser, and an `ambiguous` failure shows its alternatives with the issue. Alternatives from a commit remain in transient field state across blur and Enter, so choosing one is not interrupted by the blur that precedes a click. They clear on editing, a new external value or a pick; they never enter the stored envelope, and restored text is not re-parsed to reconstruct them. Composing an IME character is never parsed.
 - **Raw display** always shows the interpretation next to the text, so stale relative input (`tomorrow`) is never misleading.
-- **Accessories** are a component prop (e.g. a calendar icon that opens the OS picker). An accessory receives `{ value, onChange, focused }`, and selecting a value sets `raw = format(value)`. Text entry always stays available.
-- **Keyboard hint** is the `inputMode` prop, passed through to the input. Height needs a keyboard that can type `'` and `"`, which a numeric keypad can't, so the default is `text`.
-- **Form libraries** are not a design driver. quanto exposes `value` / `onChange` / `onBlur` / `ref`, which is enough for React Hook Form's `Controller` and TanStack Form.
-- **Platforms**: the core is pure TypeScript with no runtime dependencies and no UI code. Web is first. React Native is another separate adapter over the same core.
+- **Accessories** are a component prop (e.g. a calendar icon that opens the OS picker). An accessory receives `{ value, onChange, focused }`, and choosing a value sets the text to `format(value)` and commits it, after the codec's schema. Text entry always stays available.
+- **Context** comes from `<QuantoProvider ctx>` or a field's `ctx` prop, and defaults to `en-US`. The browser's locale is never read implicitly, so server and client render the same text. In a browser, leave `now` unset.
+- **Keyboard hint** is the `inputMode` prop. Height needs a keyboard that can type `'` and `"`, which a numeric keypad can't, so the default is `text`.
+- **Accessibility**: `aria-invalid` follows the shown issues, `aria-describedby` points at the echo and the issues, and the issues are a `role="alert"` region, so they're announced on commit. The echo isn't live, so nothing is announced per keystroke.
+- **The codec needn't be stable** across renders: parsing is cheap and pure, so `codec={length({ … })}` inline is fine.
+- **Form libraries** are not a design driver. The field exposes `value` / `onChange` / `onBlur` / `ref`, which is enough for React Hook Form's `Controller` and TanStack Form; dedicated adapters may follow.
+- **No `codec`** means plain text: `text()` from `quanto/codecs`, whose value is the trimmed string as typed (blank is an `empty` issue, unless wrapped in `optional`). An "accept anything" codec is deferred (see `auto` under [Deferred](#deferred)).
+- **External codecs** get their own hook, `useExternalQuanto`, which parses on commit only, and use the same `<QuantoInput>` (see [External codecs](#external-codecs)).
+- **Not yet:** compound parts (`Quanto.Root`, `Quanto.Input`, …) for custom layouts; the hook covers custom layouts meanwhile.
+- **Platforms**: the core is pure TypeScript with no runtime dependencies and no UI code. Web is first, with React 19. React Native is another separate adapter over the same state machine.
 
 ## Packaging
 
 - ESM only, with `"sideEffects": false`.
 - No runtime dependencies. The Standard Schema interface is vendored into `src/` (types only), as the Standard Schema spec recommends, so there is no dependency on `@standard-schema/spec`.
 - Subpath exports:
-  - `quanto`: core. `defineCodec`; `formatWithFallback`; the primitives `normalize`, `readNumber` and `formatNumber`; `merge`, `optional`, `range` and `defineRange`; and the types `Codec`, `CodecOptions`, `Ctx`, `ResolvedCtx`, `Locale`, `ParseResult`, `ParseOutcome`, `ParseContext`, `Issue`, `IssueCode`, `QuantoValue`, `Quantity`, `Range`, `RangeRules`, `RangeProposal` and `UnitTable`.
-  - `quanto/codecs`: `quantity` and the `NumberSyntax` type; the built-in quantity codecs and their unit tables (`length`/`lengthUnits`, `mass`/`massUnits`, …); `percent`.
+  - `quanto`: core. `defineCodec`; `defineExternalCodec` and `isExternalCodec`; `formatWithFallback` and `isInvalidValueError`; the primitives `normalize`, `readNumber` and `formatNumber`; `merge`, `optional`, `approx`, `range` and `defineRange`; and the types `Codec`, `ExternalCodec`, `ExternalCodecDefinition`, `CodecOptions`, `Ctx`, `Signal`, `ResolvedCtx`, `Locale`, `ParseResult`, `ParseOutcome`, `ParseContext`, `Issue`, `IssueCode`, `Grammar`, `NumberGrammar`, `QuantoValue`, `Quantity`, `Approx`, `Range`, `OpenRange`, `RangeOptions`, `RangeRules`, `RangeProposal` and `UnitTable`.
+  - `quanto/codecs`: `quantity` and the `NumberSyntax` type; the built-in quantity codecs and their unit tables (`length`/`lengthUnits`, `mass`/`massUnits`, …); `percent`; `text`.
   - `quanto/quantity`: quantity operations (`convert`, `compare`).
   - `quanto/money`: `money`, the `Money` type, `add`, `subtract`, `compare`, `scale`, `convert`, `allocate`, `roundWithMode`, `moneyRange`, `intlMoney`, and the currency data (`isKnownCurrency`, `minorDigits`).
   - `quanto/formats`: ready-made formatters (`feetInches`, `poundsOunces`, `stonesPounds`, `hoursMinutes`, `intlUnit`) and the `Formatter<T>` type.
-  - `quanto/testing`: `roundTrip` and `runFixtures`, the generic fixture runner.
-- **Repository layout.** A bun workspace: `packages/quanto` (the core, npm `quanto`), `packages/datetime` (`quanto-datetime`) and `apps/site` (the website). The private root holds the shared dev tooling (TypeScript, tsdown, vitest, `tsconfig.base.json`, one `vitest.config.ts` for every package) and the repo docs (`DESIGN.md`, `AGENTS.md`). `bun run typecheck`, `bun run build` and `bun run test` at the root cover every package.
+  - `quanto/testing`: `roundTrip`, `quantityWithin` (its rounding allowance for quantities) and `runFixtures`, the generic fixture runner.
+- **Repository layout.** A bun workspace: `packages/quanto` (the core, npm `quanto`), `packages/datetime` (`quanto-datetime`), `packages/react` (`quanto-react`) and `apps/site` (the website). The private root holds the shared dev tooling (TypeScript, tsdown, vitest, `tsconfig.base.json`, one `vitest.config.ts` for every package) and the repo docs (`DESIGN.md`, `AGENTS.md`). `bun run typecheck`, `bun run build` and `bun run test` at the root cover every package.
 - UI adapters are separate packages (web React first, React Native later). The core package never imports them.
-- **`quanto-datetime`** (`packages/datetime`) is the one separate package: `date`, `time`, `localDateTime`, `dateTime`, `dateRange`, `intlDate`, `intlTime`, `intlDateTime`.
+- **`quanto-datetime`** (`packages/datetime`) is the one separate codec package: `date`, `time`, `localDateTime`, `dateTime`, `dateRange`, `intlDate`, `intlTime`, `intlDateTime`.
 - **Core or package?** First-party codecs whose behaviour is complete and settled go in the core: unit tables (`length`, `dataSize`), small parsers (`percent`, `pace` with its number syntax), and finished domains with their own subpath (`quanto/money`). A domain that's intentionally incomplete or still evolving, so its parse results are expected to change between releases, gets a dedicated package: `quanto-datetime`, whose grammar covers the common case with a list of omissions that will shrink.
 - **Why packages.** Not bundle size: everything tree-shakes. An evolving domain's parsing rules change on their own schedule, and parse changes affect replay (see [Parse context](#parse-context)). A package lets that domain evolve without moving the core's version, while the core stays steady.
 - **How they're built.** A separate package uses **only quanto's public API**, imported by name (`quanto`, `quanto/codecs`, `quanto/quantity`, `quanto/testing`), exactly as a custom codec would. That keeps Principle 5 honest: anything a package needs that isn't public is a gap in the API, not a reason to reach into internals.
@@ -629,64 +748,166 @@ Every codec, built-in or custom, ships fixtures, and CI enforces it. Fixtures ar
 ]
 ```
 
-- A **parse fixture** is `{ parse, ctx?, options?, value | issues, alternatives?, context? }`. `issues` lists the expected issue codes, in order. A missing `alternatives` means none are expected. `context` is checked only when given.
+- A **parse fixture** is `{ parse, ctx?, options?, value | issues, alternatives?, completions?, context? }`. `issues` lists the expected issue codes, in order. `alternatives` may go with either `value` or `issues`; a missing `alternatives` means none are expected, and likewise `completions` (external codecs only; see [Completions](#completions)). `context` is checked only when given.
+- A **complete fixture** is `{ complete, ctx?, options?, completions }`, for external codecs with completions. Each expected completion is `{ label, value }`: the runner resolves lazy ones through the stub before comparing, so the file stays JSON.
 - A **format fixture** is `{ format, ctx?, options?, text }`.
 - `options` are passed to the codec factory, so one file covers the factory's JSON-expressible options (`defaultUnit`, `canonicalUnit`, `defaultCurrency`…).
-- A codec can have several fixture files (`fixtures.json`, `fixtures.<variant>.json`). Wrappers (`merge`, `range`, `optional`) have fixtures too, one file per inner-codec combination worth pinning down: `range` over `date` for completion, `merge` over `length` and `duration` for alternatives.
+- A codec can have several fixture files (`fixtures.json`, `fixtures.<variant>.json`). Wrappers (`merge`, `range`, `optional`, `approx`) have fixtures too, one file per inner-codec combination worth pinning down: `range` over `date` for completion, `merge` over `length` and `duration` for alternatives.
 - **`runFixtures(factory, fixtures, { test })`** in `quanto/testing` runs a file. It takes the test function (vitest's `test`, `node:test`…) rather than importing a framework. Each case is named after its input and context, so a failure reads as input, expected and actual.
 - Fixtures must not depend on the machine. The runner fails any fixture whose result `context` has a `now` the fixture didn't pass; time-dependent fixtures pass `ctx.now`.
 - An LLM adding a codec writes the fixtures **first**, then the parser.
-- **Round-trip property.** Required for every built-in codec, and for any custom codec whose formatter is meant to round-trip: `parse(format(v))` round-trips within the formatter's rounding across a set of values. The `roundTrip(codec, values, { test })` helper in `quanto/testing` does this; `values` is a plain array, so no property-testing library is needed.
+- **Round-trip property.** Required for every built-in codec, and for any custom codec whose formatter is meant to round-trip: `parse(format(v))` round-trips within the formatter's rounding across a set of values. The `roundTrip(codec, values, { test, same? })` helper in `quanto/testing` does this; `values` is a plain array, so no property-testing library is needed. It checks the value as well as the text, since stable text can hide a changed value (a formatter that drops an offset the parser then assumes): the parsed value must be `same` as the original, by default deep-equal (numbers to an ulp), and formatting it again must give the same text. A formatter that rounds declares how much: `quantityWithin(codec, { places, unit? })` allows half a unit in the last printed place, in `unit` or the original's unit (`{ places: 3 }` for the default quantity formatter, `{ unit: 'in', places: 0 }` for `feetInches`).
 - **What isn't tested:** plumbing. No unit tests that a factory returns a codec, that `defineCodec` wires up `schema`, that definition-time errors fire, or that types infer. Behaviour that matters shows up in fixtures; the rest shows up in typecheck or on first use.
 - Built-ins follow the same rules. They have no private escape hatches.
 - **One check command.** `bun run check` runs typecheck, unit tests, all fixture files and the round-trip properties. In the quanto repo, CI runs it; implementing agents don't (see `AGENTS.md`). App authors run it for their own codecs.
 - **`AUTHORING.md`**, shipped in the package, is the codec authoring guide: `defineCodec`, the primitives, the file layout (`src/codecs/<name>/{index.ts, fixtures.json}`), the issue codes, the fixture format, the round-trip rule and the check command. It stays short.
 
-## Async codecs (v2)
+## External codecs
 
-Deferred to v2 and designed now, so v1 doesn't block it. The marquee example is an **LLM-powered codec**: a model parses free text into a structured value and formats it back as natural prose.
+Additive: no existing type or function changed for them. A first-party LLM codec is not built yet (see the end of this section). An **external codec** hands parsing to something outside the field: a model, a server, a worker. The marquee example is an **LLM-powered codec**, where a model parses free text into a structured value.
+
+### The rule: an external codec owns its whole parse
+
+Parsing never lives in two places. Once a parse is external, all of it is external, including whatever `merge`, `range` or `approx` would have done: a service that should accept a length or a duration, a range, or `about 5`, does that itself. That is why only parsing is async, and why the wrappers don't take external codecs (except `optional`, which doesn't parse; see below). It is the reason for the name: "external" says where the parse lives, which is also what explains the limits; "async" would only describe the mechanism.
 
 ### Shape
 
-Async is an additive second interface, not a change to `Codec`:
-
 ```ts
-interface Codec<T> {                 // v1, unchanged
-  async?: false;                     // absent means sync, so every v1 codec stays valid
-  parse(text: string, ctx?: Ctx): ParseResult<T>;
-  format(value: T, ctx?: Ctx): string;
-  // id, schema…
+interface ExternalCodec<T> {
+  readonly external: true;                      // what optional() and the guards read
+  readonly id: string;
+  parse(text: string, ctx?: Ctx): Promise<ExternalParseResult<T>>;
+  complete?(text: string, ctx?: Ctx): Promise<Completion<T>[]>;  // optional; see Completions
+  format(value: T, ctx?: Ctx): string;          // sync, like every codec's
+  readonly schema: StandardSchemaV1<T, T>;      // sync, like every codec's
 }
 
-interface AsyncCodec<T> {
-  async: true;
-  parse(text: string, ctx?: Ctx): Promise<ParseResult<T>>;
-  format(value: T, ctx?: Ctx): Promise<string>;
-  // id, schema…
-}
+// Either branch may also carry completions; see Completions.
+type ExternalParseResult<T> = ParseResult<T> & { completions?: Completion<T>[] };
 ```
 
-- **Sync stays sync, down to the types.** Nothing about a sync codec changes, and a sync codec's `parse` never returns a Promise.
-- **One code path, no parallel API.** There is no `mergeAsync` or `quanto/async`. The wrappers (`merge`, `range`, `optional`) accept both kinds, and their return type is conditional (not an overload): the result is an `AsyncCodec` if any inner codec is async, otherwise a `Codec`. Each wrapper computes its `async` flag once, at construction.
-- **Wrapper internals are written once, as generators** that `yield` inner parse results. A sync runner steps straight through and never allocates a Promise; an async runner awaits each step. This is the gensync pattern, and it keeps sequential logic like range's candidate splits readable.
-- **Async is always explicit.** A custom async codec declares `async: true`. A built-in factory given an async schema takes an `async: true` option, which switches its return type to `AsyncCodec`.
-- **Consumers that accept either kind** can always `await codec.parse(text)`; awaiting a non-Promise is harmless.
+- **A separate interface, not a flag on `Codec`.** `Codec` doesn't change. Since `parse` returns a Promise, an `ExternalCodec` isn't assignable to `Codec`, so passing one to `merge`, `range`, `approx` or `useQuanto` is a type error. `external: true` marks it at runtime: `optional` reads it to pick its return kind, and those others throw a programmer error that says where the work belongs, for JavaScript callers. `isExternalCodec(codec)` tests it.
+- **`format` is sync.** Formatting is local and deterministic, from the value alone, so anything that displays a value (a list view, the field after a commit, server rendering) works the same for every codec, with no pending state. An LLM codec formats with a template, which also round-trips. Prose from a model, if wanted, is the app's own display-only call, never used to set `raw`.
+- **`schema` is sync**, as for every codec. quanto has no async validation: checks that need a server (is this name taken?) belong to the app or form layer, after commit. The `schema` option is synchronous everywhere, external codecs included.
+- **`check` is sync.** It's structural.
 
-### Additions that come with it
+### Defining one
 
-- **`ctx.signal?: AbortSignal`** cancels an in-flight parse or format. The input component needs it, since every keystroke can start a new parse.
-- **`context` records non-determinism.** An LLM parse isn't reproducible, but Principle 8 only requires the stored value to be stable. `ParseContext` gains room for provenance, and an LLM codec records what produced the value (e.g. `context.model`) alongside `now`.
-- **Frozen formatting.** `QuantoValue`'s valid branch gains an optional `formatted: string`: the formatted text, computed once and stored. Anything that displays a value (the component, an app's list view) uses `formatted` when present instead of calling `format` again. The component fills it at commit for async codecs, because it formats then anyway. Apps can fill or clear it themselves. It is a cache of `format(value)` and is never authoritative: it reflects the locale it was formatted in, and it is dropped whenever `value` changes.
-- **The component** checks `codec.async` to debounce the live echo, show a pending state and discard stale results.
+`defineExternalCodec` is `defineCodec` with an async author `parse`, and it does the same work: empty input (returned without calling the service), resolving `ctx`, the structural `check`, the user's `schema`, the parse `context`, the `format` override and the composed `schema`.
 
-### Testing LLM codecs
+```ts
+interface RecipeYieldOptions extends CodecOptions<Quantity> {
+  // The service: text in, a value or issues out. Rejects when it can't answer.
+  service(request: { text: string; locale: string }, init: { signal?: AbortSignal }): Promise<ParseOutcome<Quantity>>;
+}
 
-LLM output isn't reproducible, so fixtures and the round-trip property run against a **stubbed model**:
+export const recipeYield = (options: RecipeYieldOptions) =>
+  defineExternalCodec<Quantity>({
+    id: 'recipe-yield',
+    parse: (text, ctx) => options.service({ text, locale: ctx.locale.tag }, { signal: ctx.signal }),
+    format: (value, ctx) => `${formatNumber(value.value, ctx)} ${value.unit}`,
+    check: checkQuantity,
+    options,
+  });
+```
 
-- **The model is injected.** An LLM codec takes its model as a `model` option: a plain async function from request to response. quanto has no LLM SDK dependency, and swapping in a stub is just passing a different function.
-- **Every LLM codec ships a stub** next to its fixtures (`src/codecs/<name>/stub.ts`): a hard-coded, deterministic model, typically a lookup table from prompt input to canned response. The fixture runner and `roundTrip` pass it as `model`. Fixture files stay plain JSON and follow the same rules as any other codec.
-- **Round-trip uses the same stub.** If the codec's formatter is meant to round-trip, `parse(format(v))` must return `v` when both calls go through the stub. A prose formatter that is display-only skips it.
-- **What this covers:** the codec's own code (prompt building, reading model output, validation, issue mapping, `context`). What it doesn't: how accurate the real model is. That's an eval, run outside CI, and not part of the codec's definition of done.
+- It is the one builder for external codecs, built-in or custom, so Principle 5 still holds. It shares its machinery with `defineCodec`.
+- The author's `parse` returns `Promise<ParseOutcome<T>>`. Its `ResolvedCtx` also carries `signal` (below), to pass to whatever it calls.
+- The definition is `ExternalCodecDefinition<T>`: `CodecDefinition<T>` with that async `parse`.
+
+### Failures and cancelling
+
+- **Bad input is an issue; a failed service is a rejection.** When the service understood the text and it isn't valid, `parse` resolves with issues, as for any codec. When the service couldn't answer (network error, rate limit, timeout, a malformed reply), `parse` rejects with that error. An outage isn't the user's mistake, so it must never become `{ raw, issues }` in a stored envelope. The host decides the retry policy.
+- **`ctx.signal?: AbortSignal`** cancels an in-flight parse, which rejects with `signal.reason` (the platform convention). `defineExternalCodec` checks it before calling the service, and races the service against it, listening before the service starts, so an abort rejects at once (even one raised while the service is starting, and even if the service ignores the signal), and with `signal.reason` even if the service then fails with its own error. Sync codecs ignore it. It isn't recorded in `ParseContext`. The core has no DOM or Node types, so its `Signal` type is the platform's `AbortSignal` wherever that's declared, and otherwise the `aborted` and `reason` that quanto reads.
+- **Context.** A successful parse reports `context` like any other. An external parse may not be reproducible, but Principle 8 only requires the stored value to be stable. Recording provenance (which model produced a value) is not planned; if it's needed later, it goes on `context`.
+
+### Completions
+
+Status: designed, not built.
+
+A **completion** is a candidate value for the text as it stands, which may not be finished. There is no point at which input is complete: `1600 Amph` wants completions, and so does an address that already parses but could be more precise (a suite number, a nearby match). So completions are offered for whatever the text is, parsed or not.
+
+```ts
+type Completion<T> =
+  | { label: string; value: T }                         // the value is known
+  | { label: string; resolve(ctx?: Ctx): Promise<T> };  // fetched only when chosen (a place's details)
+```
+
+- **`complete` is optional**, on `ExternalCodecDefinition` and on the codec. It uses the same service as `parse`, so an app wires the provider once. `defineExternalCodec` returns `[]` for empty text without calling the service, runs `check` and the schema on known values (dropping ones the schema rejects), and wraps `resolve` so a resolved value goes through them too; a resolved value the schema rejects shows its issues and commits nothing.
+- **A completion is never applied without being chosen.** Commit parses the typed text; it never takes the first completion. That is the line between completing and guessing.
+- **Choosing one is a pick**: the text becomes `format(value)`, `raw` is set from it, and it commits without a parse, after the schema. This is the difference from an alternative, which is a reading of the typed text and keeps `raw`.
+- **Parse results carry completions.** An external parse may return `completions` on either branch: with an `ambiguous` issue, the candidates it couldn't choose between; on success, refinements of the value. They're the candidates the parse actually saw, without a second call to the service. Lazy candidates (labels that need a fetch to become values) go here; candidates that are already values can go in `alternatives` instead. Only external results carry completions: `resolve` is async, and only the external field can wait for a pick.
+- **Parse and complete are different operations on one service.** `complete` answers "what might this become?" and an empty list is a normal answer; `parse` answers "what is this?" and has to commit. Parse is complete plus a choosing rule, and the rule is the codec's to state.
+- **`parseFromCompletions(complete, { accept? })`**, from `quanto`, builds an author `parse` from a `complete` function for services that only complete. The default `accept`: no completions is `unparseable`; exactly one is resolved and becomes the value; several are an `ambiguous` failure carrying them as `completions`. A codec with a better signal (an exact match with the text, a confidence score) passes its own `accept`. "Take the first" is never a default: completion services treat text as a prefix, so `12 Main St` completes to `120 Main St`.
+- **Failures are quiet.** A `complete` that rejects shows no list; it doesn't put the field in `failed`, since completions are help, not the value. A `resolve` that rejects is a service failure like a parse's (below).
+- **`ctx.session?: string`** identifies a completion session, for services that bill completions and the details fetch as one (Google's session tokens). The field sets it: a new session starts with the first edit and ends with a commit or a pick, and `complete`, `resolve` and `parse` within it get the same one. It isn't recorded in `ParseContext`. `ctx.signal` cancels `complete` and `resolve` as it does `parse`.
+- Not to be confused with a range's textual completions (see [Ranges](#ranges)), which are internal to `defineRange`.
+
+### Wrappers
+
+- **`optional`** accepts an external codec: it maps empty text to `null` without calling the inner codec, so it adds no parsing, and passes `complete`, completions and alternatives through. Its return type follows its argument: `optional(external)` is an `ExternalCodec<T | null>`. That takes two overloads, sync and external, an exception to Principle 2 (as `range`'s `open` is), because a conditional type over the codec would change the type parameter from the value to the codec and break existing `optional<T>(codec)` calls.
+- **`merge`, `range`, `defineRange` and `approx`** accept sync codecs only, per the rule above.
+
+### The input component
+
+External codecs get their own hook, `useExternalQuanto`, over their own field state machine (`reduceExternal`, `initialExternalState`). The sync field's behaviour is built on parsing every keystroke; an external field parses only on commit, and is a separate, smaller machine rather than a mode of the sync one. The component is shared: `<QuantoInput>` takes either kind of codec.
+
+- **Kept from the sync field:** commits on blur, Enter and a pick (a pick commits at once, without a parse, after the codec's sync schema); display modes and `restoreOnEdit` (`format` is sync, so they work unchanged); controlled and uncontrolled use; unedited text never re-commits; issues show after a failed commit. Unlike the sync field, issues stay until the next commit settles, since nothing is parsed while typing.
+- **Dropped:** the live echo. Nothing is parsed per keystroke; completions take its place (below).
+- **Alternatives** come from a commit: a successful one's, or an `ambiguous` failure's alongside its issue. They're kept and cleared as in the sync field, and choosing one commits it with the typed `raw`.
+- **The machine stays pure.** `reduceExternal` returns, alongside the state and any commit, effects: `request: { id, text }`, a parse to start, and `abort: id`, a parse that's no longer wanted. The adapter runs them and dispatches the outcome back as `resolved { id, result }` or `rejected { id, error }`. A result whose `id` isn't the current request is ignored. Its spec is a fixtures file of event scripts, like the sync field's, and a React Native adapter can share it.
+- **States** add `pending` (a parse is in flight, and what started it: blur or Enter, which decides whether the result is shown formatted) and `failed` (the service rejected). A failure keeps the text, still edited, and commits nothing, so the next blur or Enter parses it again; a `retry` event does it now. An edit clears it.
+- **Cancelling.** The hook owns an `AbortController` per request. Editing the text or a pick aborts the one in flight, and so does unmounting. React can also tear the hook's effects down and set them up again while keeping its state (StrictMode, a hidden `<Activity>`): the teardown aborts the parse, and the setup starts it again under the same id, so the field picks up where it left off rather than staying pending. The service gets a signal that also follows the caller's `ctx.signal` (a form-level timeout, say); a cancellation from there isn't the field's own, so it comes back as a rejection and the field settles as failed. Blurring and refocusing without editing lets it finish and commit. A blur while an Enter's parse is pending doesn't start another.
+- **The hook exposes** `pending`, `failed`, `error`, `retry()` and `settled(): Promise<QuantoValue<T> | undefined>`, which resolves once no parse is in flight, with the committed envelope, and rejects with the service's error if that parse failed, or with an `AbortError` if the field is unmounted or hidden first (and at once, when called while it is), so a submit awaiting it never hangs. An app awaits it before submitting. `inputProps` add `aria-busy` while pending.
+- **`<QuantoInput>` with an external codec** renders the input, an optional accessory and the alert region, with `data-quanto-pending` and `data-quanto-failed` on the wrapper while those hold. A failure shows `failedMessage` (English by default) in the alert region. It has no echo. It switches on `codec.external`, rendering one of two inner components by the codec's kind, so each calls one hook and a change of kind remounts the field rather than breaking the rules of hooks. `failedMessage` is accepted with either kind and only used by an external field, so the props stay one plain type.
+- **Controlled values.** As in the sync field, an edit wins over a controlled value that arrives meanwhile, and that includes an edit whose parse is still in flight after blur.
+- **Completions** (designed, not built) are in the hook only, and opt-in: `useExternalQuanto(codec, { completions: true })`, with a codec that has `complete`. Opt-in for two reasons: the input's combobox attributes are only correct when the app renders the list, and a billed service shouldn't be asked for completions nobody shows. No component renders them; the list's markup, look and positioning are the app's (see the recipe below).
+  - An edit emits a `complete: { id, text }` effect; the adapter debounces it, so the machine has no timers. Results come back as `completed { id, completions }`; stale ids are ignored, and a rejection just leaves the list empty.
+  - **One list.** While typing it shows the completions for the current text; after a commit, the result's completions and alternatives. Each entry says which it is, since choosing them sets `raw` differently.
+  - **Choosing** a known value picks it at once. A lazy one enters `resolving` until `resolve` settles: an edit or another pick aborts it, `settled()` waits for it, and a rejection puts the field in `failed`, where `retry()` resolves again.
+  - **Keyboard:** the arrow keys move the highlight; Enter picks the highlighted entry, or with none commits the text as usual; Escape closes the list. Moving focus into the list isn't a blur, so choosing with the pointer doesn't start a parse the pick then aborts.
+  - The machine sets `ctx.session` (see [Completions](#completions)).
+  - **The hook exposes `completions`**, undefined unless the option is on, so the opt-in shows in the types:
+
+    ```ts
+    completions?: {
+      open: boolean;
+      items: CompletionItem<T>[];   // { kind: 'completion' | 'alternative'; label: string; … }
+      highlighted: CompletionItem<T> | undefined;
+      resolving: boolean;
+      listProps: …;                 // id, role="listbox", and focus moving here isn't a blur
+      itemProps(item): …;           // id, role="option", aria-selected, choose on click
+      select(item): void;
+    }
+    ```
+
+    With it on, `inputProps` add `role="combobox"`, `aria-expanded`, `aria-controls`, `aria-activedescendant`, `aria-autocomplete="list"` and the keyboard handling. Alternatives are items too, with `kind: 'alternative'`, so an ambiguous commit opens the list; `alternatives` stays on the field for apps without completions.
+  - **The recipe**, in the README and the site, is the reference, not a shipped component:
+
+    ```tsx
+    const field = useExternalQuanto(codec, { completions: true });
+
+    <input {...field.inputProps} />
+    {field.completions?.open && (
+      <ul {...field.completions.listProps}>
+        {field.completions.items.map((item) => (
+          <li {...field.completions.itemProps(item)}>{item.label}</li>
+        ))}
+      </ul>
+    )}
+    ```
+- **Enter still bubbles.** Whether a form may submit while a parse is pending is the app's decision; `pending` and `settled()` give it what it needs.
+
+### Testing external codecs
+
+An external service isn't part of the codec's code and may not be deterministic, so fixtures and the round-trip property run against a **stub**:
+
+- **The service is injected.** An external codec takes what it calls as an option: a plain async function from request to response (a `model` for an LLM codec). quanto has no SDK or network dependency, and swapping in a stub is just passing a different function.
+- **Every external codec ships a stub** next to its fixtures (`src/codecs/<name>/stub.ts`): hard-coded and deterministic, typically a lookup table from request to canned response. Fixtures run through a factory that closes over it. Fixture files stay plain JSON and follow the same rules as any other codec.
+- **`runFixtures` and `roundTrip`** accept external codecs and await their parses: the test function they register is async for them. Round-trip goes through the same stub: `parse(format(v))` must give back `v`.
+- **Completions are fixtures too**: `complete` fixtures, and `completions` on parse fixtures (see [Testing](#testing-fixtures-are-the-spec)). The stub answers `complete` and `resolve` as well as `parse`.
+- **What this covers:** the codec's own code (building the request, reading the reply, validation, issue mapping, `context`). What it doesn't: how accurate a real model is. That's an eval, run outside CI, and not part of the codec's definition of done.
+- **Not built yet: a first-party LLM codec.** It's evolving by nature, so it gets its own package (see [Packaging](#packaging)). Its request shape (likely an instruction, the text and a JSON Schema for the value) depends on the deferred JSON Schema exports for value shapes.
 
 ## Non-goals
 
@@ -704,14 +925,17 @@ Decided in principle, not in v1:
 
 - **Sub-minor-unit money** (`$3.459`): an optional `precision` option on the money codec.
 - **Calendar durations** (`2 months`): a separate codec with an ISO 8601 duration value (`P2M`).
-- **Open-ended ranges** (`5ft+`, `under 10 kg`).
+- **Grammars for other languages**: a separate package, since they're incomplete and will change, starting with the languages dates have names for (`es`, `fr`, `de`, `it`, `pt`, `nl`). Month and weekday names could later become a grammar part too, replacing the `names` option.
 - **Ranges over a merge** (`5-7 kg` against `merge([length(), mass()])`): `range()` takes a quantity codec, and a merged codec has no single unit table. Dropped on purpose when `range()` became quantity-only; `defineRange(merged, rules)` with custom rules covers it if needed.
 - **Gas mark** (`gas mark 4`): the number follows the unit, and only a few discrete marks exist, so it's a custom codec rather than a function unit.
 - **`auto`**, an "accept anything" codec: a merge of all built-ins plus a text fallback. Its merge order and what bare numbers mean are undecided.
 - **Agent tooling** beyond the basics above: an `explain(codec, text, ctx)` trace, a CLI with JSON output, a `new-codec` scaffold, and JSON Schema exports for the value shapes.
-- **Async codecs** (v2), including frozen formatting: see [Async codecs (v2)](#async-codecs-v2).
+- **A first-party LLM codec**, as an external codec in its own package: see [External codecs](#external-codecs).
 - **React Native adapter**, including how accessories are split between platforms.
+- **Completions for sync codecs** (`5 kilo` → kilograms or kilometres, `next fr` → Friday): known values only, since a sync field can't wait for a pick. `Completion<T>` already allows it; the sync field's echo and alternatives cover most of the need meanwhile.
+- **`quanto-address`**, a package with sync `postalCode`, `country` and `subdivision` codecs and an external `address` codec over an injected provider (a geocoding API, or an owned service such as libpostal), with completions. It's the reference case for [Completions](#completions).
 
 ## Open questions
 
-1. The input component name (`QuantoInput` is a placeholder).
+1. The input component name (`QuantoInput` in `quanto-react` for now).
+2. Whether the issue-code union stays closed, growing by additions like `ambiguous`, or custom codecs get a way to add codes of their own.

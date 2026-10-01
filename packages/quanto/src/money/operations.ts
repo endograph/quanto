@@ -4,6 +4,7 @@
 
 import { isKnownCurrency, minorDigits } from './currencies';
 import type { Money } from './types';
+import { decimalFraction, roundFraction, safeMinorUnits } from './exact';
 
 /** `Intl.NumberFormat` rounding mode names. */
 export type RoundingMode = 'ceil' | 'floor' | 'expand' | 'trunc' | 'halfCeil' | 'halfFloor' | 'halfExpand' | 'halfTrunc' | 'halfEven';
@@ -30,37 +31,11 @@ function assertSafe(minorUnits: number, operation: string): number {
   return minorUnits === 0 ? 0 : minorUnits;
 }
 
-/**
- * Rounds to an integer with a named mode. Float noise below 15 significant digits is removed first,
- * so `1005 × 1.1` is treated as exactly 1105.5.
- */
+/** Rounds the number's shortest decimal representation with the requested mode. */
 export function roundWithMode(x: number, mode: RoundingMode): number {
-  const v = Number(x.toPrecision(15));
-  const lower = Math.floor(v);
-  const fraction = v - lower;
-  if (fraction === 0) return v;
-  const upper = lower + 1;
-  const awayFromZero = v < 0 ? lower : upper;
-  const towardZero = v < 0 ? upper : lower;
-  switch (mode) {
-    case 'ceil':
-      return upper;
-    case 'floor':
-      return lower;
-    case 'expand':
-      return awayFromZero;
-    case 'trunc':
-      return towardZero;
-    default: {
-      if (fraction < 0.5) return lower;
-      if (fraction > 0.5) return upper;
-      if (mode === 'halfCeil') return upper;
-      if (mode === 'halfFloor') return lower;
-      if (mode === 'halfExpand') return awayFromZero;
-      if (mode === 'halfTrunc') return towardZero;
-      return lower % 2 === 0 ? lower : upper;
-    }
-  }
+  if (!Number.isFinite(x)) throw new Error(`quanto: roundWithMode needs a finite number; got ${x}.`);
+  const { numerator, denominator } = decimalFraction(x);
+  return Number(roundFraction(numerator, denominator, mode));
 }
 
 /** Adds two amounts in the same currency. */
@@ -81,11 +56,13 @@ export function compare<C extends string>(a: Money<C>, b: Money<NoInfer<C>>): -1
   return a.minorUnits < b.minorUnits ? -1 : a.minorUnits > b.minorUnits ? 1 : 0;
 }
 
-/** Multiplies an amount by a plain number, rounding to a whole minor unit with the given mode. */
+/** Multiplies by the factor's shortest decimal representation, rounding once to a whole minor unit. */
 export function scale<C extends string>(m: Money<C>, factor: number, options: { readonly rounding: RoundingMode }): Money<C> {
   assertMoney(m, 'scale');
   if (!Number.isFinite(factor)) throw new Error(`quanto: scale got a non-finite factor (${factor}).`);
-  return { minorUnits: assertSafe(roundWithMode(m.minorUnits * factor, options.rounding), 'scale'), currency: m.currency };
+  const { numerator, denominator } = decimalFraction(factor);
+  const rounded = roundFraction(BigInt(m.minorUnits) * numerator, denominator, options.rounding);
+  return { minorUnits: safeMinorUnits(rounded, 'scale'), currency: m.currency };
 }
 
 /**
@@ -98,8 +75,11 @@ export function convert<T extends string>(m: Money, to: T, options: { readonly r
   if (!isKnownCurrency(to)) throw new Error(`quanto: convert got target currency "${to}", which isn't a known ISO 4217 code.`);
   if (!Number.isFinite(options.rate) || options.rate < 0) throw new Error(`quanto: convert needs a finite, non-negative rate; got ${options.rate}.`);
   const shift = minorDigits(to) - minorDigits(m.currency);
-  const exact = m.minorUnits * options.rate * 10 ** shift;
-  return { minorUnits: assertSafe(roundWithMode(exact, options.rounding), 'convert'), currency: to };
+  let { numerator, denominator } = decimalFraction(options.rate);
+  if (shift >= 0) numerator *= 10n ** BigInt(shift);
+  else denominator *= 10n ** BigInt(-shift);
+  const rounded = roundFraction(BigInt(m.minorUnits) * numerator, denominator, options.rounding);
+  return { minorUnits: safeMinorUnits(rounded, 'convert'), currency: to };
 }
 
 /**
@@ -112,18 +92,23 @@ export function allocate<C extends string>(m: Money<C>, ratios: readonly number[
   if (ratios.length === 0 || ratios.some((r) => !Number.isFinite(r) || r < 0)) {
     throw new Error('quanto: allocate needs at least one ratio, and every ratio must be a finite, non-negative number.');
   }
-  const total = ratios.reduce((sum, r) => sum + r, 0);
-  if (total <= 0) throw new Error('quanto: allocate needs at least one positive ratio.');
+  const fractions = ratios.map(decimalFraction);
+  // Decimal denominators are powers of ten, so the largest is a common denominator.
+  const denominator = fractions.reduce((largest, r) => r.denominator > largest ? r.denominator : largest, 1n);
+  const weights = fractions.map((r) => r.numerator * (denominator / r.denominator));
+  const total = weights.reduce((sum, weight) => sum + weight, 0n);
+  if (total === 0n) throw new Error('quanto: allocate needs at least one positive ratio.');
 
-  const sign = m.minorUnits < 0 ? -1 : 1;
-  const amount = Math.abs(m.minorUnits);
-  const shares = ratios.map((r) => Math.floor(Number(((amount * r) / total).toPrecision(15))));
-  let remainder = amount - shares.reduce((sum, s) => sum + s, 0);
-  for (let i = 0; remainder > 0; i = (i + 1) % shares.length) {
-    if (ratios[i]! > 0) {
+  const sign = m.minorUnits < 0 ? -1n : 1n;
+  const amount = BigInt(Math.abs(m.minorUnits));
+  const shares = weights.map((weight) => amount * weight / total);
+  let remainder = amount - shares.reduce((sum, share) => sum + share, 0n);
+  // Each floor loses less than one unit, so one pass over the positive weights suffices.
+  for (let i = 0; remainder > 0n; i++) {
+    if (weights[i]! > 0n) {
       shares[i]!++;
       remainder--;
     }
   }
-  return shares.map((s) => ({ minorUnits: s === 0 ? 0 : sign * s, currency: m.currency }));
+  return shares.map((share) => ({ minorUnits: safeMinorUnits(sign * share, 'allocate'), currency: m.currency }));
 }
