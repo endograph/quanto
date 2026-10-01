@@ -1,7 +1,7 @@
 // Built-in codecs. See DESIGN.md.
 
-export { assertQuantityOptions, checkQuantity, quantity, resolveDefaultUnit } from './quantity';
-export type { DefaultUnit, QuantityCodec, QuantityDefinition, QuantityOptions, ToBase, UnitDefinition, UnitTable } from './quantity';
+export { quantity } from './quantity';
+export type { DefaultUnit, NumberSyntax, QuantityCodec, QuantityDefinition, QuantityOptions, ToBase, UnitDefinition, UnitTable } from './quantity';
 
 export { area, areaUnits } from './area';
 export type { AreaUnit } from './area';

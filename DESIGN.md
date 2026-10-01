@@ -316,6 +316,7 @@ const height = length({
 
 - **`defaultUnit`** is required to accept bare numbers. Without it, `70` yields a `missing_unit` issue; this is the only way to express "a unit is required".
 - **Locale-dependent defaults** are an explicit opt-in: pass a table keyed by measurement system, e.g. `defaultUnit: { us: 'in', uk: 'in', metric: 'cm' }`. The system comes from the locale's region (see [Locales](#locales)). Because the table lives on the codec, height and road distance can default differently.
+- **`number`** (on `quantity()`'s definition, not a user option) replaces how numbers are read and printed, for quantities with their own number syntax. It's `{ read(text, ctx, from), format(value, ctx) }`, with `read` returning `{ value, end }` like `readNumber`, in the unit's own terms, and `format` printing something `read` reads back. It's used for every number in the input, including compound input and the `missing_unit` example, and the codec exposes it as `codec.number` so range completion can find each side's number. `pace` is the built-in user (`5:30` is 330 seconds).
 - **`canonicalUnit`** narrows the value type to that unit (`Quantity<'in'>`) and turns unit-aware constraints into plain number checks that any validator can express. It is the recommended way to validate quantities.
 - Without `canonicalUnit`, cross-unit constraints are written as refinements that use quanto's math, e.g. `.refine((h) => compare(len, h, { value: 8, unit: 'ft' }) <= 0)`.
 - **Compound input** (`5'11"`, `5 ft 11 in`, `1 lb 4 oz`, `2h30m`) is summed into the **smallest** unit mentioned (71 in, 20 oz, 150 min), or into `canonicalUnit` if set. The smallest unit usually gives an exact integer, and it's what `canonicalUnit` users expect.
@@ -334,7 +335,7 @@ const height = length({
 - `energy`'s `cal`, `Cal` and `calories` are kilocalories, as on food labels; the small calorie isn't included. `power` has both `mW` and `MW`, matched exactly. `pressure` and `frequency` have no milli- units, so `mpa` and `mhz` mean mega-. `frequency` has `rpm` but not beats per minute, which nobody converts to hertz.
 - `angle` uses arcseconds as its base, so `40°26'46"` compounds exactly (degrees take arcminutes as their subunit, arcminutes take arcseconds).
 - `fuelEconomy` has km/L as its base; L/100km is a function unit. `mpg` is US; UK mpg is `mpg (imp)`, as with `volume`.
-- `pace` is written with `defineCodec` rather than `quantity()`, because it reads clock notation (`5:30 /km`, `1:05:00 /mi`, or `5.5 min/km`). It still carries a unit table (seconds per km and per mile), so `convert`, `compare` and range ordering work on it. It formats to a tenth of a second.
+- `pace` is a `quantity()` with its own number syntax: it reads clock notation (`5:30 /km`, `1:05:00 /mi`) as seconds and a plain number (`5.5 min/km`) as minutes, and formats to a tenth of a second. Its unit table is seconds per km and per mile, with the minutes word folded into the aliases (`min/km`, `minutes per mile`). A negative pace is rejected when typed; a stored negative is left to the user's schema, as for every quantity.
 
 ## Money
 
@@ -510,7 +511,7 @@ dateRange(date()).parse('Oct 3-5');
   1. **Split.** Separators: `-`, `–`, `—`, `to`, `until`, `through`. Hyphens also appear inside values (negative numbers, ISO dates `2026-10-03`), so every candidate split is tried.
   2. **Complete and parse.** For each split, the rules propose completions. Both sides of each are parsed with the inner codec, and the first completion where both parse and `start <= end` wins; then the first that's in order after `adjustEnd`; then the first that parsed at all.
 - **The completion rules of each domain.** The rule throughout: a side borrows what it's missing from the other side, and when borrowing could go two ways, the reading that keeps `start <= end` wins.
-  - Quantities (`range`): a side with no unit borrows the other side's unit text. `5-7 ft` → 5 ft–7 ft; `5'10"-6'` needs nothing. Clock notation counts as one number, so pace ranges complete too: `5:00-5:30 /km`.
+  - Quantities (`range`): a side with no unit borrows the other side's unit text. `5-7 ft` → 5 ft–7 ft; `5'10"-6'` needs nothing. Each side's number is read with the codec's own number syntax, so pace ranges complete too: `5:00-5:30 /km`.
   - Money (`moneyRange`): a side with no currency (symbol or code) borrows the other side's: `$10-20` → $10–$20, `10-20 EUR` → €10–€20. A side with no magnitude suffix borrows the other side's only if the result stays in order: `$10-20k` → $10k–$20k and `$1.5-2M` → $1.5M–$2M, but `$500-1k` → $500–$1,000.
   - Dates (`dateRange` over `date()`): a side with only a day number borrows the other side's month and year: `Oct 3-5` → Oct 3–Oct 5. A side with no year borrows the other side's. When neither side has a year and the end would fall before the start, the end moves to the next year: `Dec 30 - Jan 2` → Dec 30, 2026–Jan 2, 2027.
   - Times (`dateRange` over `time()`): a side with no meridiem borrows the other side's, unless that would put the start after the end, in which case the start takes the opposite meridiem. `9-11pm` → 9pm–11pm; `9-5pm` → 9am–5pm.
@@ -575,7 +576,7 @@ import { feetInches } from 'quanto/formats';
 - No runtime dependencies. The Standard Schema interface is vendored into `src/` (types only), as the Standard Schema spec recommends, so there is no dependency on `@standard-schema/spec`.
 - Subpath exports:
   - `quanto`: core. `defineCodec`; `formatWithFallback`; the primitives `normalize`, `readNumber` and `formatNumber`; `merge`, `optional`, `range` and `defineRange`; and the types `Codec`, `CodecOptions`, `Ctx`, `ResolvedCtx`, `Locale`, `ParseResult`, `ParseOutcome`, `ParseContext`, `Issue`, `IssueCode`, `QuantoValue`, `Quantity`, `Range`, `RangeRules`, `RangeProposal` and `UnitTable`.
-  - `quanto/codecs`: `quantity`, and `assertQuantityOptions`, `checkQuantity` and `resolveDefaultUnit` for quantity-like codecs that can't use `quantity()` (like `pace`); the built-in quantity codecs and their unit tables (`length`/`lengthUnits`, `mass`/`massUnits`, …); `percent`.
+  - `quanto/codecs`: `quantity` and the `NumberSyntax` type; the built-in quantity codecs and their unit tables (`length`/`lengthUnits`, `mass`/`massUnits`, …); `percent`.
   - `quanto/quantity`: quantity operations (`convert`, `compare`).
   - `quanto/formats`: ready-made formatters (`feetInches`, `poundsOunces`, `stonesPounds`, `hoursMinutes`, `intlUnit`) and the `Formatter<T>` type.
   - `quanto/testing`: `roundTrip` and `runFixtures`, the generic fixture runner.

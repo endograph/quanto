@@ -2,7 +2,7 @@ import { defineCodec } from '../../core/define-codec';
 import type { Codec, CodecOptions, Issue, ParseOutcome, Quantity, ResolvedCtx } from '../../core/types';
 import type { MeasurementSystem } from '../../locale';
 import { normalize } from '../../primitives/normalize';
-import { formatNumber, readNumber } from '../../primitives/number';
+import { formatNumber, readNumber, type NumberMatch } from '../../primitives/number';
 import { convertValue, factorOf, isLinear, sumLinear, toBaseValue, type ToBase } from './convert';
 
 export type { ToBase } from './convert';
@@ -41,11 +41,30 @@ export interface QuantityOptions<U extends string, C extends U = U> extends Code
 }
 
 /** A quantity codec. It carries its unit table, which the operations in `quanto/quantity` use. */
+/**
+ * How a quantity codec reads and prints its numbers. The default is `readNumber` and `formatNumber`;
+ * `pace` reads `5:30` as 330 seconds. `read` returns the value in the unit's own terms, or undefined
+ * if there's no number at `from`; `format` must print something `read` reads back.
+ */
+export interface NumberSyntax {
+  read(text: string, ctx: ResolvedCtx, from: number): NumberMatch | undefined;
+  format(value: number, ctx: ResolvedCtx): string;
+}
+
+const DEFAULT_SYNTAX: NumberSyntax = {
+  read: (text, ctx, from) => readNumber(text, ctx, { from }),
+  format: (value, ctx) => formatNumber(value, ctx),
+};
+
 export interface QuantityCodec<U extends string, C extends U = U> extends Codec<Quantity<C>> {
   readonly units: Readonly<Record<U, UnitDefinition>>;
+  /** How the codec reads and prints numbers. Range completion uses it to find each side's number. */
+  readonly number: NumberSyntax;
 }
 
 export interface QuantityDefinition<T extends UnitTable, C extends keyof T & string> extends QuantityOptions<keyof T & string, C> {
+  /** A different number syntax, for quantities written like `5:30 /km`. Defaults to `readNumber`/`formatNumber`. */
+  readonly number?: NumberSyntax | undefined;
   readonly id: string;
   readonly units: T;
 }
@@ -188,6 +207,7 @@ export function quantity<const T extends UnitTable, C extends keyof T & string =
 ): QuantityCodec<keyof T & string, C> {
   type U = keyof T & string;
   const { id, units, defaultUnit, canonicalUnit, schema, format } = definition;
+  const number = definition.number ?? DEFAULT_SYNTAX;
   const aliases = indexAliases(id, units);
   assertQuantityOptions(id, units, defaultUnit, canonicalUnit);
   const exampleAlias = units[Object.keys(units)[0]!]!.aliases[0]!;
@@ -219,7 +239,7 @@ export function quantity<const T extends UnitTable, C extends keyof T & string =
       while (s[pos] === ' ') pos++;
       if (pos >= s.length) break;
       if (components.length > 0 && (s[pos] === '-' || s[pos] === '+')) return unparseable(text);
-      const n = readNumber(s, ctx, { from: pos });
+      const n = number.read(s, ctx, pos);
       if (!n) return unparseable(text);
       pos = n.end;
       while (s[pos] === ' ') pos++;
@@ -246,7 +266,7 @@ export function quantity<const T extends UnitTable, C extends keyof T & string =
       else if (i === 0) {
         const unit = resolveDefaultUnit<string>(defaultUnit, ctx.locale.measurementSystem);
         if (unit === undefined) {
-          return { ok: false, issues: [{ code: 'missing_unit', message: `Add a unit, like "${formatNumber(c.value, ctx)} ${exampleAlias}".` }] };
+          return { ok: false, issues: [{ code: 'missing_unit', message: `Add a unit, like "${number.format(c.value, ctx)} ${exampleAlias}".` }] };
         }
         resolved.push({ value: c.value, unit });
       } else {
@@ -298,7 +318,7 @@ export function quantity<const T extends UnitTable, C extends keyof T & string =
 
   const defaultFormat = (value: Quantity<C>, ctx: ResolvedCtx): string => {
     const alias = units[value.unit]!.aliases[0]!;
-    return `${formatNumber(value.value, ctx)}${/^['"°]$/.test(alias) ? '' : ' '}${alias}`;
+    return `${number.format(value.value, ctx)}${/^['"°]$/.test(alias) ? '' : ' '}${alias}`;
   };
 
   const codec = defineCodec<Quantity<C>>({
@@ -308,5 +328,5 @@ export function quantity<const T extends UnitTable, C extends keyof T & string =
     check,
     options: { schema, format },
   });
-  return { ...codec, units: units as Readonly<Record<U, UnitDefinition>> };
+  return { ...codec, units: units as Readonly<Record<U, UnitDefinition>>, number };
 }

@@ -1,19 +1,19 @@
-import type { QuantityCodec } from '../codecs/quantity';
+import type { NumberSyntax, QuantityCodec } from '../codecs/quantity';
 import { toBaseValue } from '../codecs/quantity/convert';
 import type { Codec, CodecOptions, Quantity, ResolvedCtx } from '../core/types';
-import { readNumber } from '../primitives/number';
 import { defineRange, type Range, type RangeProposal, type RangeRules } from './define-range';
 
 export { defineRange } from './define-range';
 export type { Range, RangeProposal, RangeRules } from './define-range';
 
-/** Where the first number in a side starts and ends. Clock notation counts as one number (`5:00-5:30 /km`). */
-function numberSpan(side: string, ctx: ResolvedCtx): { start: number; end: number } | undefined {
+/**
+ * Where the first number in a side starts and ends, read with the codec's own number syntax, so
+ * `5:00-5:30 /km` completes for pace without range knowing about clock notation.
+ */
+function numberSpan(side: string, ctx: ResolvedCtx, syntax: NumberSyntax): { start: number; end: number } | undefined {
   const start = side.search(/\d|[.,]\d/);
   if (start < 0) return undefined;
-  const clock = /^\d+:[0-5]\d(?::[0-5]\d)?(?:[.,]\d+)?/.exec(side.slice(start));
-  if (clock) return { start, end: start + clock[0].length };
-  const n = readNumber(side, ctx, { from: start });
+  const n = syntax.read(side, ctx, start);
   return n ? { start, end: n.end } : undefined;
 }
 
@@ -30,7 +30,7 @@ function quantityRules<U extends string, C extends U>(codec: QuantityCodec<U, C>
   return {
     propose(left, right, ctx) {
       const analyze = (side: string) => {
-        const span = numberSpan(side, ctx);
+        const span = numberSpan(side, ctx, codec.number);
         if (!span) return undefined;
         const before = side.slice(0, span.start).trim();
         const rest = side.slice(span.end);
