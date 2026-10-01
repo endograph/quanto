@@ -1,0 +1,49 @@
+{
+  "name": "@quantojs/libpostal",
+  "version": "0.2.0",
+  "description": "Mailing addresses for quanto, parsed by libpostal: an external codec that turns libpostal's output into a normalized address.",
+  "license": "MIT",
+  "author": "rt2zz",
+  "homepage": "https://github.com/endograph/quanto/tree/main/packages/libpostal#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/endograph/quanto.git",
+    "directory": "packages/libpostal"
+  },
+  "bugs": {
+    "url": "https://github.com/endograph/quanto/issues"
+  },
+  "keywords": [
+    "quanto",
+    "libpostal",
+    "address",
+    "postal-code",
+    "parse",
+    "forms"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "quanto": "workspace:^"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "quanto": "workspace:*"
+  }
+}

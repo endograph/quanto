@@ -11,11 +11,12 @@
       },
     },
     "apps/site": {
-      "name": "@quanto/site",
+      "name": "@quantojs/site",
       "dependencies": {
+        "@quantojs/datetime": "workspace:*",
+        "@quantojs/music": "workspace:*",
+        "@quantojs/react": "workspace:*",
         "quanto": "workspace:*",
-        "quanto-datetime": "workspace:*",
-        "quanto-react": "workspace:*",
         "react": "^19",
         "react-dom": "^19",
         "zod": "^4",
@@ -26,8 +27,28 @@
       },
     },
     "packages/datetime": {
-      "name": "quanto-datetime",
-      "version": "0.1.0",
+      "name": "@quantojs/datetime",
+      "version": "0.2.0",
+      "devDependencies": {
+        "quanto": "workspace:*",
+      },
+      "peerDependencies": {
+        "quanto": "workspace:^",
+      },
+    },
+    "packages/libpostal": {
+      "name": "@quantojs/libpostal",
+      "version": "0.2.0",
+      "devDependencies": {
+        "quanto": "workspace:*",
+      },
+      "peerDependencies": {
+        "quanto": "workspace:^",
+      },
+    },
+    "packages/music": {
+      "name": "@quantojs/music",
+      "version": "0.2.0",
       "devDependencies": {
         "quanto": "workspace:*",
       },
@@ -37,11 +58,11 @@
     },
     "packages/quanto": {
       "name": "quanto",
-      "version": "0.1.0",
+      "version": "0.2.0",
     },
     "packages/react": {
-      "name": "quanto-react",
-      "version": "0.1.0",
+      "name": "@quantojs/react",
+      "version": "0.2.0",
       "devDependencies": {
         "@types/react": "^19",
         "quanto": "workspace:*",
@@ -65,7 +86,15 @@
 
     "@quansync/fs": ["@quansync/fs@1.1.0", "", { "dependencies": { "quansync": "^1.0.0" } }, "sha512-qAPG/t3HqML1TlN7sY/pTbEjzFVAKsMjNNMGheyDosro+kT4iw2KCUoHcVdmliwWjorm4elZbgNQyU2eD97eDg=="],
 
-    "@quanto/site": ["@quanto/site@workspace:apps/site"],
+    "@quantojs/datetime": ["@quantojs/datetime@workspace:packages/datetime"],
+
+    "@quantojs/libpostal": ["@quantojs/libpostal@workspace:packages/libpostal"],
+
+    "@quantojs/music": ["@quantojs/music@workspace:packages/music"],
+
+    "@quantojs/react": ["@quantojs/react@workspace:packages/react"],
+
+    "@quantojs/site": ["@quantojs/site@workspace:apps/site"],
 
     "@rolldown/binding-android-arm-eabi": ["@rolldown/binding-android-arm-eabi@1.2.12", "", { "os": "android", "cpu": "arm" }, "sha512-dB/a1214qKfHMXCpgqR4OZT+jS4kTyEXbQGJPqzobt5EwH5rX080pxE37alt3RzvR1bf1Yz/yGqRfrYAxuPw0A=="],
 
@@ -274,10 +303,6 @@
     "quansync": ["quansync@1.0.0", "", {}, "sha512-5xZacEEufv3HSTPQuchrvV6soaiACMFnq1H8wkVioctoH3TRha9Sz66lOxRwPK/qZj7HPiSveih9yAyh98gvqA=="],
 
     "quanto": ["quanto@workspace:packages/quanto"],
-
-    "quanto-datetime": ["quanto-datetime@workspace:packages/datetime"],
-
-    "quanto-react": ["quanto-react@workspace:packages/react"],
 
     "react": ["react@19.3.0", "", {}, "sha512-E8LUcbtBWt20bbl2YoHfx4ZDBdxVTfOKtCZn9cDSJ4l6/nuoApcpIBcj47t2wZoVX8g2ZHuMHbiShgCR1T5Sog=="],
 

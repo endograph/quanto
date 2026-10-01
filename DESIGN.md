@@ -8,7 +8,7 @@ quanto is a library for turning messy human text into well-typed values, and bac
 
 Think of it as a universal moment.js, generalized beyond dates, or as "what if Zod were unit-aware". `5'11"`, `180cm` and `1,8 m` all parse into the same typed value, which can be converted, compared and formatted.
 
-It ships as a small core (`quanto`: the codec contract, primitives, quantities and the wrappers) plus `quanto-datetime`, a separate package built on its public API (see [Packaging](#packaging)). First-party codecs whose behaviour is complete and settled are in the core, including money (`quanto/money`); a domain that's intentionally incomplete or still evolving, like dates, gets its own package, which owns its codecs and range rules and versions on its own.
+It ships as a small core (`quanto`: the codec contract, primitives, quantities and the wrappers) plus `@quantojs/datetime`, a separate package built on its public API (see [Packaging](#packaging)). First-party codecs whose behaviour is complete and settled are in the core, including money (`quanto/money`); a domain that's intentionally incomplete or still evolving, like dates, gets its own package, which owns its codecs and range rules and versions on its own.
 
 The input component (`<QuantoInput />`) is one consumer of this core, shipped as a separate package. It is not the core, and nothing UI-specific lives in the core.
 
@@ -126,10 +126,23 @@ interface ResolvedCtx {
   now(): string;   // ctx.now, or the machine's clock and local offset.
                    // Calling it records `now` in the result's context.
   grammars: Grammar[];  // ctx.grammars, or none
+  // …and any package's extensions (CtxExtensions), as passed
 }
 ```
 
 Reading the clock through `ctx.now()` is what keeps `context` accurate without any bookkeeping in the codec.
+
+**Extensions.** A package that needs app-wide settings of its own declares a key on `ctx` by augmenting the `CtxExtensions` interface, which `Ctx` and `ResolvedCtx` both extend:
+
+```ts
+declare module 'quanto' {
+  interface CtxExtensions {
+    readonly music?: MusicCtx;   // @quantojs/music: { key?: string }
+  }
+}
+```
+
+quanto passes every key it doesn't own through to `ResolvedCtx` untouched, so the setting reaches codecs inside `merge`, `range` and `approx`, and comes from the React provider like `locale` does. Each package validates its own key and owns its meaning. One key per package, named for it, so packages can't collide. Extensions aren't recorded in `ParseContext`, so an extension that changes what `parse` returns makes replay depend on passing it again; keep them to formatting where possible (`ctx.music.key` only changes spelling).
 
 ### Primitives
 
@@ -139,7 +152,7 @@ The lexing built-ins use is exported from `quanto`, so custom codecs get the sam
 - **`readNumber(text, ctx, { from?, suffixes? })`**: reads one number starting at `from` (default 0, leading spaces skipped) using the locale rules, and returns `{ value, end }` or `undefined`. It accepts a leading `-` or `+`; whether negatives make sense is the codec's call. `suffixes: true` accepts `k`, `m`, `b`/`bn` and `t`, attached to the number and case-insensitive. Without `suffixes`, it reads a product of powers (`10^3`, `2*5`, `6.02×10^23`) and math constants (`π/2`, `2π`); see [Locale-aware number parsing](#locale-aware-number-parsing). When the locale's reading of an ambiguous separator gives invalid grouping, the other reading is used (`1234,567` in en-US is 1234.567).
 - **`formatNumber(n, ctx, { maxFractionDigits?, minFractionDigits? })`**: formats with the region's bundled separators and grouping, so the result reads back with `readNumber`. Defaults: at most 2 fraction digits, at least 0; rounding is half away from zero, on the number's shortest decimal representation (`1.005` → `1.01` at two digits). Space and apostrophe grouping print as plain ` ` and `'`. From 10²¹ up, where a double's digits past the first 17 are noise, it prints a power of ten instead: `1.62×10⁶⁵`, or `10¹⁰⁰` when the factor is 1, with the fraction-digit options applying to the factor. `readNumber` reads both back (superscripts normalize to `^`).
 - **`ctx.locale`**: the resolved language and region, the number separators and grouping, and the measurement system, for codecs that need them directly.
-- **`lookupRegional(locale, regions, exceptions?)`**: looks up a codec's own region-keyed data (the `language-region` row if there is one, otherwise the region's), so every codec resolves a locale the same way. `quanto/money` uses it for currencies, `quanto-datetime` for date orders and clocks, and custom codecs for their own tables.
+- **`lookupRegional(locale, regions, exceptions?)`**: looks up a codec's own region-keyed data (the `language-region` row if there is one, otherwise the region's), so every codec resolves a locale the same way. `quanto/money` uses it for currencies, `@quantojs/datetime` for date orders and clocks, and custom codecs for their own tables.
 
 The built-in date grammar is not exported in v1.
 
@@ -161,7 +174,7 @@ height.parse(raw, storedContext);            // the same value, on the same pack
 ```
 
 - `ParseContext` is assignable to `Ctx`, so replay needs no merging. It doesn't record `grammars`, which are code, not data: replay passes the same grammars alongside it.
-- Replay is exact on the same versions of `quanto` and of the package that owns the codec: a date's result depends on `quanto-datetime` as well as the core. A later version of either can differ where its parser or bundled data changed, which is exactly what a migration wants to detect. `context` doesn't record versions; apps that need exact replay keep their dependency versions alongside (a lockfile in their history is usually enough).
+- Replay is exact on the same versions of `quanto` and of the package that owns the codec: a date's result depends on `@quantojs/datetime` as well as the core. A later version of either can differ where its parser or bundled data changed, which is exactly what a migration wants to detect. `context` doesn't record versions; apps that need exact replay keep their dependency versions alongside (a lockfile in their history is usually enough).
 
 ### Grammars
 
@@ -462,7 +475,7 @@ The codec is `money({ defaultCurrency?, schema?, format? })`.
 
 ## Dates and times
 
-Dates and times live in **`quanto-datetime`**: the four codecs, their grammar, `dateRange` and the `Intl` date formatters. Its grammar is the most heuristic part of quanto and the likeliest to change, so it versions on its own. The core keeps what's shared, `ctx.now()` and `context.now`; the package owns its locale data (month and weekday names, numeric date order, 12- or 24-hour clock), generated by its own script.
+Dates and times live in **`@quantojs/datetime`**: the four codecs, their grammar, `dateRange` and the `Intl` date formatters. Its grammar is the most heuristic part of quanto and the likeliest to change, so it versions on its own. The core keeps what's shared, `ctx.now()` and `context.now`; the package owns its locale data (month and weekday names, numeric date order, 12- or 24-hour clock), generated by its own script.
 
 Values are ISO 8601 strings. They're JSON-native and parse losslessly into Temporal (`PlainDate`, `PlainTime`, `PlainDateTime`, `Instant`) if an app needs date math. quanto does no date math. A future separate package may provide it, built on Temporal.
 
@@ -481,7 +494,7 @@ Values are ISO 8601 strings. They're JSON-native and parse losslessly into Tempo
 - Because the parsed value is captured at entry time and stored, relative input is never re-parsed later (see the stored envelope below).
 - Numeric dates follow the region's date order. `03/04/2026` is March 4 in en-US (the default) and 3 April in en-GB and en-AU. Unambiguous forms (`2026-03-04`, `4 Mar`, `13/04`) are accepted in any locale.
 - **Yearless dates** (`4 Mar`, `13/04`) take the year of `ctx.now`, with the same machine default.
-- **Month and weekday names: English is built in; other languages are opt-in data.** Each of `date()`, `localDateTime()` and `dateTime()` takes a `names` option: `date({ names: [de] })`. `quanto-datetime/names` exports name sets for Spanish, French, German, Italian, Portuguese and Dutch (`es`, `fr`, `de`, `it`, `pt`, `nl`), generated from ICU at development time; any other language is just a `Names` object (twelve months and seven weekdays, each a list of accepted forms, plus optional filler words).
+- **Month and weekday names: English is built in; other languages are opt-in data.** Each of `date()`, `localDateTime()` and `dateTime()` takes a `names` option: `date({ names: [de] })`. `@quantojs/datetime/names` exports name sets for Spanish, French, German, Italian, Portuguese and Dutch (`es`, `fr`, `de`, `it`, `pt`, `nl`), generated from ICU at development time; any other language is just a `Names` object (twelve months and seven weekdays, each a list of accepted forms, plus optional filler words).
   - **Why opt-in rather than picked from `ctx.locale`.** Opt-in sets tree-shake, and a codec's behaviour changes only when the app changes it: a later release adding a language can't silently change how existing fields parse. Locale-aware numbers stay automatic, because separators matter to every field and don't depend on vocabulary.
   - **Parsing** accepts the passed sets, in order, then English. Matching ignores case, accents (`fevrier` is `février`) and a trailing period. When a form means two things, months win over weekdays (Spanish, French and Italian `mar` is March; `martes` still works) and earlier sets win over later ones. A set's `fillers` are skipped between parts (`2 de octubre de 2026`), and a period after the day number is accepted (`2. Oktober`).
   - **Formatting** uses the set whose language matches `ctx.locale`'s language, or English: `2 Okt 2026` in de-DE, still the unambiguous day-month-year form, not the full native style (`2. Okt. 2026`). It round-trips.
@@ -512,13 +525,62 @@ Write a custom codec for any of these:
 - Numbers written as words (`three pm`), except `a`/`an`/`one` in `in a day`.
 - Checking a written weekday against the date (`Mon, Oct 2`).
 
+## Addresses
+
+Mailing addresses live in **`@quantojs/libpostal`**, an external codec over [libpostal](https://github.com/openvenues/libpostal), the open-source address parser: a statistical model (a conditional random field) trained on over a billion addresses from OpenStreetMap and OpenAddresses, covering most countries, CPU-only and fast (10–30k addresses a second per thread). Splitting an address into its parts is a statistical problem with no common case across countries, so it can't be a built-in sync codec; libpostal is the best owned option, and the package's name says that's what it's built on.
+
+```ts
+import { address } from '@quantojs/libpostal';
+import postal from 'node-postal';
+
+const field = address({ libpostal: async (text) => postal.parser.parse_address(text), defaultCountry: 'US' });
+await field.parse('1600 amphitheatre pkwy, mountain view, california 94043');
+// { lines: ['1600 amphitheatre pkwy'], locality: 'mountain view', region: 'CA', postalCode: '94043', country: 'US' }
+```
+
+- **The app runs libpostal.** Its model is about 2 GB, so it's never a dependency: the `libpostal` option is a function from text to libpostal's `[{ label, value }]`, whether that's node-postal in-process or a request to a libpostal service (`pelias/libpostal-service`). The package has no runtime dependencies, and its fixtures run against a stub of libpostal's answers.
+- **The value** is `Address`: `lines` (building, street, unit, PO box, in the order written; at least one), and optionally `dependentLocality`, `locality`, `region`, `postalCode` and `country` (ISO 3166-1 alpha-2). Absent parts are absent.
+- **Text stays as typed.** libpostal lowercases its output; the codec finds each part in the text and keeps it as written. It doesn't title-case: `mcdonald` might be `McDonald`, and guessing would change what was typed.
+- **Normalized where there's a convention:** regions to codes in the US, Canada and Australia (`California`, `Québec` → `CA`, `QC`), postal codes to their country's format where it has a fixed one (`sw1a2aa` → `SW1A 2AA`, `101180110` → `10118-0110`; others as typed, uppercased), and countries, written in any of the bundled languages or common aliases (`Deutschland`, `UK`, `USA`), to their codes.
+- **`defaultCountry`** is the country of addresses that don't name one. It's an option, not read from the locale: the locale says how someone writes, not where the address is. Formatting leaves the default country out and names any other, in the reader's language.
+- **Issues:** `unparseable` when there's no street line, no city or postal code, or a country it can't identify.
+- **Formatting** is one line in the country's order: `1600 Amphitheatre Pkwy, Mountain View, CA 94043` (city, region, postcode), `Hauptstraße 5, 10115 Berlin, Germany` (postcode first, most of Europe), `10 Downing St, London SW1A 2AA, United Kingdom` (city, postcode). It reads back through libpostal.
+- **Not included:** checking that an address exists (that needs a postal database) and completions (an address index, such as Pelias or Photon over OpenAddresses). A geocoding API covers both; wiring one up is an app's own external codec, and the value shape can be the same.
+
+## Music
+
+Pitches and time signatures live in **`@quantojs/music`**. Note naming varies by country and tradition, and the grammar will grow (tempo, intervals), so it versions on its own. Chords are out of scope: they aren't quantities.
+
+### Pitch
+
+`pitch()` is a quantity in two units: `note`, a MIDI note number (A4 is 69, middle C is 60) with cents as the fraction (`A4 +15¢` is 69.15), and `Hz`. The codec carries its unit table (`pitchUnits(a4)`, Hz as the base and `note` as a function unit), so `convert` and `compare` work, and `canonicalUnit: 'Hz'` makes `A4` 440 Hz.
+
+- **Notes:** a letter, at most one accidental, an octave and optional signed cents: `A4`, `C♯5`, `Db4`, `B♭3`, `C##4`/`Cx4`/`C𝄪4`, `D𝄫4`, `C♮4`, `C sharp 4`, `B-flat 3`, `A4 +15¢`, `A4 -20 cents`. Octaves can be negative (`C-1` is 0). Letters are case-insensitive, so `bb3` is B♭3.
+- **Frequencies and MIDI numbers:** `440 Hz`, `1 kHz` (stored as 1000 Hz), `four hundred forty hertz`, `MIDI 60`. A bare number is `missing_unit` unless the codec has a `defaultUnit`. A frequency must be more than 0 Hz.
+- **Octave:** required. `F#` is `unparseable` ("Add an octave") unless the codec has a `defaultOctave`. `middleC: 3` switches to the numbering where middle C is C3 (Yamaha, and French usage).
+- **Tuning:** `a4` (default 440) sets A4's frequency for conversions.
+- **German and Nordic names** (de, da, nb, nn, no, sv, fi, et, pl, cs, sk, hu, sl, hr, sr): `H` is B and a bare `B` is B♭, with `-is` and `-es` accidentals: `Fis`, `Cis`, `Es`, `As`, `Des`, `Ces`, `Gisis`, `Heses`. The `-is`/`-es` names read in every locale; only the bare `B` depends on the locale (`B4` is 70 in de-DE and 71 in en-US). `B` with a symbol is the English B (`B♭4`, `B#4`), and `H` reads as B everywhere.
+- **Solfège** reads in every locale: `Do`/`Ut`, `Ré`/`Re`, `Mi`, `Fa`/`Fá`, `Sol`/`So`, `La`/`Lá`, `Si`/`Ti`, with symbol accidentals (`Sib3`, `Fa#4`) or words (`Fa dièse 4`, `Si bémol 3`, `diesis`/`bemolle`, `sostenido`/`bemol`, `sustenido`).
+- **Formatting** prints the nearest note and the remaining cents to a tenth (`A4 +15¢`, `A♯4 -50¢`), or the frequency to two decimals (`261.63 Hz`). Names follow `ctx.locale`'s language: `B♭4` in English, `B4` (B♭) and `H4` in German, `Si♭4` in French, `Fá4` in Portuguese. Accidentals print as `♯ ♭ 𝄪 𝄫`.
+- **Spelling follows `ctx.music.key`** (see [Extensions](#defining-a-codec)). A key is a tonic and a mode (`F major`, `Eb`, `F# minor`, `Dm`, `C dorian`; all seven modes). The key's own notes are spelled as the key spells them (E♯ in F♯ major, C♭ in G♭ major); other notes take sharps in keys whose signature is sharp or empty, and flats in flat keys. Minor keys also spell their raised sixth and seventh (C♯ in D minor, not D♭). Without a key, notes take sharps. The key only affects `format`: a note parses to the pitch it names, whatever the key. A malformed key throws, since it comes from the app.
+- **Merging and ranges.** Note names overlap other codecs (`A4` is a paper size, `B` is bytes); in a `merge`, the order decides, as usual. `defineRange(pitch())` reads vocal and instrument ranges (`C3-C5`, `E2 to G#4`).
+
+### Time signatures
+
+`timeSignature()` values are `{ numerator, denominator }`, with `groups` for additive meters: `3+2+2/8` is `{ numerator: 7, denominator: 8, groups: [3, 2, 2] }`.
+
+- Accepted: `4/4`, `6/8`, `6 / 8`, `3/4 time`, `¾` and `⁶⁄₈` (through `normalize`), `C`, `common time` and `𝄴` (4/4), and `cut time`, `alla breve` and `𝄵` (2/2). Additive meters can be parenthesized: `(3+2+2)/8`.
+- The bottom number is a note value: 1, 2, 4, 8, 16, 32 or 64. Irrational meters (`4/3`) are `unparseable`, as are zero, negative and fractional counts.
+- `format` prints `6/8` or `3+2+2/8`. Common time prints as `4/4`, since the value doesn't record the symbol.
+- It's its own codec rather than a fraction: a time signature never reduces (`6/8` isn't `3/4`).
+
 ## Locales
 
 `ctx.locale` drives parsing, not just formatting. It's a BCP 47 tag; when it's missing, assume en-US.
 
 Bundled data is keyed at its natural level, and each level resolves on its own. A locale is never swapped wholesale for a different one because its language lacks data: `en-AU` must not become `en-US` and read `03/04` as March 4.
 
-The core resolves a tag to a **language and region**, and owns the data every codec needs. Each domain owns its own data (money's currencies, dates' orders and names), keyed the same way and looked up with `lookupRegional`, so adding a language's month names is a `quanto-datetime` release that doesn't touch the core (and, being opt-in, doesn't change any existing field).
+The core resolves a tag to a **language and region**, and owns the data every codec needs. Each domain owns its own data (money's currencies, dates' orders and names), keyed the same way and looked up with `lookupRegional`, so adding a language's month names is a `@quantojs/datetime` release that doesn't touch the core (and, being opt-in, doesn't change any existing field).
 
 | Data | Owned by | Keyed by | Coverage |
 |---|---|---|---|
@@ -527,10 +589,10 @@ The core resolves a tag to a **language and region**, and owns the data every co
 | Likely region of a language | `quanto` | language | About 90 languages |
 | Currency | `quanto/money` | region | Every region |
 | Currency symbol position (before or after the amount) | `quanto/money` | region, with language exceptions | Every region |
-| Numeric date order (MDY, DMY, YMD) | `quanto-datetime` | region, with language exceptions | Every region |
-| Hour cycle (12- or 24-hour clock) | `quanto-datetime` | region, with language exceptions | Every region |
+| Numeric date order (MDY, DMY, YMD) | `@quantojs/datetime` | region, with language exceptions | Every region |
+| Hour cycle (12- or 24-hour clock) | `@quantojs/datetime` | region, with language exceptions | Every region |
 | Numbers in words | `quanto` | language | English built in; other languages are opt-in grammars passed in `ctx.grammars`. |
-| Month and weekday names | `quanto-datetime` | language | English built in; `es`, `fr`, `de`, `it`, `pt`, `nl` exported as opt-in name sets, passed with the codecs' `names` option. |
+| Month and weekday names | `@quantojs/datetime` | language | English built in; `es`, `fr`, `de`, `it`, `pt`, `nl` exported as opt-in name sets, passed with the codecs' `names` option. |
 
 - Region data is small (about 250 regions, a few fields each), so it ships complete. Only the language data needs a supported list.
 - Each package generates its data from ICU at development time, with shared helpers in the repo's `scripts/icu.ts`, and commits the output: nothing reads `Intl` at runtime. A date order ICU reports that quanto doesn't support (Kyrgyzstan's YDM) maps by whether the day comes before the month.
@@ -579,7 +641,7 @@ Default formatters use only bundled data, so they're deterministic and round-tri
 `quanto/formats` has ready-made formatters for a codec's `format` option:
 
 - **Compound formatters**, from bundled data only, so they're deterministic and round-trip: `feetInches` (`5'11"`, `6'0"`, `11"`), `poundsOunces` (`1 lb 4 oz`), `stonesPounds` (`11 st 4 lb`) and `hoursMinutes` (`2h 30min`; days show as hours). The smallest part is rounded to a whole number and carried (`71.6 in` is `6'0"`), leading zero parts are left out, and later zero parts are kept (`6'0"`, `2 lb 0 oz`). `hoursMinutes` is the exception: durations are written compactly and a whole number of hours stands alone (`2h`, not `2h 0min`). It writes `min` rather than `m` so its output isn't a length when the codec is one of several in a `merge`. Each works with its built-in codec (`length`, `mass`, `duration`); given a unit outside that table, it throws.
-- **`Intl` formatters**, opt-in, for richer output: `intlUnit({ unitDisplay })` in `quanto/formats` (localized unit names: `5 feet`, `5 Fuß`), `intlMoney({ currencyDisplay })` in `quanto/money` (`12.34 US dollars`), and `intlDate({ dateStyle })`, `intlTime({ timeStyle })` and `intlDateTime({ dateStyle, timeStyle })` in `quanto-datetime`. They're outside the determinism guarantee and display-only: their output varies between ICU versions and isn't guaranteed to parse back, so a field using one shows raw text for editing (`display="raw"`). `intlMoney` takes decimal places from quanto's bundled table, not Intl's. `intlUnit` covers built-in units that Intl knows, and prints the number and unit ID for the rest. `intlDateTime` shows a date-time's wall-clock time as entered, without its offset. They have no fixtures, since exact output depends on the runtime.
+- **`Intl` formatters**, opt-in, for richer output: `intlUnit({ unitDisplay })` in `quanto/formats` (localized unit names: `5 feet`, `5 Fuß`), `intlMoney({ currencyDisplay })` in `quanto/money` (`12.34 US dollars`), and `intlDate({ dateStyle })`, `intlTime({ timeStyle })` and `intlDateTime({ dateStyle, timeStyle })` in `@quantojs/datetime`. They're outside the determinism guarantee and display-only: their output varies between ICU versions and isn't guaranteed to parse back, so a field using one shows raw text for editing (`display="raw"`). `intlMoney` takes decimal places from quanto's bundled table, not Intl's. `intlUnit` covers built-in units that Intl knows, and prints the number and unit ID for the rest. `intlDateTime` shows a date-time's wall-clock time as entered, without its offset. They have no fixtures, since exact output depends on the runtime.
 
 ## Ranges
 
@@ -588,7 +650,7 @@ A range is two values of one codec, entered in one field. The core has the machi
 ```ts
 import { range } from 'quanto';
 import { moneyRange } from 'quanto/money';
-import { dateRange } from 'quanto-datetime';
+import { dateRange } from '@quantojs/datetime';
 
 range(length({ defaultUnit: 'ft' })).parse('5-7 ft');  // { start: { value: 5, unit: 'ft' }, end: { value: 7, unit: 'ft' } }
 moneyRange(money()).parse('$10-20k');
@@ -646,7 +708,7 @@ type QuantoValue<T> =
 
 ## The input component
 
-`quanto-react` is a thin UI over a codec's `parse` and `format`, so the core package has no UI code and no React dependency. Everything UI-specific (accessories, keyboard hints, display modes, echo) is a component prop, never a codec property. It has three layers:
+`@quantojs/react` is a thin UI over a codec's `parse` and `format`, so the core package has no UI code and no React dependency. Everything UI-specific (accessories, keyboard hints, display modes, echo) is a component prop, never a codec property. It has three layers:
 
 1. **The field state machine** (`reduce`, `initialState`, `echo`): plain TypeScript, `(state, event) → { state, commit? }`. It holds every rule below, so a React Native adapter can share it later; it moves to its own package when there's a second user. Its spec is a JSON fixtures file of event scripts, like a codec's.
 2. **`useQuanto(codec, options)`**, the real API: it owns the text and returns `inputProps` to spread on any `<input>`, plus `echo`, `showEcho`, `issues`, `value`, `pick`, `alternatives`, `choose` and `commit`, for building your own field.
@@ -655,7 +717,7 @@ type QuantoValue<T> =
 **Features go in the hook; the component is the minimal default.** Most apps are expected to build their field on the hook, with their own markup or a form library's. `<QuantoInput>` exists for the quickstart and as the reference wiring (its `aria-describedby` always points at elements that exist), and grows only when the default experience needs it. Anything an app's markup decides (where a list goes, how it looks, how it's positioned) stays out of it: completions, for instance, are in the hook only.
 
 ```tsx
-import { QuantoInput, QuantoProvider } from 'quanto-react';
+import { QuantoInput, QuantoProvider } from '@quantojs/react';
 import { length } from 'quanto/codecs';
 
 <QuantoProvider ctx={{ locale: 'de-DE' }}>
@@ -699,23 +761,23 @@ import { length } from 'quanto/codecs';
 - ESM only, with `"sideEffects": false`.
 - No runtime dependencies. The Standard Schema interface is vendored into `src/` (types only), as the Standard Schema spec recommends, so there is no dependency on `@standard-schema/spec`.
 - Subpath exports:
-  - `quanto`: core. `defineCodec`; `defineExternalCodec` and `isExternalCodec`; `formatWithFallback` and `isInvalidValueError`; the primitives `normalize`, `readNumber` and `formatNumber`; `merge`, `optional`, `approx`, `range` and `defineRange`; and the types `Codec`, `ExternalCodec`, `ExternalCodecDefinition`, `CodecOptions`, `Ctx`, `Signal`, `ResolvedCtx`, `Locale`, `ParseResult`, `ParseOutcome`, `ParseContext`, `Issue`, `IssueCode`, `Grammar`, `NumberGrammar`, `QuantoValue`, `Quantity`, `Approx`, `Range`, `OpenRange`, `RangeOptions`, `RangeRules`, `RangeProposal` and `UnitTable`.
+  - `quanto`: core. `defineCodec`; `defineExternalCodec` and `isExternalCodec`; `formatWithFallback` and `isInvalidValueError`; the primitives `normalize`, `readNumber` and `formatNumber`; `merge`, `optional`, `approx`, `range` and `defineRange`; and the types `Codec`, `ExternalCodec`, `ExternalCodecDefinition`, `CodecOptions`, `Ctx`, `CtxExtensions`, `Signal`, `ResolvedCtx`, `Locale`, `ParseResult`, `ParseOutcome`, `ParseContext`, `Issue`, `IssueCode`, `Grammar`, `NumberGrammar`, `QuantoValue`, `Quantity`, `Approx`, `Range`, `OpenRange`, `RangeOptions`, `RangeRules`, `RangeProposal` and `UnitTable`.
   - `quanto/codecs`: `quantity` and the `NumberSyntax` type; the built-in quantity codecs and their unit tables (`length`/`lengthUnits`, `mass`/`massUnits`, …); `percent`; `text`.
   - `quanto/quantity`: quantity operations (`convert`, `compare`).
   - `quanto/money`: `money`, the `Money` type, `add`, `subtract`, `compare`, `scale`, `convert`, `allocate`, `roundWithMode`, `moneyRange`, `intlMoney`, and the currency data (`isKnownCurrency`, `minorDigits`).
   - `quanto/formats`: ready-made formatters (`feetInches`, `poundsOunces`, `stonesPounds`, `hoursMinutes`, `intlUnit`) and the `Formatter<T>` type.
   - `quanto/testing`: `roundTrip`, `quantityWithin` (its rounding allowance for quantities) and `runFixtures`, the generic fixture runner.
-- **Repository layout.** A bun workspace: `packages/quanto` (the core, npm `quanto`), `packages/datetime` (`quanto-datetime`), `packages/react` (`quanto-react`) and `apps/site` (the website). The private root holds the shared dev tooling (TypeScript, tsdown, vitest, `tsconfig.base.json`, one `vitest.config.ts` for every package) and the repo docs (`DESIGN.md`, `AGENTS.md`). `bun run typecheck`, `bun run build` and `bun run test` at the root cover every package.
+- **Repository layout.** A bun workspace: `packages/quanto` (the core, npm `quanto`), `packages/datetime` (`@quantojs/datetime`), `packages/music` (`@quantojs/music`), `packages/react` (`@quantojs/react`), `packages/libpostal` (`@quantojs/libpostal`) and `apps/site` (the website). The private root holds the shared dev tooling (TypeScript, tsdown, vitest, `tsconfig.base.json`, one `vitest.config.ts` for every package) and the repo docs (`DESIGN.md`, `AGENTS.md`). `bun run typecheck`, `bun run build` and `bun run test` at the root cover every package.
 - UI adapters are separate packages (web React first, React Native later). The core package never imports them.
-- **`quanto-datetime`** (`packages/datetime`) is the one separate codec package: `date`, `time`, `localDateTime`, `dateTime`, `dateRange`, `intlDate`, `intlTime`, `intlDateTime`.
-- **Core or package?** First-party codecs whose behaviour is complete and settled go in the core: unit tables (`length`, `dataSize`), small parsers (`percent`, `pace` with its number syntax), and finished domains with their own subpath (`quanto/money`). A domain that's intentionally incomplete or still evolving, so its parse results are expected to change between releases, gets a dedicated package: `quanto-datetime`, whose grammar covers the common case with a list of omissions that will shrink.
+- **`@quantojs/datetime`** (`packages/datetime`) is a separate codec package: `date`, `time`, `localDateTime`, `dateTime`, `dateRange`, `intlDate`, `intlTime`, `intlDateTime`. So is **`@quantojs/libpostal`** (`packages/libpostal`): `address` (see [Addresses](#addresses)), and **`@quantojs/music`** (`packages/music`): `pitch` and `timeSignature` (see [Music](#music)).
+- **Core or package?** First-party codecs whose behaviour is complete and settled go in the core: unit tables (`length`, `dataSize`), small parsers (`percent`, `pace` with its number syntax), and finished domains with their own subpath (`quanto/money`). A domain that's intentionally incomplete or still evolving, so its parse results are expected to change between releases, gets a dedicated package: `@quantojs/datetime`, whose grammar covers the common case with a list of omissions that will shrink.
 - **Why packages.** Not bundle size: everything tree-shakes. An evolving domain's parsing rules change on their own schedule, and parse changes affect replay (see [Parse context](#parse-context)). A package lets that domain evolve without moving the core's version, while the core stays steady.
 - **How they're built.** A separate package uses **only quanto's public API**, imported by name (`quanto`, `quanto/codecs`, `quanto/quantity`, `quanto/testing`), exactly as a custom codec would. That keeps Principle 5 honest: anything a package needs that isn't public is a gap in the API, not a reason to reach into internals.
   - `quanto` is a peer dependency (`workspace:^` in the repo, replaced by the real version on publish). In the repo, `quanto` resolves to the core's source (tsconfig paths for typechecking, a vitest alias for tests), so nothing needs building first.
   - Their codecs follow the same rules as the core's: extensive fixtures, round-trip properties, and `DESIGN.md` as the source of truth.
 - Nothing is attached to the component or a namespace object.
-- **Releasing.** `quanto`, `quanto-datetime` and `quanto-react` release in lockstep, from 0.1.0. To release: bump all three versions, run `bun install` (bun fills `workspace:^` ranges in from the lockfile), run `bun run check`, `bun run build` and `bun scripts/pack.ts` (which fails on mismatched versions or a stale peer range), and commit. Then publish one of two ways, `quanto` first, since the others' peer dependency points at it:
-  - **Locally:** `bun publish --access public` in each package directory, after `npm login`. npm's two-factor step happens in the browser.
+- **Releasing.** `quanto` and the `@quantojs` packages release in lockstep, from 0.1.0. To release: bump every package's version, run `bun install` (bun fills `workspace:^` ranges in from the lockfile), run `bun run check`, `bun run build` and `bun scripts/pack.ts` (which fails on mismatched versions or a stale peer range), and commit. Then publish one of two ways, `quanto` first, since the others' peer dependency points at it:
+  - **Locally:** `bun publish --access public --otp <code>` in each package directory, after `npm login`, with a code from the npm account's authenticator app. (For 0.1.0, bun's browser login failed with a 404 while polling; the one-time code worked.)
   - **From CI:** push a `vX.Y.Z` tag. `.github/workflows/publish.yml` checks, builds, packs, lints the tarballs (publint, are-the-types-wrong) and publishes with npm provenance. It needs an `NPM_TOKEN` repository secret. Don't push the tag for a version already published locally: the workflow would fail trying to publish it again.
 
   CI runs the same pack and lint steps on every push.
@@ -941,9 +1003,9 @@ Decided in principle, not in v1:
 - **A first-party LLM codec**, as an external codec in its own package: see [External codecs](#external-codecs).
 - **React Native adapter**, including how accessories are split between platforms.
 - **Completions for sync codecs** (`5 kilo` → kilograms or kilometres, `next fr` → Friday): known values only, since a sync field can't wait for a pick. `Completion<T>` already allows it; the sync field's echo and alternatives cover most of the need meanwhile.
-- **`quanto-address`**, a package with sync `postalCode`, `country` and `subdivision` codecs and an external `address` codec over an injected provider (a geocoding API, or an owned service such as libpostal), with completions. It's the reference case for [Completions](#completions).
+- **Sync address-part codecs** (`postalCode`, `country`, `subdivision`): the normalization `@quantojs/libpostal` does inside its parse, as codecs of their own for fields that ask for one part.
 
 ## Open questions
 
-1. The input component name (`QuantoInput` in `quanto-react` for now).
+1. The input component name (`QuantoInput` in `@quantojs/react` for now).
 2. Whether the issue-code union stays closed, growing by additions like `ambiguous`, or custom codecs get a way to add codes of their own.

@@ -1,15 +1,15 @@
 // Packs the published packages into a directory and checks the tarballs, so CI tests exactly what
 // `publish.yml` publishes. Run with `bun scripts/pack.ts <out-dir>`.
 //
-// Checks: every published package has the same version (quanto, quanto-datetime and quanto-react
-// release in lockstep), and no tarball still contains a `workspace:` range or a quanto range other than
+// Checks: every published package has the same version (quanto and the @quantojs packages release in
+// lockstep), and no tarball still contains a `workspace:` range or a quanto range other than
 // `^<version>`. Bun fills `workspace:^` in from bun.lock, so a stale lockfile after a version bump
 // would otherwise publish a wrong peer range.
 
 import { mkdirSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-const PACKAGES = ['packages/quanto', 'packages/datetime', 'packages/react'];
+const PACKAGES = ['packages/quanto', 'packages/datetime', 'packages/react', 'packages/libpostal', 'packages/music'];
 const out = resolve(process.argv[2] ?? 'packs');
 mkdirSync(out, { recursive: true });
 
@@ -25,7 +25,8 @@ for (const { json } of manifests) if (json.version !== version) fail(`${json.nam
 for (const { dir, json } of manifests) {
   const packed = Bun.spawnSync(['bun', 'pm', 'pack', '--destination', out], { cwd: dir, stdout: 'inherit', stderr: 'inherit' });
   if (packed.exitCode !== 0) fail(`bun pm pack failed in ${dir}`);
-  const tarball = join(out, `${json.name}-${version}.tgz`);
+  // bun names a scoped package's tarball without the @ and with - for the /: quantojs-datetime-0.1.0.tgz.
+  const tarball = join(out, `${json.name.replace(/^@/, '').replace('/', '-')}-${version}.tgz`);
   const manifest = JSON.parse(Bun.spawnSync(['tar', '-xOzf', tarball, 'package/package.json']).stdout.toString());
   for (const field of ['dependencies', 'peerDependencies', 'optionalDependencies']) {
     for (const [name, range] of Object.entries<string>(manifest[field] ?? {})) {

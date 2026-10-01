@@ -33,7 +33,7 @@ length().parse('70 kg');  // { ok: false, issues: [{ code: 'unknown_unit', … }
 - **Round-trips.** Whatever `format` prints, `parse` reads back.
 - **Yours to extend.** Custom codecs use the same API as the built-ins, and a fixtures file is the spec.
 
-Built in: length, mass, duration, temperature, volume, area, speed, data size and rate, energy, power, pressure, angle, frequency, fuel economy, pace and percent, all from `quanto/codecs`, and money from `quanto/money`. [`quanto-datetime`](packages/datetime/README.md) adds dates, times and ranges like `Oct 3-5`. Not sure which one you'll get? `merge` them and take the first that parses.
+Built in: length, mass, duration, temperature, volume, area, speed, data size and rate, energy, power, pressure, angle, frequency, fuel economy, pace and percent, all from `quanto/codecs`, and money from `quanto/money`. [`@quantojs/datetime`](packages/datetime/README.md) adds dates, times and ranges like `Oct 3-5`. Not sure which one you'll get? `merge` them and take the first that parses.
 
 Pre-release, not on npm yet.
 

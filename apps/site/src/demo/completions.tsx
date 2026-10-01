@@ -1,7 +1,7 @@
 // The completions demo: an address field over a stub service, built on useExternalQuanto with the
 // list in the app's own markup, as the README's recipe shows.
 import type { QuantoValue } from 'quanto';
-import { useExternalQuanto } from 'quanto-react';
+import { useExternalQuanto } from '@quantojs/react';
 import { address, type Address } from './address';
 
 export function AddressField({ onChange, id }: { onChange: (value: QuantoValue<Address>) => void; id?: string }) {

@@ -2,7 +2,7 @@
 // default; the button is a shortcut. The native input sits invisibly under the button, so the picker
 // opens anchored to it, and browsers without showPicker() still get a focusable fallback.
 import { useRef } from 'react';
-import type { AccessoryProps } from 'quanto-react';
+import type { AccessoryProps } from '@quantojs/react';
 
 function open(input: HTMLInputElement | null): void {
   if (!input) return;

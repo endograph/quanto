@@ -2,14 +2,17 @@
 // them as chips, and shows what it makes of the text. The demo page puts its switches above it; the
 // landing page shows it as it comes.
 import { Fragment, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
-import { approx, merge, range, type Codec, type Issue, type Quantity, type ResolvedCtx } from 'quanto';
+import { approx, defineRange, merge, range, type Codec, type Issue, type Quantity, type ResolvedCtx } from 'quanto';
 import { angle, dataSize, duration, length, mass, power, speed, temperature, type LengthUnit } from 'quanto/codecs';
 import { convert } from 'quanto/quantity';
 import { feetInches, hoursMinutes } from 'quanto/formats';
 import { money, moneyRange } from 'quanto/money';
-import { date, dateRange, dateTime, time } from 'quanto-datetime';
-import { de, es, fr, it, nl, pt } from 'quanto-datetime/names';
-import { useQuanto, useQuantoCtx, type Display, type QuantoField } from 'quanto-react';
+import { date, dateRange, dateTime, time } from '@quantojs/datetime';
+import { pitch, type PitchUnit } from '@quantojs/music';
+import { de, es, fr, it, nl, pt } from '@quantojs/datetime/names';
+import { useQuanto, useQuantoCtx, type Display, type QuantoField } from '@quantojs/react';
+import { musicKeys } from '../catalog';
+import { DatePicker } from './pickers';
 import { setText, still, stop, type, wait } from './typist';
 
 export const names = [de, es, fr, it, nl, pt];
@@ -51,7 +54,8 @@ export function Try(props: { field: string; codec?: Codec<any>; bad?: readonly s
 // Single values, a range of most, and all of it optionally approximate. Wrappers compose from the
 // outside in: approx reads the marker, merge picks the reading, and each range completes its own two
 // sides. Money goes after length because it reads `ft` as the forint. Speed, power, data size and
-// angle are there for the fun of `88 mph`, `1.21 GW`, `1.5 GB` and `π rad`.
+// angle are there for the fun of `88 mph`, `1.21 GW`, `1.5 GB` and `π rad`, and pitch for `A4 +15¢`.
+// Time signatures stay out: `6/8` is a date.
 const plainLength = length();
 /**
  * The built-in length format, with two twists for the demo: feet and inches read as 5'11", and Planck
@@ -63,6 +67,21 @@ const lengthFormat = (value: Quantity<LengthUnit>, ctx: ResolvedCtx): string => 
   if (value.unit !== 'planck') return plainLength.format(value, { locale: ctx.locale.tag });
   const years = convert(plainLength, value, 'ly');
   return plainLength.format(years, { locale: ctx.locale.tag }).replace(/ ly$/, years.value === 1 ? ' light-year' : ' light-years');
+};
+const plainPitch = pitch();
+/**
+ * Pitch, the other way round. A note shows as its frequency (`A#`, octave 4 when none is written, is
+ * 466.16 Hz). A frequency shows as just its nearest note, spelled for the key picked beside the field
+ * (`ctx.music.key`), with no octave and its cents only as the way they lean (`440 Hz` is A, `455 Hz` is
+ * A♯-, or B♭- in F major), so that text doesn't read back on its own.
+ */
+const pitchFormat = (value: Quantity<PitchUnit>, ctx: ResolvedCtx): string => {
+  const plain = { locale: ctx.locale.tag, music: ctx.music };
+  if (value.unit === 'note') return plainPitch.format(convert(plainPitch, value, 'Hz'), plain);
+  return plainPitch
+    .format(convert(plainPitch, value, 'note'), plain)
+    .replace(/-?\d+(?=\s|$)/, '')
+    .replace(/ ([+-])[\d.,]+¢$/, '$1');
 };
 const singles = {
   date: date({ names }),
@@ -77,6 +96,7 @@ const singles = {
   power: power(),
   dataSize: dataSize(),
   angle: angle(),
+  pitch: pitch({ format: pitchFormat, defaultOctave: 4 }),
 };
 const merged = approx(
   merge([
@@ -89,6 +109,7 @@ const merged = approx(
     range(singles.duration),
     range(singles.temperature),
     moneyRange(singles.money),
+    defineRange(singles.pitch),
   ]),
 );
 
@@ -102,7 +123,7 @@ const eNotation = (text: string): string =>
     `${factor ?? '1'}e${[...power].map((c) => (c === '⁻' ? '-' : SUPERSCRIPT_DIGITS.indexOf(c))).join('')}`,
   );
 const anything: typeof merged = { ...merged, format: (value, ctx) => eNotation(merged.format(value, ctx)) };
-export const heroExamples = ['next fri', '$1.2k', '180 cm', 'October 3 to 5', 'about 6 ft', '9-5pm', '$10-20k', '~2-3h', '€12,50', '2. Oktober'];
+export const heroExamples = ['next fri', '$1.2k', '180 cm', 'October 3 to 5', 'about 6 ft', '9-5pm', '$10-20k', '~2-3h', '€12,50', '455hz', '2. Oktober'];
 
 type Anything = typeof anything extends Codec<infer T> ? T : never;
 
@@ -170,6 +191,7 @@ const sources: Readonly<Record<string, string>> = {
   power: 'tree/main/packages/quanto/src/codecs/power',
   dataSize: 'tree/main/packages/quanto/src/codecs/data-size',
   angle: 'tree/main/packages/quanto/src/codecs/angle',
+  pitch: 'tree/main/packages/music/src/pitch',
   'range(date)': 'blob/main/packages/datetime/src/range.ts',
   'range(time)': 'blob/main/packages/datetime/src/range.ts',
   'range(dateTime)': 'blob/main/packages/datetime/src/range.ts',
@@ -258,7 +280,10 @@ export function Omni(props: {
   onExample?: () => void;
 }) {
   const { display = 'raw', restoreOnEdit = false, examples = heroExamples, labels, handle, onExample } = props;
-  const field = useQuanto(anything, { display, restoreOnEdit });
+  // The key the pitch tool picks. It's ctx, not part of the value: it only changes how notes are spelled.
+  const [key, setKey] = useState('');
+  const providerCtx = useQuantoCtx();
+  const field = useQuanto(anything, { display, restoreOnEdit, ctx: key ? { ...providerCtx, music: { key } } : providerCtx });
   const ref = useRef<HTMLInputElement>(null);
   // The field types its own examples until someone takes it over. `skip` restarts it on the next one.
   const [auto, setAuto] = useState(true);
@@ -292,6 +317,12 @@ export function Omni(props: {
       stop(input);
     };
   }, [auto, skip]);
+  // Reaching for a tool stops the typing, and keeps the text it's for.
+  const hold = () => {
+    if (!auto || !ref.current) return;
+    setAuto(false);
+    stop(ref.current);
+  };
   const takeOver = (how: 'pointer' | 'key') => {
     const input = ref.current;
     if (!auto || !input) return;
@@ -308,6 +339,10 @@ export function Omni(props: {
   const error = problem(field.issues);
   const echo = error ? undefined : field.echo;
   const ghost = echo && echo.text !== field.inputProps.value.trim() ? echo.text : undefined;
+  // Once the text reads as a date or a pitch, a tool for it sits in the field: the OS's date picker, or
+  // the key that spells the notes.
+  const current = echo?.value;
+  const tool = current?.value.codec === 'date' ? 'date' : current?.value.codec === 'pitch' ? 'pitch' : undefined;
   // Beside the field, the reading holds on briefly when the text stops parsing. An issue replaces it at once.
   const lingering = useLinger(echo?.text, 150);
   const reading = error ? undefined : lingering;
@@ -332,7 +367,7 @@ export function Omni(props: {
           </label>
         )}
         {labelled && <p className="overline reading-label">{labels[1]}</p>}
-        <span className="hero-input">
+        <span className="hero-input" data-tool={tool}>
           <input
             {...field.inputProps}
             ref={ref}
@@ -350,6 +385,27 @@ export function Omni(props: {
             }}
           />
           {!beside && <span className={error ? 'ghost bad' : 'ghost'}>{said}</span>}
+          {tool && (
+            <span className="hero-tool" onPointerDown={hold}>
+              {current && tool === 'date' ? (
+                <DatePicker
+                  value={current.value.value as string}
+                  onChange={(iso) => field.pick({ ...current, value: { codec: 'date', value: iso } } as Anything)}
+                  focused={field.focused}
+                />
+              ) : (
+                <label className="key-tool">
+                  <span aria-hidden="true">♪</span>
+                  <select value={key} aria-label="Key, for spelling notes (ctx.music.key)" onChange={(e) => setKey(e.target.value)}>
+                    <option value="">no key</option>
+                    {musicKeys.map((k) => (
+                      <option key={k}>{k}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </span>
+          )}
         </span>
         {beside && !labelled && <p className={error ? 'reading bad' : 'reading'}>{said}</p>}
         {labelled && (

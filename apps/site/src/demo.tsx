@@ -1,5 +1,5 @@
 // The demo page: one big field to try, with switches for how it behaves, then recommended UI patterns
-// for quanto fields, built with quanto-react. Every field is real, and demonstrates itself: the big one
+// for quanto fields, built with @quantojs/react. Every field is real, and demonstrates itself: the big one
 // types its own examples, each card's chips fill its field, and the onChange strip shows exactly what
 // the app is handed.
 import { createContext, Fragment, useContext, useRef, useState, type FormEvent, type ReactNode } from 'react';
@@ -9,8 +9,8 @@ import { defineExternalCodec, merge, type Issue, type Quantity, type QuantoValue
 import { duration, length, mass, type DurationUnit, type LengthUnit, type MassUnit } from 'quanto/codecs';
 import { money } from 'quanto/money';
 import { compare } from 'quanto/quantity';
-import { date, dateRange } from 'quanto-datetime';
-import { QuantoInput, QuantoProvider, useQuanto, type Display } from 'quanto-react';
+import { date, dateRange } from '@quantojs/datetime';
+import { QuantoInput, QuantoProvider, useQuanto, type Display } from '@quantojs/react';
 import { locales } from './catalog';
 import { model, readDuration, vaguePhrases } from './demo/model';
 import { DatePicker } from './demo/pickers';
@@ -97,8 +97,8 @@ function PickerCard() {
       why={<>Free text comes first, in any language you load. The button opens the OS's own picker, and either way the app gets the same ISO date.</>}
       stored={stored}
       code={`
-import { date } from 'quanto-datetime';
-import { de, fr, es } from 'quanto-datetime/names';
+import { date } from '@quantojs/datetime';
+import { de, fr, es } from '@quantojs/datetime/names';
 
 <QuantoInput
   codec={date({ names: [de, fr, es] })}
@@ -500,7 +500,7 @@ function Page() {
           </main>
         </Fragment>
         <footer>
-          <span>Every field here is the real quanto-react. Pre-release.</span>
+          <span>Every field here is the real @quantojs/react. Pre-release.</span>
           <span>Unstyled by default; this page styles the data-quanto hooks.</span>
         </footer>
       </ConfigContext.Provider>

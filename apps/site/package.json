@@ -1,5 +1,5 @@
 {
-  "name": "@quanto/site",
+  "name": "@quantojs/site",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,8 +9,9 @@
   },
   "dependencies": {
     "quanto": "workspace:*",
-    "quanto-datetime": "workspace:*",
-    "quanto-react": "workspace:*",
+    "@quantojs/datetime": "workspace:*",
+    "@quantojs/music": "workspace:*",
+    "@quantojs/react": "workspace:*",
     "react": "^19",
     "react-dom": "^19",
     "zod": "^4"

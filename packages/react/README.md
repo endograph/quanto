@@ -1,9 +1,9 @@
-# quanto-react
+# @quantojs/react
 
 A React input for [quanto](https://github.com/endograph/quanto#readme). People type `5'11`, `180cm` or `1,8 m`; the field shows its interpretation as they type, parses on blur or Enter, and gives you `{ raw, value }` to store.
 
 ```tsx
-import { QuantoInput, QuantoProvider } from 'quanto-react';
+import { QuantoInput, QuantoProvider } from '@quantojs/react';
 import { length } from 'quanto/codecs';
 
 <QuantoProvider ctx={{ locale: 'en-US' }}>
@@ -39,7 +39,7 @@ For a codec built with `defineExternalCodec` (its parse calls a model or a serve
 
 ### Completions
 
-If the codec has `complete` (an address service, say), `useExternalQuanto(codec, { completions: true })` asks for completions while typing, debounced (`completionDelay`, default 150 ms), and returns `completions` for you to render. quanto-react ships no list UI: the markup, look and positioning are yours.
+If the codec has `complete` (an address service, say), `useExternalQuanto(codec, { completions: true })` asks for completions while typing, debounced (`completionDelay`, default 150 ms), and returns `completions` for you to render. @quantojs/react ships no list UI: the markup, look and positioning are yours.
 
 ```tsx
 const field = useExternalQuanto(address, { onChange: save, completions: true });

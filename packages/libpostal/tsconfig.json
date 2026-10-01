@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // In the repo, quanto resolves to the core's source, so nothing needs building first. Published, it's
+    // the quanto peer dependency's dist.
+    "paths": {
+      "quanto": ["../quanto/src/index.ts"],
+      "quanto/*": ["../quanto/src/*/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

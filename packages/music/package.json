@@ -1,0 +1,52 @@
+{
+  "name": "@quantojs/music",
+  "version": "0.2.0",
+  "description": "Music for quanto: parse \"A4\", \"B♭3 +15¢\", \"Fis4\", \"La4\" and \"440 Hz\" into pitches, and \"6/8\" or \"3+2+2/8\" into time signatures.",
+  "license": "MIT",
+  "author": "rt2zz",
+  "homepage": "https://github.com/endograph/quanto/tree/main/packages/music#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/endograph/quanto.git",
+    "directory": "packages/music"
+  },
+  "bugs": {
+    "url": "https://github.com/endograph/quanto/issues"
+  },
+  "keywords": [
+    "quanto",
+    "music",
+    "pitch",
+    "note",
+    "frequency",
+    "time-signature",
+    "parse",
+    "locale",
+    "forms"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "quanto": "workspace:^"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "quanto": "workspace:*"
+  }
+}

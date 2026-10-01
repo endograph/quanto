@@ -1,4 +1,4 @@
-# Publishes quanto, quanto-datetime and quanto-react to npm when a version tag is pushed (v0.1.0). The
+# Publishes quanto, @quantojs/datetime, @quantojs/react, @quantojs/libpostal and @quantojs/music to npm when a version tag is pushed (v0.1.0). The
 # packages release in lockstep: the tag must match their shared version. Tarballs are packed with bun (which
 # rewrites workspace: ranges) and published with npm, with provenance.
 name: Publish
@@ -47,7 +47,9 @@ jobs:
       - run: |
           version=$(node -p "require('./packages/quanto/package.json').version")
           npm publish "$RUNNER_TEMP/packs/quanto-$version.tgz" --provenance --access public
-          npm publish "$RUNNER_TEMP/packs/quanto-datetime-$version.tgz" --provenance --access public
-          npm publish "$RUNNER_TEMP/packs/quanto-react-$version.tgz" --provenance --access public
+          npm publish "$RUNNER_TEMP/packs/quantojs-datetime-$version.tgz" --provenance --access public
+          npm publish "$RUNNER_TEMP/packs/quantojs-react-$version.tgz" --provenance --access public
+          npm publish "$RUNNER_TEMP/packs/quantojs-libpostal-$version.tgz" --provenance --access public
+          npm publish "$RUNNER_TEMP/packs/quantojs-music-$version.tgz" --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

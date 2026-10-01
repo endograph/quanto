@@ -4,8 +4,9 @@ import { merge, type Codec } from 'quanto';
 import * as q from 'quanto/codecs';
 import { feetInches, hoursMinutes, intlUnit, poundsOunces, stonesPounds } from 'quanto/formats';
 import { money } from 'quanto/money';
-import { date, dateRange, dateTime, time } from 'quanto-datetime';
-import { de, es, fr, it, nl, pt } from 'quanto-datetime/names';
+import { date, dateRange, dateTime, time } from '@quantojs/datetime';
+import { de, es, fr, it, nl, pt } from '@quantojs/datetime/names';
+import { pitch, timeSignature } from '@quantojs/music';
 
 export interface Entry {
   readonly id: string;
@@ -22,7 +23,7 @@ export interface Entry {
 
 const names = [de, es, fr, it, nl, pt];
 const namesCall = '{ names: [de, es, fr, it, nl, pt] }';
-const namesImport = { 'quanto-datetime/names': ['de', 'es', 'fr', 'it', 'nl', 'pt'] };
+const namesImport = { '@quantojs/datetime/names': ['de', 'es', 'fr', 'it', 'nl', 'pt'] };
 
 const quantity = (
   id: keyof typeof q & string,
@@ -82,10 +83,29 @@ const leaves: Entry[] = [
     featured: true,
   },
   {
+    id: 'pitch',
+    codec: pitch(),
+    call: 'pitch()',
+    imports: { '@quantojs/music': ['pitch'] },
+    examples: ['A4', 'B♭3', 'C♯5 -12¢', 'Fis4', 'Sol4', '440 Hz', 'MIDI 60', 'F#'],
+    // How a key spells the same notes. The key is ctx, not an option, so each is the default format under it.
+    formatters: ['F major', 'F# major', 'D minor'].map((key) => ({
+      call: `ctx.music.key = '${key}'`,
+      codec: pitch({ format: (value, ctx) => pitch().format(value, { locale: ctx.locale.tag, music: { key } }) }),
+    })),
+  },
+  {
+    id: 'timeSignature',
+    codec: timeSignature(),
+    call: 'timeSignature()',
+    imports: { '@quantojs/music': ['timeSignature'] },
+    examples: ['6/8', '3+2+2/8', 'common time', 'alla breve', '4/3'],
+  },
+  {
     id: 'date',
     codec: date({ names }),
     call: `date(${namesCall})`,
-    imports: { 'quanto-datetime': ['date'], ...namesImport },
+    imports: { '@quantojs/datetime': ['date'], ...namesImport },
     examples: ['tomorrow', 'next fri', 'Oct 2, 2026', '03/04/2026', '13/04', '2. Oktober 2026', '2 de octubre', 'someday'],
     featured: true,
   },
@@ -93,7 +113,7 @@ const leaves: Entry[] = [
     id: 'time',
     codec: time(),
     call: 'time()',
-    imports: { 'quanto-datetime': ['time'] },
+    imports: { '@quantojs/datetime': ['time'] },
     examples: ['3pm', '15:30', '3:30 p.m.', 'noon', '25:00'],
     featured: true,
   },
@@ -101,7 +121,7 @@ const leaves: Entry[] = [
     id: 'dateTime',
     codec: dateTime({ names }),
     call: `dateTime(${namesCall})`,
-    imports: { 'quanto-datetime': ['dateTime'], ...namesImport },
+    imports: { '@quantojs/datetime': ['dateTime'], ...namesImport },
     examples: ['tomorrow 3pm', 'Oct 2 9am', 'next fri noon', '2026-10-02T15:00Z'],
   },
 ];
@@ -110,13 +130,15 @@ const range: Entry = {
   id: 'dateRange',
   codec: dateRange(date({ names })),
   call: `dateRange(date(${namesCall}))`,
-  imports: { 'quanto-datetime': ['date', 'dateRange'], ...namesImport },
+  imports: { '@quantojs/datetime': ['date', 'dateRange'], ...namesImport },
   examples: ['Oct 3-5', 'Dec 30 - Jan 2', 'Oct 3 – Oct 10'],
 };
 
 // "any" tries every leaf codec in order and takes the first that parses; the rest come back as
-// alternatives. Percent goes last among the quantities because it accepts a bare number.
-const anyOrder = leaves.filter((e) => e.id !== 'percent').concat(leaves.filter((e) => e.id === 'percent'));
+// alternatives. Percent goes last among the quantities because it accepts a bare number. Time
+// signatures stay out: `6/8` is a date, and `3/4` is already the example of a reading with alternatives.
+const anyLeaves = leaves.filter((e) => e.id !== 'timeSignature');
+const anyOrder = anyLeaves.filter((e) => e.id !== 'percent').concat(anyLeaves.filter((e) => e.id === 'percent'));
 const mergeImports: Record<string, string[]> = { quanto: ['merge'] };
 for (const e of anyOrder) {
   for (const [from, list] of Object.entries(e.imports)) {
@@ -137,5 +159,8 @@ export const entries: readonly Entry[] = [any, ...leaves, range];
 export const byId: Readonly<Record<string, Entry>> = Object.fromEntries(entries.map((e) => [e.id, e]));
 /** Codecs by the id `merge` tags values with. */
 export const leafById: Readonly<Record<string, Entry>> = Object.fromEntries(leaves.map((e) => [e.codec.id, e]));
+
+/** Keys to offer for `ctx.music.key`, wherever a page shows pitches. */
+export const musicKeys = ['C major', 'F major', 'E♭ major', 'F# major', 'G♭ major', 'D minor'];
 
 export const locales = ['en-US', 'en-GB', 'en-CA', 'en-IN', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'pt-BR', 'nl-NL', 'de-CH'];

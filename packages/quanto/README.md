@@ -2,7 +2,7 @@
 
 Turn messy human text into well-typed values and back: `5'11"`, `180cm` and `1,8 m` all parse into the same typed length, which can be converted, compared and formatted. The same idea covers weights, durations, temperatures, percentages and custom types.
 
-Pre-release. The design and its open questions are in the repository's [`DESIGN.md`](https://github.com/endograph/quanto/blob/main/DESIGN.md). Money is in `quanto/money`, and dates and times in [`quanto-datetime`](https://github.com/endograph/quanto/blob/main/packages/datetime/README.md).
+Pre-release. The design and its open questions are in the repository's [`DESIGN.md`](https://github.com/endograph/quanto/blob/main/DESIGN.md). Money is in `quanto/money`, and dates and times in [`@quantojs/datetime`](https://github.com/endograph/quanto/blob/main/packages/datetime/README.md).
 
 ## Using quanto
 
@@ -39,7 +39,7 @@ if (result.ok) save({ raw: text, value: result.value });
 
 ### Optional extras
 
-- **`result.context`** (`{ locale, now? }`): what the parse was based on. Store it separately, only if you need to replay a parse later (audits, debugging, migrations): `codec.parse(raw, context)` reproduces the value on the same versions of quanto and the package that owns the codec (`quanto-datetime` for dates).
+- **`result.context`** (`{ locale, now? }`): what the parse was based on. Store it separately, only if you need to replay a parse later (audits, debugging, migrations): `codec.parse(raw, context)` reproduces the value on the same versions of quanto and the package that owns the codec (`@quantojs/datetime` for dates).
 - **`{ raw, issues }`**: a field that didn't parse. Usually you block the submit instead of storing it. Keep it only for drafts, where the user's bad text must survive.
 
 ### External codecs
@@ -49,7 +49,7 @@ An external codec (`defineExternalCodec`) parses through a service: a model, a s
 - **Bad input resolves with `issues`; a failed service rejects.** Don't store an outage as issues: keep the text and retry when it suits you.
 - **Pass `ctx.signal`** to cancel a parse in flight. It rejects with `signal.reason`.
 - **It owns its whole parse.** `merge`, `range` and `approx` don't take one; `optional` does.
-- Store `{ raw, value }` exactly as above. In React, use `QuantoInput` or `useExternalQuanto` from `quanto-react`.
+- Store `{ raw, value }` exactly as above. In React, use `QuantoInput` or `useExternalQuanto` from `@quantojs/react`.
 
 ### Pass context on the server
 

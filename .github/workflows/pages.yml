@@ -29,7 +29,7 @@ jobs:
         with:
           bun-version: 1.3.10
       - run: bun install --frozen-lockfile
-      - run: bun run --filter @quanto/site build
+      - run: bun run --filter @quantojs/site build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

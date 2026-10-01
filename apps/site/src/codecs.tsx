@@ -12,9 +12,10 @@ import type { QuantityCodec } from 'quanto/codecs';
 import { feetInches, hoursMinutes, intlUnit, poundsOunces, stonesPounds } from 'quanto/formats';
 import { money, moneyRange } from 'quanto/money';
 import { convert } from 'quanto/quantity';
-import { date, dateRange, dateTime, localDateTime, time } from 'quanto-datetime';
-import { de, es, fr, it, nl, pt } from 'quanto-datetime/names';
-import { locales } from './catalog';
+import { date, dateRange, dateTime, localDateTime, time } from '@quantojs/datetime';
+import { de, es, fr, it, nl, pt } from '@quantojs/datetime/names';
+import { pitch, timeSignature } from '@quantojs/music';
+import { locales, musicKeys } from './catalog';
 import { Code } from './demo/omni';
 import { cycleOnClick } from './mark';
 
@@ -24,7 +25,8 @@ const NOW = '2026-09-30T14:02:11-04:00';
 // ── The codecs ──────────────────────────────────────────────────────────
 
 interface UnitDocs {
-  readonly codec: QuantityCodec<string>;
+  /** A codec with a unit table: the core's quantity codecs, or a package's, like `pitch`. */
+  readonly codec: Codec<any> & { readonly units: Readonly<Record<string, UnitDefinition>> };
   /** The unit every other unit is shown in. */
   readonly ref: string;
   /** How to write the reference unit in the table, when its first alias doesn't read well alone. */
@@ -43,17 +45,20 @@ interface Doc {
   readonly call: string;
   /** Imports the snippet needs besides the codec itself. */
   readonly imports?: Readonly<Record<string, readonly string[]>>;
-  readonly codec: Codec<any>;
+  /** Absent for an external codec, whose parse needs a server this page doesn't have: no live examples. */
+  readonly codec?: Codec<any>;
   readonly examples: readonly string[];
   readonly about?: ReactNode;
   readonly units?: UnitDocs;
   readonly options?: readonly (readonly [string, ReactNode])[];
   /** The playground tab for this codec, if it has one. */
   readonly play?: string;
+  /** Keys to offer for `ctx.music.key`, for codecs whose formatting follows it. */
+  readonly keys?: readonly string[];
 }
 
-type Group = 'Quantities' | 'Money' | 'Dates and times' | 'Text and numbers' | 'Wrappers';
-const groups: readonly Group[] = ['Quantities', 'Money', 'Dates and times', 'Text and numbers', 'Wrappers'];
+type Group = 'Quantities' | 'Money' | 'Dates and times' | 'Music' | 'Addresses' | 'Text and numbers' | 'Wrappers';
+const groups: readonly Group[] = ['Quantities', 'Money', 'Dates and times', 'Music', 'Addresses', 'Text and numbers', 'Wrappers'];
 
 /** A quantity codec's entry: the codec with its defaults, and its table. */
 function quantity(
@@ -214,10 +219,10 @@ const docs: readonly Doc[] = [
     id: 'date',
     group: 'Dates and times',
     summary: 'Calendar dates, as YYYY-MM-DD',
-    from: 'quanto-datetime',
+    from: '@quantojs/datetime',
     name: 'date',
     call: 'date({ names: [de, es, fr, it, nl, pt] })',
-    imports: { 'quanto-datetime/names': ['de', 'es', 'fr', 'it', 'nl', 'pt'] },
+    imports: { '@quantojs/datetime/names': ['de', 'es', 'fr', 'it', 'nl', 'pt'] },
     codec: date({ names }),
     examples: ['tomorrow', 'next fri', 'Oct 2, 2026', '2026-10-02', '03/04/2026', '13/04', '2. Oktober 2026', '2 de octubre', 'someday'],
     play: 'date',
@@ -226,7 +231,7 @@ const docs: readonly Doc[] = [
         Stores an ISO date string. Relative dates resolve against <code>ctx.now</code>: in a browser leave it out, on a server pass
         the user's. Numeric dates follow the locale's order (<code>03/04</code> is March 4 in en-US and 3 April in en-GB), and a
         date that only reads one way, like <code>13/04</code>, is read that way. English names are built in; other languages are
-        opt-in data from <code>quanto-datetime/names</code>.
+        opt-in data from <code>@quantojs/datetime/names</code>.
       </>
     ),
     options: [['names', <>Month and weekday names to accept besides English, in priority order. <code>format</code> uses the set matching the locale.</>]],
@@ -235,7 +240,7 @@ const docs: readonly Doc[] = [
     id: 'time',
     group: 'Dates and times',
     summary: 'Times of day, as HH:MM:SS',
-    from: 'quanto-datetime',
+    from: '@quantojs/datetime',
     name: 'time',
     call: 'time()',
     codec: time(),
@@ -246,7 +251,7 @@ const docs: readonly Doc[] = [
     id: 'localDateTime',
     group: 'Dates and times',
     summary: 'A date and time, no offset',
-    from: 'quanto-datetime',
+    from: '@quantojs/datetime',
     name: 'localDateTime',
     call: 'localDateTime()',
     codec: localDateTime(),
@@ -257,10 +262,10 @@ const docs: readonly Doc[] = [
     id: 'dateTime',
     group: 'Dates and times',
     summary: 'An instant, with its UTC offset',
-    from: 'quanto-datetime',
+    from: '@quantojs/datetime',
     name: 'dateTime',
     call: 'dateTime({ names: [de, es, fr, it, nl, pt] })',
-    imports: { 'quanto-datetime/names': ['de', 'es', 'fr', 'it', 'nl', 'pt'] },
+    imports: { '@quantojs/datetime/names': ['de', 'es', 'fr', 'it', 'nl', 'pt'] },
     codec: dateTime({ names }),
     examples: ['tomorrow 3pm', 'Oct 2 9am', 'next fri noon', '2026-10-02T15:00Z'],
     play: 'dateTime',
@@ -270,10 +275,10 @@ const docs: readonly Doc[] = [
     id: 'dateRange',
     group: 'Dates and times',
     summary: 'Spans of dates or times',
-    from: 'quanto-datetime',
+    from: '@quantojs/datetime',
     name: 'dateRange',
     call: 'dateRange(date())',
-    imports: { 'quanto-datetime': ['date'] },
+    imports: { '@quantojs/datetime': ['date'] },
     codec: dateRange(date({ names })),
     examples: ['Oct 3-5', 'Dec 30 - Jan 2', 'Oct 3 – Oct 10', 'October 3 to 5'],
     play: 'dateRange',
@@ -285,6 +290,75 @@ const docs: readonly Doc[] = [
       </>
     ),
     options: [['open', <>Accept a single bound.</>]],
+  },
+  {
+    id: 'pitch',
+    group: 'Music',
+    summary: 'Notes, tuning, frequencies',
+    from: '@quantojs/music',
+    name: 'pitch',
+    call: 'pitch()',
+    codec: pitch(),
+    examples: ['A4', 'B♭3', 'C♯5 -12¢', 'A4 +15¢', 'Fis4', 'B4', 'Sol4', 'Si♭3', '440 Hz', 'MIDI 60', 'F#'],
+    play: 'pitch',
+    units: { codec: pitch(), ref: 'Hz', equals: { note: '440 × 2^((x − 69) ⁄ 12) Hz' } },
+    keys: musicKeys,
+    about: (
+      <>
+        Stored as a MIDI note number with cents as the fraction (<code>{'{ value: 69.15, unit: "note" }'}</code> for{' '}
+        <code>A4 +15¢</code>), or in Hz, so <code>convert</code> turns notes into frequencies. Names follow the locale: in de-DE{' '}
+        <code>B4</code> is B♭ and <code>H4</code> is B, with <code>Fis</code> and <code>Es</code>, and solfège (<code>Sol4</code>,{' '}
+        <code>Si♭3</code>) reads everywhere. <code>format</code> spells notes the way <code>ctx.music.key</code> does: pick a key
+        above the examples. Without one, it uses sharps.
+      </>
+    ),
+    options: [
+      ['a4', <>The tuning: A4's frequency. Default 440.</>],
+      ['middleC', <>Middle C's octave: 4 (the default) or 3, as Yamaha and French usage number it.</>],
+      ['defaultOctave', <>The octave of a note written without one. Without it, <code>F#</code> asks for an octave.</>],
+      ['defaultUnit', <>What a bare number means: <code>'Hz'</code> or <code>'note'</code>.</>],
+      ['canonicalUnit', <><code>'Hz'</code> stores every pitch as a frequency, <code>'note'</code> as a MIDI number.</>],
+    ],
+  },
+  {
+    id: 'timeSignature',
+    group: 'Music',
+    summary: 'Meters, as numerator and denominator',
+    from: '@quantojs/music',
+    name: 'timeSignature',
+    call: 'timeSignature()',
+    codec: timeSignature(),
+    examples: ['4/4', '6/8', '3+2+2/8', 'common time', '𝄵', 'alla breve', '4/3'],
+    play: 'timeSignature',
+    about: (
+      <>
+        Stored as <code>{'{ numerator: 6, denominator: 8 }'}</code>, never reduced: <code>6/8</code> isn't <code>3/4</code>.
+        Additive meters keep their <code>groups</code>. The bottom number is a note value, from 1 to 64.
+      </>
+    ),
+  },
+  {
+    id: 'address',
+    group: 'Addresses',
+    summary: 'Mailing addresses, parsed by libpostal',
+    from: '@quantojs/libpostal',
+    name: 'address',
+    call: "address({ libpostal, defaultCountry: 'US' })",
+    examples: ['1600 amphitheatre pkwy, mountain view, california 94043', 'Hauptstraße 5, 10115 Berlin, Deutschland', '10 Downing St, London sw1a2aa, UK'],
+    about: (
+      <>
+        An external codec: <a href="https://github.com/openvenues/libpostal" target="_blank" rel="noopener">libpostal</a>, an
+        open-source address parser trained on over a billion addresses, splits the text into parts on your server (its model is about
+        2 GB, so it isn't a dependency: you pass the function that runs it). The codec keeps the text as typed, turns regions and
+        postal codes into their country's form (<code>California</code> → <code>CA</code>, <code>sw1a2aa</code> →{' '}
+        <code>SW1A 2AA</code>), names the country by ISO code, and formats in each country's order. It doesn't check that an address
+        exists, and has no completions. There are no live examples here: parsing needs libpostal running.
+      </>
+    ),
+    options: [
+      ['libpostal', <>A function from text to libpostal's <code>[{'{ label, value }'}]</code>: node-postal in-process (<code>async (text) =&gt; postal.parser.parse_address(text)</code>), or a request to a libpostal service.</>],
+      ['defaultCountry', <>The ISO code for addresses that don't name a country. Formatting leaves it out.</>],
+    ],
   },
   {
     id: 'percent',
@@ -482,7 +556,7 @@ function Row({ codec, text, ctx, input }: { codec: Codec<any>; text: string; ctx
   );
 }
 
-function Examples({ doc, ctx }: { doc: Doc; ctx: Ctx }) {
+function Examples({ doc, ctx }: { doc: Doc & { readonly codec: Codec<any> }; ctx: Ctx }) {
   const [text, setText] = useState('');
   return (
     <div className="scroll">
@@ -518,7 +592,9 @@ function Examples({ doc, ctx }: { doc: Doc; ctx: Ctx }) {
   );
 }
 
-function Section({ doc, ctx }: { doc: Doc; ctx: Ctx }) {
+function Section({ doc, ctx: pageCtx }: { doc: Doc; ctx: Ctx }) {
+  const [key, setKey] = useState('');
+  const ctx: Ctx = key ? { ...pageCtx, music: { key } } : pageCtx;
   const imports: Record<string, readonly string[]> = { [doc.from]: [doc.name] };
   for (const [from, list] of Object.entries(doc.imports ?? {})) imports[from] = [...(imports[from] ?? []), ...list];
   return (
@@ -553,7 +629,18 @@ function Section({ doc, ctx }: { doc: Doc; ctx: Ctx }) {
           ))}
         </dl>
       )}
-      <Examples doc={doc} ctx={ctx} />
+      {doc.keys && (
+        <label className="ctx key-pick">
+          <span className="label">ctx.music.key</span>
+          <select value={key} onChange={(e) => setKey(e.target.value)}>
+            <option value="">none (sharps)</option>
+            {doc.keys.map((k) => (
+              <option key={k}>{k}</option>
+            ))}
+          </select>
+        </label>
+      )}
+      {doc.codec && <Examples doc={doc as Doc & { readonly codec: Codec<any> }} ctx={ctx} />}
       {doc.units && (
         <>
           <p className="overline">units</p>
@@ -715,7 +802,17 @@ function Page({ locale }: { locale: string }) {
             <h2 className="group">{g}</h2>
             {g === 'Dates and times' && (
               <p className="note">
-                From <code>quanto-datetime</code>. On this page, relative dates resolve against <code>ctx.now = '{NOW}'</code>.
+                From <code>@quantojs/datetime</code>. On this page, relative dates resolve against <code>ctx.now = '{NOW}'</code>.
+              </p>
+            )}
+            {g === 'Addresses' && (
+              <p className="note">
+                From <code>@quantojs/libpostal</code>, an external codec: it runs on a server, beside libpostal.
+              </p>
+            )}
+            {g === 'Music' && (
+              <p className="note">
+                From <code>@quantojs/music</code>, which is still evolving: its parse results may change between releases.
               </p>
             )}
             {docs

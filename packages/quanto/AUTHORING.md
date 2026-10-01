@@ -114,7 +114,7 @@ export const percentRange = (codec = percent()) =>
   });
 ```
 
-An optional `format(start, end, ctx)` rule can print a closed range shorter than the default `start – end` (dates print `Oct 3–5, 2026`); return `undefined` to keep the default, and make sure the text reads back through `propose`. With no rules, both sides must be written in full. Pass `{ open: true }` as the third argument to also accept one bound (`10%+`, `under 20%`), as an `OpenRange`. `moneyRange` (`quanto/money`) and `dateRange` (`quanto-datetime`) are written the same way.
+An optional `format(start, end, ctx)` rule can print a closed range shorter than the default `start – end` (dates print `Oct 3–5, 2026`); return `undefined` to keep the default, and make sure the text reads back through `propose`. With no rules, both sides must be written in full. Pass `{ open: true }` as the third argument to also accept one bound (`10%+`, `under 20%`), as an `OpenRange`. `moneyRange` (`quanto/money`) and `dateRange` (`@quantojs/datetime`) are written the same way.
 
 ## Context and primitives
 

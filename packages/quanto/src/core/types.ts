@@ -121,8 +121,17 @@ export type Completion<T> =
       resolve(ctx?: Ctx): Promise<T>;
     };
 
+/**
+ * Settings for codecs from other packages. A package declares its own key by augmenting this interface
+ * (`declare module 'quanto' { interface CtxExtensions { readonly music?: MusicCtx } }`), and quanto passes
+ * it through to `ResolvedCtx` untouched, so it reaches codecs inside `merge`, `range` and `approx`, and
+ * through the React provider. Not recorded in `ParseContext`.
+ */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+export interface CtxExtensions {}
+
 /** Context for parsing and formatting. Every field is optional. */
-export interface Ctx {
+export interface Ctx extends CtxExtensions {
   /** BCP 47 tag. Missing → `en-US`. */
   readonly locale?: string | undefined;
   /** RFC 3339 timestamp with a UTC offset. Missing → the machine's clock and local offset. */
@@ -191,7 +200,7 @@ export interface ParseContext {
 }
 
 /** The context a codec's `parse` and `format` receive from `defineCodec`. */
-export interface ResolvedCtx {
+export interface ResolvedCtx extends CtxExtensions {
   /** The resolved bundled data for `ctx.locale`. */
   readonly locale: Locale;
   /**

@@ -148,7 +148,7 @@ export function dateRange(codec: Codec<string>, options?: RangeOptions<Range<str
 export function dateRange(codec: Codec<string>, options?: RangeOptions<OpenRange<string>> | RangeOptions<Range<string>>): Codec<OpenRange<string>> | Codec<Range<string>> {
   const kind = calendarKindOf(codec);
   if (!kind) {
-    throw new Error('quanto: dateRange works with codecs made by date(), time(), localDateTime() or dateTime() from quanto-datetime. For other codecs, use defineRange from quanto.');
+    throw new Error('quanto: dateRange works with codecs made by date(), time(), localDateTime() or dateTime() from @quantojs/datetime. For other codecs, use defineRange from quanto.');
   }
   const strategy = STRATEGIES[kind];
   const format = spanFormatOf(codec);

@@ -1,4 +1,4 @@
-// Generates src/names/data.ts: month and weekday names for the languages quanto-datetime exports as
+// Generates src/names/data.ts: month and weekday names for the languages @quantojs/datetime exports as
 // opt-in name sets (`date({ names: [de] })`), from the runtime's ICU data. Run with
 // `bun scripts/generate-names.ts`; the output is reviewed and committed, never read from Intl at runtime.
 

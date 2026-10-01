@@ -42,9 +42,12 @@ export function startSession(ctx: Ctx | undefined): Session {
       throw new Error('quanto: each of ctx.grammars must be a Grammar: { language, numbers?: { read(text, from) } }.');
     }
   }
+  // Everything else is a package's extension (`CtxExtensions`), passed through as given.
+  const { locale: _locale, now: _now, grammars: _grammars, signal: _signal, session: _session, ...extensions } = ctx ?? {};
   let now: string | undefined;
   return {
     ctx: {
+      ...extensions,
       locale,
       grammars,
       ...(ctx?.signal ? { signal: ctx.signal } : {}),

@@ -12,7 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "bun run typecheck && bun run test",
-    "site": "bun run --filter @quanto/site dev"
+    "site": "bun run --filter @quantojs/site dev"
   },
   "devDependencies": {
     "tsdown": "^0.23.0",

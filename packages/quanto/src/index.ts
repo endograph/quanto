@@ -11,6 +11,7 @@ export type {
   CodecOptions,
   Completion,
   Ctx,
+  CtxExtensions,
   ExternalCodec,
   ExternalParseOutcome,
   ExternalParseResult,
