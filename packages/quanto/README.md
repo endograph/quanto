@@ -2,7 +2,7 @@
 
 Turn messy human text into well-typed values and back: `5'11"`, `180cm` and `1,8 m` all parse into the same typed length, which can be converted, compared and formatted. The same idea covers weights, durations, temperatures, percentages and custom types.
 
-Pre-release. The design and its open questions are in the repository's `DESIGN.md`. Money is in [`@quanto/money`](../money/README.md), dates and times in [`@quanto/datetime`](../datetime/README.md), and more codecs (data sizes, energy, pace…) in [`@quanto/codecs`](../codecs/README.md).
+Pre-release. The design and its open questions are in the repository's `DESIGN.md`. Money is in [`@quanto/money`](../money/README.md), dates and times in [`@quanto/datetime`](../datetime/README.md), and more units (data sizes, energy, pace…) in [`@quanto/units`](../units/README.md).
 
 ## Using quanto
 

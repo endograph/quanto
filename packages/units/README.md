@@ -1,9 +1,9 @@
-# @quanto/codecs
+# @quanto/units
 
-More codecs for [quanto](../quanto/README.md): `dataSize`, `dataRate`, `energy`, `power`, `pressure`, `angle`, `frequency`, `fuelEconomy` and `pace`.
+More units for [quanto](../quanto/README.md): `dataSize`, `dataRate`, `energy`, `power`, `pressure`, `angle`, `frequency`, `fuelEconomy` and `pace`.
 
 ```ts
-import { dataSize, pace } from '@quanto/codecs';
+import { dataSize, pace } from '@quanto/units';
 
 dataSize().parse('1.5 GB');   // { ok: true, value: { value: 1.5, unit: 'GB' }, … }
 pace().parse('5:30 /km');     // { ok: true, value: { value: 330, unit: 'sPerKm' }, … }

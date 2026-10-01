@@ -18,7 +18,8 @@ export type {
   ResolvedCtx,
 } from './core/types';
 export type { StandardSchemaV1 } from './core/standard-schema';
-export type { DateOrder, Locale, MeasurementSystem, Names } from './locale';
+export { lookupRegional } from './locale';
+export type { Locale, MeasurementSystem } from './locale';
 export type { UnitDefinition, UnitTable } from './codecs/quantity';
 
 export { normalize } from './primitives/normalize';

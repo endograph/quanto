@@ -4,6 +4,7 @@
 // name written next to an explicit date ("Fri, Oct 2").
 
 import { normalize, type Locale, type ResolvedCtx } from 'quanto';
+import { acceptedNames, dateOrder } from './locale';
 import { addDays, type CivilDate, type CivilTime, isValidDate, isValidTime, normalizeOffset, parseNow, weekdayOf } from './civil';
 
 /** What the text said, resolved against `now` where needed. */
@@ -29,11 +30,11 @@ const tableCache = new Map<string, NameTables>();
 
 /** Month and weekday names for the locale's language plus English, longest first. */
 function nameTables(locale: Locale): NameTables {
-  const cached = tableCache.get(locale.names.language);
+  const cached = tableCache.get(locale.language);
   if (cached) return cached;
   const monthIndex = new Map<string, number>();
   const weekdayIndex = new Map<string, number>();
-  for (const names of locale.acceptedNames) {
+  for (const names of acceptedNames(locale)) {
     names.months.long.forEach((n, i) => monthIndex.set(n.toLowerCase(), i + 1));
     names.months.short.forEach((n, i) => monthIndex.set(n.toLowerCase(), i + 1));
     names.weekdays.long.forEach((n, i) => weekdayIndex.set(n.toLowerCase(), i));
@@ -48,7 +49,7 @@ function nameTables(locale: Locale): NameTables {
     weekdays: new RegExp(`^(${alternation(weekdayIndex.keys())})\\.?(?!\\p{L})`, 'u'),
     weekdayIndex,
   };
-  tableCache.set(locale.names.language, tables);
+  tableCache.set(locale.language, tables);
   return tables;
 }
 
@@ -99,7 +100,7 @@ export function parseMoment(text: string, ctx: ResolvedCtx): Moment | undefined 
 
   /** Resolves a numeric date's parts using the region's order; a month over 12 swaps with the day. */
   const numericDate = (a: number, b: number, year: number | undefined): CivilDate => {
-    const order = ctx.locale.dateOrder;
+    const order = dateOrder(ctx.locale);
     let [m, d] = order === 'DMY' || (order === 'YMD' && year !== undefined) ? [b, a] : [a, b];
     if (m > 12 && d <= 12) [m, d] = [d, m];
     return { y: year ?? today().date.y, m, d };

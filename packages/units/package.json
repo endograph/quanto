@@ -1,7 +1,7 @@
 {
-  "name": "@quanto/codecs",
+  "name": "@quanto/units",
   "version": "0.0.0",
-  "description": "More quanto codecs: data sizes and rates, energy, power, pressure, angles, frequency, fuel economy and pace.",
+  "description": "More quanto units: data sizes and rates, energy, power, pressure, angles, frequency, fuel economy and pace.",
   "type": "module",
   "sideEffects": false,
   "files": [

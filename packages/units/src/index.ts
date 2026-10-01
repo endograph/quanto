@@ -1,4 +1,4 @@
-// More codecs for quanto, built only on quanto's public API. See the root DESIGN.md, "Packaging".
+// More units for quanto, built only on quanto's public API. See the root DESIGN.md, "Packaging".
 
 export { angle, angleUnits } from './angle';
 export type { AngleUnit } from './angle';

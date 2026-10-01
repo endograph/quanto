@@ -89,7 +89,7 @@ With no rules, both sides must be written in full. `@quanto/money`'s `moneyRange
 
 `ctx` is a `ResolvedCtx`:
 
-- **`ctx.locale`**: bundled data for the locale: month and weekday names, numeric date order, separators, currency, measurement system.
+- **`ctx.locale`**: the resolved language and region, number separators and measurement system. For your own per-region data, use `lookupRegional(ctx.locale, regions, exceptions)`.
 - **`ctx.now()`**: the current time as an RFC 3339 string with offset. Always read the time through it, never `new Date()`: it honours a passed-in `now` and records it in the result's `context`.
 
 Use the exported primitives rather than writing your own lexing:

@@ -1,16 +1,16 @@
 import { EXCEPTIONS, LIKELY_REGIONS, REGIONS } from './data';
-import { NAMES, type Names } from './names';
 
-export type DateOrder = 'MDY' | 'DMY' | 'YMD';
 export type MeasurementSystem = 'us' | 'uk' | 'metric';
 
 /**
- * The bundled data for a locale, resolved per level (see DESIGN.md, Locales): names by language,
- * everything else by region, with language-specific exceptions.
+ * A resolved locale: the language and region a tag stands for, and the conventions every codec needs.
+ * Domain data (currencies, date order, month names, …) belongs to the domain packages, which look it up
+ * by `region` and `language`. See DESIGN.md, Locales.
  */
 export interface Locale {
   /** The canonicalized tag, as recorded in `context.locale`. */
   readonly tag: string;
+  /** The tag's language subtag (`de` for `de-CH`). */
   readonly language: string;
   /** The region the data was resolved for: the tag's own, or its language's likely region. */
   readonly region: string;
@@ -22,18 +22,7 @@ export interface Locale {
   readonly secondaryGroupSize: number;
   /** Digits needed above the first group before grouping applies (1: `1,234`; 2: `1234` but `12.345`). */
   readonly minimumGroupingDigits: number;
-  readonly dateOrder: DateOrder;
-  /** Where a currency symbol goes: `$12.34` (prefix) or `12,34 €` (suffix). */
-  readonly currencyPosition: 'prefix' | 'suffix';
-  /** The clock people use: `12` (3:00 PM) or `24` (15:00). */
-  readonly hourCycle: 12 | 24;
-  /** ISO 4217 code of the region's currency, if it has one. */
-  readonly currency: string | undefined;
   readonly measurementSystem: MeasurementSystem;
-  /** Month and weekday names for the language, or English when the language isn't bundled. */
-  readonly names: Names;
-  /** Names accepted when parsing: the language's, then English, which every locale accepts. */
-  readonly acceptedNames: readonly Names[];
 }
 
 const cache = new Map<string, Locale>();
@@ -57,6 +46,15 @@ export function canonicalizeTag(tag: string): string {
   return out;
 }
 
+/**
+ * Looks up a row in region-keyed data with language exceptions: the `language-region` row if there is
+ * one, otherwise the region's. Domain packages use it for their own tables, so every package resolves
+ * a locale the same way.
+ */
+export function lookupRegional<Row>(locale: Locale, regions: Readonly<Record<string, Row>>, exceptions?: Readonly<Record<string, Row>>): Row | undefined {
+  return exceptions?.[`${locale.language}-${locale.region}`] ?? regions[locale.region];
+}
+
 /** Resolves a (canonicalized or raw) tag to its bundled locale data. */
 export function resolveLocale(tag: string): Locale {
   const canonical = canonicalizeTag(tag);
@@ -66,8 +64,7 @@ export function resolveLocale(tag: string): Locale {
   const [language] = canonical.split('-') as [string];
   const tagRegion = canonical.split('-').find((p) => /^[A-Z]{2}$/.test(p));
   const region = tagRegion && REGIONS[tagRegion] ? tagRegion : (LIKELY_REGIONS[language] ?? 'US');
-  const [currency, ...regionConventions] = REGIONS[region]!;
-  const [order, decimal, group, secondary, minGrouping, currencyPosition, hourCycle] = EXCEPTIONS[`${language}-${region}`] ?? regionConventions;
+  const [decimal, group, secondary, minGrouping] = EXCEPTIONS[`${language}-${region}`] ?? REGIONS[region]!;
 
   const locale: Locale = {
     tag: canonical,
@@ -77,16 +74,8 @@ export function resolveLocale(tag: string): Locale {
     group,
     secondaryGroupSize: secondary,
     minimumGroupingDigits: minGrouping,
-    dateOrder: order as DateOrder,
-    currencyPosition: currencyPosition === 'prefix' ? 'prefix' : 'suffix',
-    hourCycle: hourCycle === '12' ? 12 : 24,
-    currency: currency || undefined,
     measurementSystem: region === 'US' ? 'us' : region === 'GB' ? 'uk' : 'metric',
-    names: NAMES[language] ?? NAMES.en!,
-    acceptedNames: NAMES[language] && language !== 'en' ? [NAMES[language]!, NAMES.en!] : [NAMES.en!],
   };
   cache.set(canonical, locale);
   return locale;
 }
-
-export type { Names } from './names';

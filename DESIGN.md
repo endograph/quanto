@@ -8,7 +8,7 @@ quanto is a library for turning messy human text into well-typed values, and bac
 
 Think of it as a universal moment.js, generalized beyond dates, or as "what if Zod were unit-aware". `5'11"`, `180cm` and `1,8 m` all parse into the same typed value, which can be converted, compared and formatted.
 
-It ships as a small core (`quanto`: the codec contract, primitives, quantities and the wrappers) plus domain packages that build on its public API: `@quanto/money`, `@quanto/datetime` and `@quanto/codecs` (see [Packaging](#packaging)). Each domain owns its codecs, operations and range rules, and versions on its own.
+It ships as a small core (`quanto`: the codec contract, primitives, quantities and the wrappers) plus domain packages that build on its public API: `@quanto/money`, `@quanto/datetime` and `@quanto/units` (see [Packaging](#packaging)). Each domain owns its codecs, operations and range rules, and versions on its own.
 
 The input component (`<QuantoInput />`) is one consumer of this core, shipped as a separate package. It is not the core, and nothing UI-specific lives in the core.
 
@@ -135,7 +135,8 @@ The lexing built-ins use is exported from `quanto`, so custom codecs get the sam
 - **`normalize(text)`**: the input normalization described under [Locale-aware number parsing](#locale-aware-number-parsing): quotes and primes, Unicode fractions (`5½` → `5 1/2`), NFKC (so full-width digits read as digits), the Unicode minus sign, and runs of any whitespace to one space. It doesn't fold case or trim.
 - **`readNumber(text, ctx, { from?, suffixes? })`**: reads one number starting at `from` (default 0, leading spaces skipped) using the locale rules, and returns `{ value, end }` or `undefined`. It accepts a leading `-` or `+`; whether negatives make sense is the codec's call. `suffixes: true` accepts `k`, `m`, `b`/`bn` and `t`, attached to the number and case-insensitive. When the locale's reading of an ambiguous separator gives invalid grouping, the other reading is used (`1234,567` in en-US is 1234.567).
 - **`formatNumber(n, ctx, { maxFractionDigits?, minFractionDigits? })`**: formats with the region's bundled separators and grouping, so the result reads back with `readNumber`. Defaults: at most 3 fraction digits, at least 0; rounding is half away from zero, on the number's shortest decimal representation (`1.005` → `1.01` at two digits). Space and apostrophe grouping print as plain ` ` and `'`.
-- **`ctx.locale`**: month and weekday names, numeric date order, separators, currency and measurement system, for codecs that need them directly.
+- **`ctx.locale`**: the resolved language and region, the number separators and grouping, and the measurement system, for codecs that need them directly.
+- **`lookupRegional(locale, regions, exceptions?)`**: looks up a codec's own region-keyed data (the `language-region` row if there is one, otherwise the region's), so every package resolves a locale the same way. Domain packages use it for their currencies, date orders and the like.
 
 The built-in date grammar is not exported in v1.
 
@@ -326,7 +327,7 @@ const height = length({
 - Default formatting prints at most 3 fraction digits, then the unit's first alias, separated by a space unless the alias is `'`, `"` or `°` (`45°`, `30'`).
 - Built-in quantity codecs in `quanto/codecs`: `length`, `mass`, `duration`, `temperature`, `volume`, `area` and `speed` (its own unit table, not derived), each exported alongside its unit table (`lengthUnits`, …). The core also has `percent`. Money and dates are in their own packages.
 - `percent` is a plain number in percentage points (`12.5`, not `0.125`): a bare number, or one followed by `%`, `percent`, `per cent` or `pct`. A bare fraction (`3/4`) is unparseable, since it could mean 75% or 0.75%; `3/4%` is fine. Ratios (`3 in 10`), basis points and per mille are left to custom codecs.
-- More codecs live in the separate package `@quanto/codecs` (see [Packaging](#packaging)): `dataSize`, `dataRate`, `energy`, `power`, `pressure`, `angle`, `frequency`, `fuelEconomy` and `pace`. Notes on them follow.
+- More units live in the separate package `@quanto/units` (see [Packaging](#packaging)): `dataSize`, `dataRate`, `energy`, `power`, `pressure`, `angle`, `frequency`, `fuelEconomy` and `pace`. Notes on them follow.
 - `duration` covers fixed-length units only (ms through weeks). Calendar durations (months, years) are not quantities because they have no fixed length. Clock notation (`1:30`) isn't accepted in v1.
 - `mass` has no `ton`: it means different masses in US, UK and metric use (`t`/`tonne` is the metric ton). `volume`'s customary units are US measures; UK imperial pints and gallons need a custom table.
 - `dataSize` is bytes only: `KB`, `MB`, … are decimal (1000) and `KiB`, `MiB`, … binary (1024). With no bit units, a lowercase `b` means bytes too (`100b`, `Mb`). `dataRate` has both: bit and byte aliases that differ only by case match exactly, all-lowercase `mbps`, `kbps` and `gbps` are listed as bits, and `mb/s` is ambiguous and rejected.
@@ -337,7 +338,7 @@ const height = length({
 
 ## Money
 
-Money lives in **`@quanto/money`**: the `money` codec, the `Money` type, its operations, `moneyRange` and `intlMoney`. The core keeps only the per-region data it shares with other codecs (each region's currency and where it writes the symbol).
+Money lives in **`@quanto/money`**: the `money` codec, the `Money` type, its operations, `moneyRange` and `intlMoney`. It owns its region data too: each region's currency and where it writes the symbol, generated by its own script and looked up with `lookupRegional`.
 
 Money is **not** a quantity. Converting currencies has no fixed factor: it needs exchange rates, which are external data that change over time.
 
@@ -384,7 +385,7 @@ The codec is `money({ defaultCurrency?, schema?, format? })`.
 
 ## Dates and times
 
-Dates and times live in **`@quanto/datetime`**: the four codecs, their grammar, `dateRange` and the `Intl` date formatters. Its grammar is the most heuristic part of quanto and the likeliest to change, so it versions on its own. The core keeps what's shared: `ctx.now()` and `context.now`, and the per-locale data (month and weekday names, numeric date order, 12- or 24-hour clock).
+Dates and times live in **`@quanto/datetime`**: the four codecs, their grammar, `dateRange` and the `Intl` date formatters. Its grammar is the most heuristic part of quanto and the likeliest to change, so it versions on its own. The core keeps what's shared, `ctx.now()` and `context.now`; the package owns its locale data (month and weekday names, numeric date order, 12- or 24-hour clock), generated by its own script.
 
 Values are ISO 8601 strings. They're JSON-native and parse losslessly into Temporal (`PlainDate`, `PlainTime`, `PlainDateTime`, `Instant`) if an app needs date math. quanto does no date math. A future separate package may provide it, built on Temporal.
 
@@ -436,17 +437,21 @@ Write a custom codec for any of these:
 
 Bundled data is keyed at its natural level, and each level resolves on its own. A locale is never swapped wholesale for a different one because its language lacks data: `en-AU` must not become `en-US` and read `03/04` as March 4.
 
-| Data | Keyed by | Coverage |
-|---|---|---|
-| Month and weekday names | language | The v1 languages (open question). English names are accepted in every locale, so an unsupported language still parses English names. |
-| Numeric date order (MDY, DMY, YMD) | region, with language exceptions (`fr-CA`, …) | Every region |
-| Decimal and grouping separators, grouping pattern | region, with language exceptions (`fr-CA`, `de-CH`, …) | Every region |
-| Currency | region | Every region |
-| Measurement system (`us`, `uk`, `metric`) | region: US → `us`, GB → `uk`, everything else → `metric` | Every region |
-| Currency symbol position (before or after the amount) | region, with language exceptions | Every region |
-| Hour cycle (12- or 24-hour clock) | region, with language exceptions | Every region |
+The core resolves a tag to a **language and region**, and owns the data every codec needs. Each domain package owns its own data, keyed the same way and looked up with `lookupRegional`, so adding a language's month names is a `@quanto/datetime` release that doesn't touch the core.
+
+| Data | Owned by | Keyed by | Coverage |
+|---|---|---|---|
+| Decimal and grouping separators, grouping pattern | `quanto` | region, with language exceptions (`fr-CA`, `de-CH`, …) | Every region |
+| Measurement system (`us`, `uk`, `metric`) | `quanto` | region: US → `us`, GB → `uk`, everything else → `metric` | Every region |
+| Likely region of a language | `quanto` | language | About 90 languages |
+| Currency | `@quanto/money` | region | Every region |
+| Currency symbol position (before or after the amount) | `@quanto/money` | region, with language exceptions | Every region |
+| Numeric date order (MDY, DMY, YMD) | `@quanto/datetime` | region, with language exceptions | Every region |
+| Hour cycle (12- or 24-hour clock) | `@quanto/datetime` | region, with language exceptions | Every region |
+| Month and weekday names | `@quanto/datetime` | language | The v1 languages (open question). English names are accepted in every locale, so an unsupported language still parses English names. |
 
 - Region data is small (about 250 regions, a few fields each), so it ships complete. Only the language data needs a supported list.
+- Each package generates its data from ICU at development time, with shared helpers in the repo's `scripts/icu.ts`, and commits the output: nothing reads `Intl` at runtime. A date order ICU reports that quanto doesn't support (Kyrgyzstan's YDM) maps by whether the day comes before the month.
 - A tag without a region takes its language's likely region from a small bundled table (`de` → DE, `en` → US). An unknown language with no region resolves to US.
 - So `en-AU` gets English names, DMY dates, AUD and metric, and `pt-BR` gets DMY, `,` decimals and BRL even before Portuguese names ship.
 - `context.locale` records the canonicalized tag, not the resolved data. If Portuguese names ship in a later version, `pt-BR` input that used to fail may start to parse.
@@ -574,12 +579,12 @@ import { feetInches } from 'quanto/formats';
   - `quanto/quantity`: quantity operations (`convert`, `compare`).
   - `quanto/formats`: ready-made formatters (`feetInches`, `poundsOunces`, `stonesPounds`, `hoursMinutes`, `intlUnit`) and the `Formatter<T>` type.
   - `quanto/testing`: `roundTrip` and `runFixtures`, the generic fixture runner.
-- **Repository layout.** A bun workspace: `packages/quanto` (the core, npm `quanto`), `packages/money` (`@quanto/money`), `packages/datetime` (`@quanto/datetime`), `packages/codecs` (`@quanto/codecs`) and `apps/site` (the website). The private root holds the shared dev tooling (TypeScript, tsdown, vitest, `tsconfig.base.json`, one `vitest.config.ts` for every package) and the repo docs (`DESIGN.md`, `AGENTS.md`, `PRIOR_ART.md`). `bun run typecheck`, `bun run build` and `bun run test` at the root cover every package.
+- **Repository layout.** A bun workspace: `packages/quanto` (the core, npm `quanto`), `packages/money` (`@quanto/money`), `packages/datetime` (`@quanto/datetime`), `packages/units` (`@quanto/units`) and `apps/site` (the website). The private root holds the shared dev tooling (TypeScript, tsdown, vitest, `tsconfig.base.json`, one `vitest.config.ts` for every package) and the repo docs (`DESIGN.md`, `AGENTS.md`, `PRIOR_ART.md`). `bun run typecheck`, `bun run build` and `bun run test` at the root cover every package.
 - UI adapters are separate packages (web React first, React Native later). The core package never imports them.
 - **Domain packages** build on the core:
   - **`@quanto/money`** (`packages/money`): `money`, the `Money` type, `add`, `subtract`, `compare`, `scale`, `convert`, `allocate`, `roundWithMode`, `moneyRange`, `intlMoney`, and the currency data (`isKnownCurrency`, `minorDigits`).
   - **`@quanto/datetime`** (`packages/datetime`): `date`, `time`, `localDateTime`, `dateTime`, `dateRange`, `intlDate`, `intlTime`, `intlDateTime`.
-  - **`@quanto/codecs`** (`packages/codecs`): codecs beyond the everyday core, `dataSize`, `dataRate`, `energy`, `power`, `pressure`, `angle`, `frequency`, `fuelEconomy` and `pace`.
+  - **`@quanto/units`** (`packages/units`): unit-based quantities beyond the everyday core, `dataSize`, `dataRate`, `energy`, `power`, `pressure`, `angle`, `frequency`, `fuelEconomy` and `pace`.
 - **Why packages.** Not bundle size: everything tree-shakes. Each domain's parsing rules and stored contracts (unit IDs, value shapes) change on their own schedule, and parse changes affect replay (see [Parse context](#parse-context)). Separate packages let the core stay small and steady while money and dates evolve.
 - **How they're built.** Every domain package uses **only quanto's public API**, imported by name (`quanto`, `quanto/codecs`, `quanto/quantity`, `quanto/testing`), exactly as a custom codec would. That keeps Principle 5 honest: anything a package needs that isn't public is a gap in the API, not a reason to reach into internals.
   - `quanto` is a peer dependency (`workspace:^` in the repo, replaced by the real version on publish). In the repo, `quanto` resolves to the core's source (tsconfig paths for typechecking, a vitest alias for tests), so nothing needs building first.

@@ -13,16 +13,6 @@
     "apps/site": {
       "name": "@quanto/site",
     },
-    "packages/codecs": {
-      "name": "@quanto/codecs",
-      "version": "0.0.0",
-      "devDependencies": {
-        "quanto": "workspace:*",
-      },
-      "peerDependencies": {
-        "quanto": "workspace:^",
-      },
-    },
     "packages/datetime": {
       "name": "@quanto/datetime",
       "version": "0.0.0",
@@ -47,6 +37,16 @@
       "name": "quanto",
       "version": "0.0.0",
     },
+    "packages/units": {
+      "name": "@quanto/units",
+      "version": "0.0.0",
+      "devDependencies": {
+        "quanto": "workspace:*",
+      },
+      "peerDependencies": {
+        "quanto": "workspace:^",
+      },
+    },
   },
   "packages": {
     "@jridgewell/resolve-uri": ["@jridgewell/resolve-uri@3.1.2", "", {}, "sha512-bRISgCIjP20/tbWSPWMEi54QVPRZExkuD9lJL+UIxUKtwVJA8wW1Trb1jMs1RFXo1CBTNZ/5hpC9QvmKWdopKw=="],
@@ -59,13 +59,13 @@
 
     "@quansync/fs": ["@quansync/fs@1.1.0", "", { "dependencies": { "quansync": "^1.0.0" } }, "sha512-qAPG/t3HqML1TlN7sY/pTbEjzFVAKsMjNNMGheyDosro+kT4iw2KCUoHcVdmliwWjorm4elZbgNQyU2eD97eDg=="],
 
-    "@quanto/codecs": ["@quanto/codecs@workspace:packages/codecs"],
-
     "@quanto/datetime": ["@quanto/datetime@workspace:packages/datetime"],
 
     "@quanto/money": ["@quanto/money@workspace:packages/money"],
 
     "@quanto/site": ["@quanto/site@workspace:apps/site"],
+
+    "@quanto/units": ["@quanto/units@workspace:packages/units"],
 
     "@rolldown/binding-android-arm-eabi": ["@rolldown/binding-android-arm-eabi@1.2.12", "", { "os": "android", "cpu": "arm" }, "sha512-dB/a1214qKfHMXCpgqR4OZT+jS4kTyEXbQGJPqzobt5EwH5rX080pxE37alt3RzvR1bf1Yz/yGqRfrYAxuPw0A=="],
 

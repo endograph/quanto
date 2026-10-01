@@ -1,5 +1,6 @@
 import { defineCodec, formatNumber, normalize, readNumber, type Codec, type CodecOptions, type ParseOutcome, type ResolvedCtx } from 'quanto';
 import { CURRENCY_TOKENS, DISPLAY_SYMBOLS, isKnownCurrency, minorDigits, resolveCandidates } from '../currencies';
+import { regionCurrency, symbolPosition } from '../locale';
 import type { Money } from '../types';
 
 /** Options for the money codec. */
@@ -112,7 +113,7 @@ export function money(options?: MoneyOptions): Codec<Money> {
     } else {
       const candidates = written.reduce<readonly string[]>((acc, t) => acc.filter((c) => t.candidates.includes(c)), written[0]!.candidates);
       if (candidates.length === 0) return unparseable(text);
-      currency = resolveCandidates(candidates, defaultCurrency, ctx.locale.currency);
+      currency = resolveCandidates(candidates, defaultCurrency, regionCurrency(ctx.locale));
     }
 
     const digits = minorDigits(currency);
@@ -141,10 +142,10 @@ export function money(options?: MoneyOptions): Codec<Money> {
     const symbol = DISPLAY_SYMBOLS[value.currency];
     // Use the symbol only when it parses back to the same currency under the same context.
     const candidates = symbol === undefined ? undefined : CURRENCY_TOKENS[normalize(symbol).toLowerCase()];
-    if (symbol === undefined || !candidates || resolveCandidates(candidates, defaultCurrency, ctx.locale.currency) !== value.currency) {
+    if (symbol === undefined || !candidates || resolveCandidates(candidates, defaultCurrency, regionCurrency(ctx.locale)) !== value.currency) {
       return `${sign}${amount} ${value.currency}`;
     }
-    if (ctx.locale.currencyPosition === 'suffix') return `${sign}${amount} ${symbol}`;
+    if (symbolPosition(ctx.locale) === 'suffix') return `${sign}${amount} ${symbol}`;
     return `${sign}${symbol}${isLetter(symbol[symbol.length - 1]) ? ' ' : ''}${amount}`;
   };
 
