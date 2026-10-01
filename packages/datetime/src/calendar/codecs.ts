@@ -1,9 +1,27 @@
 import { defineCodec, type Codec, type CodecOptions, type ParseOutcome, type ResolvedCtx } from 'quanto';
 import { isoDate, isoTime, normalizeOffset, parseIsoDate, parseIsoTime } from './civil';
 import { formatDate, formatDateTime, formatTime } from './format';
-import { type Moment, nowParts, parseMoment } from './grammar';
+import { buildNameTables, type Moment, nowParts, parseMoment } from './grammar';
+import { assertNames, type Names } from './names';
 
 type Problems = Array<{ message: string }>;
+
+/** Options for `date()`, `localDateTime()` and `dateTime()`. */
+export interface DateOptions extends CodecOptions<string> {
+  /**
+   * Month and weekday names to accept besides English, in order of priority: `[de]`, `[es, fr]`, or your
+   * own `Names`. `format` uses the set matching the locale's language.
+   */
+  readonly names?: readonly Names[] | undefined;
+}
+
+/** The name tables for a codec, checking each set once, when the codec is created. */
+const tablesFor = (names: readonly Names[] | undefined) => {
+  for (const set of names ?? []) assertNames(set);
+  return buildNameTables(names ?? []);
+};
+
+const userOptions = (options: DateOptions | undefined): CodecOptions<string> => ({ schema: options?.schema, format: options?.format });
 
 /** Which of the four codecs a codec is, so `dateRange` can pick its rules. Codecs made here only. */
 export type CalendarKind = 'date' | 'time' | 'localDateTime' | 'dateTime';
@@ -39,25 +57,28 @@ function splitDateTime(value: unknown, withOffset: boolean) {
  * A calendar date, stored as `YYYY-MM-DD`: `2026-10-02`, `Oct 2`, `2/10/2026`, `tomorrow`, `next fri`,
  * `in 3 days`. Numeric dates follow the region's order.
  */
-export function date(options?: CodecOptions<string>): Codec<string> {
+export function date(options?: DateOptions): Codec<string> {
+  const names = options?.names ?? [];
+  const tables = tablesFor(names);
   const parse = (text: string, ctx: ResolvedCtx): ParseOutcome<string> => {
-    const moment = parseMoment(text, ctx);
+    const moment = parseMoment(text, ctx, tables);
     if (!moment?.date || moment.time || moment.offset) return unparseable(text, 'a date');
     return { ok: true, value: isoDate(moment.date) };
   };
   return register('date', defineCodec<string>({
     id: 'date',
     parse,
-    format: (value, ctx) => formatDate(parseIsoDate(value)!, ctx),
+    format: (value, ctx) => formatDate(parseIsoDate(value)!, ctx, names),
     check: (value): Problems => (typeof value === 'string' && parseIsoDate(value) ? [] : [{ message: 'Expected a date as YYYY-MM-DD.' }]),
-    options,
+    options: userOptions(options),
   }));
 }
 
 /** A wall-clock time, stored as `HH:MM:SS`: `3pm`, `3:30 p.m.`, `15:00`, `noon`. */
 export function time(options?: CodecOptions<string>): Codec<string> {
+  const tables = tablesFor([]);
   const parse = (text: string, ctx: ResolvedCtx): ParseOutcome<string> => {
-    const moment = parseMoment(text, ctx);
+    const moment = parseMoment(text, ctx, tables);
     if (!moment?.time || (moment.date && !moment.dateFromNow) || moment.offset) return unparseable(text, 'a time');
     return { ok: true, value: isoTime(moment.time) };
   };
@@ -77,9 +98,11 @@ const withDate = (moment: Moment, ctx: ResolvedCtx) => (moment.date ? moment.dat
  * A date and time with no offset, stored as `YYYY-MM-DDTHH:MM:SS`: `tomorrow 3pm`, `Oct 2 at 15:00`.
  * A time alone is today; a date alone is unparseable (add a time).
  */
-export function localDateTime(options?: CodecOptions<string>): Codec<string> {
+export function localDateTime(options?: DateOptions): Codec<string> {
+  const names = options?.names ?? [];
+  const tables = tablesFor(names);
   const parse = (text: string, ctx: ResolvedCtx): ParseOutcome<string> => {
-    const moment = parseMoment(text, ctx);
+    const moment = parseMoment(text, ctx, tables);
     if (!moment?.time || moment.offset) return unparseable(text, 'a date and time');
     return { ok: true, value: `${isoDate(withDate(moment, ctx))}T${isoTime(moment.time)}` };
   };
@@ -88,10 +111,10 @@ export function localDateTime(options?: CodecOptions<string>): Codec<string> {
     parse,
     format: (value, ctx) => {
       const parts = splitDateTime(value, false)!;
-      return formatDateTime(parts.date, parts.time, ctx);
+      return formatDateTime(parts.date, parts.time, ctx, names);
     },
     check: (value): Problems => (splitDateTime(value, false) ? [] : [{ message: 'Expected a date and time as YYYY-MM-DDTHH:MM:SS.' }]),
-    options,
+    options: userOptions(options),
   }));
 }
 
@@ -99,9 +122,11 @@ export function localDateTime(options?: CodecOptions<string>): Codec<string> {
  * An exact moment with the UTC offset it was entered in, stored as `YYYY-MM-DDTHH:MM:SS±HH:MM`.
  * Without a written offset, the offset of `now` is used. Time zone names aren't supported.
  */
-export function dateTime(options?: CodecOptions<string>): Codec<string> {
+export function dateTime(options?: DateOptions): Codec<string> {
+  const names = options?.names ?? [];
+  const tables = tablesFor(names);
   const parse = (text: string, ctx: ResolvedCtx): ParseOutcome<string> => {
-    const moment = parseMoment(text, ctx);
+    const moment = parseMoment(text, ctx, tables);
     if (!moment?.time) return unparseable(text, 'a date and time');
     const offset = moment.offset ?? nowParts(ctx).offset;
     return { ok: true, value: `${isoDate(withDate(moment, ctx))}T${isoTime(moment.time)}${offset}` };
@@ -111,9 +136,9 @@ export function dateTime(options?: CodecOptions<string>): Codec<string> {
     parse,
     format: (value, ctx) => {
       const parts = splitDateTime(value, true)!;
-      return `${formatDateTime(parts.date, parts.time, ctx)} ${parts.offset}`;
+      return `${formatDateTime(parts.date, parts.time, ctx, names)} ${parts.offset}`;
     },
     check: (value): Problems => (splitDateTime(value, true) ? [] : [{ message: 'Expected a date and time with offset as YYYY-MM-DDTHH:MM:SS±HH:MM.' }]),
-    options,
+    options: userOptions(options),
   }));
 }

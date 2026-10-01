@@ -2,6 +2,8 @@
 // API. See the repository's DESIGN.md, "Dates and times".
 
 export { date } from './date';
+export type { DateOptions } from './calendar/codecs';
+export type { Names } from './calendar/names';
 export { time } from './time';
 export { localDateTime } from './local-date-time';
 export { dateTime } from './date-time';

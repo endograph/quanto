@@ -3,8 +3,9 @@
 // grammar doesn't consume makes the input unparseable; nothing is silently ignored except a weekday
 // name written next to an explicit date ("Fri, Oct 2").
 
-import { normalize, type Locale, type ResolvedCtx } from 'quanto';
-import { acceptedNames, dateOrder } from './locale';
+import { normalize, type ResolvedCtx } from 'quanto';
+import { dateOrder } from './locale';
+import { en, type Names } from './names';
 import { addDays, type CivilDate, type CivilTime, isValidDate, isValidTime, normalizeOffset, parseNow, weekdayOf } from './civil';
 
 /** What the text said, resolved against `now` where needed. */
@@ -19,38 +20,54 @@ export interface Moment {
 
 const escape = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-interface NameTables {
+/** Month and weekday lookups for one codec, built once from its name sets. */
+export interface NameTables {
   readonly months: RegExp;
   readonly monthIndex: ReadonlyMap<string, number>;
   readonly weekdays: RegExp;
   readonly weekdayIndex: ReadonlyMap<string, number>;
+  /** Filler words to skip ("de" in "2 de octubre"), or undefined if there are none. */
+  readonly fillers: RegExp | undefined;
 }
 
-const tableCache = new Map<string, NameTables>();
+/**
+ * Folds text for name matching, one character at a time so positions don't move: lowercase, accents
+ * removed (`Março` → `marco`).
+ */
+export const foldText = (s: string): string =>
+  [...s].map((c) => {
+    const f = c.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+    return f.length === 1 ? f : c.toLowerCase();
+  }).join('');
 
-/** Month and weekday names for the locale's language plus English, longest first. */
-function nameTables(locale: Locale): NameTables {
-  const cached = tableCache.get(locale.language);
-  if (cached) return cached;
+const foldName = (s: string): string => foldText(s.trim()).replace(/\.$/, '');
+
+/**
+ * Builds the name tables for a codec: the passed name sets in order, then English. When a form means
+ * two things, months win over weekdays (Spanish "mar" is March, not martes), and earlier sets win over
+ * later ones.
+ */
+export function buildNameTables(sets: readonly Names[]): NameTables {
+  const all = [...sets, en];
   const monthIndex = new Map<string, number>();
   const weekdayIndex = new Map<string, number>();
-  for (const names of acceptedNames(locale)) {
-    names.months.long.forEach((n, i) => monthIndex.set(n.toLowerCase(), i + 1));
-    names.months.short.forEach((n, i) => monthIndex.set(n.toLowerCase(), i + 1));
-    names.weekdays.long.forEach((n, i) => weekdayIndex.set(n.toLowerCase(), i));
-    names.weekdays.short.forEach((n, i) => weekdayIndex.set(n.toLowerCase(), i));
+  for (const names of all) {
+    names.months.forEach((forms, i) => forms.forEach((f) => !monthIndex.has(foldName(f)) && monthIndex.set(foldName(f), i + 1)));
   }
-  monthIndex.set('sept', 9);
-  for (const [alias, i] of [['tues', 1], ['weds', 2], ['thur', 3], ['thurs', 3]] as const) weekdayIndex.set(alias, i);
+  for (const names of all) {
+    names.weekdays.forEach((forms, i) =>
+      forms.forEach((f) => !monthIndex.has(foldName(f)) && !weekdayIndex.has(foldName(f)) && weekdayIndex.set(foldName(f), i)),
+    );
+  }
   const alternation = (keys: Iterable<string>): string => [...keys].sort((a, b) => b.length - a.length).map(escape).join('|');
-  const tables: NameTables = {
+  const fillerWords = [...new Set(all.flatMap((n) => n.fillers ?? []).map(foldName))];
+  return {
     months: new RegExp(`^(${alternation(monthIndex.keys())})\\.?(?!\\p{L})`, 'u'),
     monthIndex,
     weekdays: new RegExp(`^(${alternation(weekdayIndex.keys())})\\.?(?!\\p{L})`, 'u'),
     weekdayIndex,
+    fillers: fillerWords.length ? new RegExp(`(?<!\\p{L})(?:${alternation(fillerWords)})(?!\\p{L})`, 'gu') : undefined,
   };
-  tableCache.set(locale.language, tables);
-  return tables;
 }
 
 const COUNT_WORDS: Readonly<Record<string, number>> = { a: 1, an: 1, one: 1 };
@@ -75,9 +92,9 @@ function from12(h: number, meridiem: string): number | undefined {
  * Parses date and time text. Returns undefined when the text isn't a well-formed moment. `now` is
  * read only when the text needs it (relative input, a missing year), so `context` stays accurate.
  */
-export function parseMoment(text: string, ctx: ResolvedCtx): Moment | undefined {
-  const s = normalize(text).toLowerCase().trim();
-  const names = nameTables(ctx.locale);
+export function parseMoment(text: string, ctx: ResolvedCtx, names: NameTables): Moment | undefined {
+  const folded = foldText(normalize(text).trim());
+  const s = names.fillers ? folded.replace(names.fillers, ' ') : folded;
   const today = (): ReturnType<typeof parseNow> => parseNow(ctx.now());
 
   let date: CivilDate | undefined;
@@ -192,7 +209,7 @@ export function parseMoment(text: string, ctx: ResolvedCtx): Moment | undefined 
       pos += month[0].length + m[0].length;
       continue;
     }
-    if ((m = /^(\d{1,2})(?:st|nd|rd|th)?\s*(?:of\s+)?/u.exec(rest))) {
+    if ((m = /^(\d{1,2})(?:st|nd|rd|th|\.)?\s*(?:of\s+)?/u.exec(rest))) {
       const after = rest.slice(m[0].length);
       const monthAfter = names.months.exec(after);
       if (monthAfter) {

@@ -12,6 +12,10 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./names": {
+      "types": "./dist/names/index.d.ts",
+      "import": "./dist/names/index.js"
+    },
     "./package.json": "./package.json"
   },
   "scripts": {

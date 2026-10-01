@@ -3,14 +3,17 @@
 
 import type { ResolvedCtx } from 'quanto';
 import { type CivilDate, type CivilTime, isoDate } from './civil';
-import { dateOrder, displayNames, hourCycle } from './locale';
+import { dateOrder, hourCycle } from './locale';
+import { en, monthAbbreviation, type Names } from './names';
 
-/** `Oct 2, 2026` (MDY regions), `2 Oct 2026` (DMY), `2026-10-02` (YMD). Never a numeric day/month order. */
-export function formatDate(date: CivilDate, ctx: ResolvedCtx): string {
+/**
+ * `Oct 2, 2026` (MDY regions), `2 Oct 2026` (DMY), `2026-10-02` (YMD). Never a numeric day/month order.
+ * Month names come from the codec's name set for the locale's language, or English.
+ */
+export function formatDate(date: CivilDate, ctx: ResolvedCtx, names: readonly Names[] = []): string {
   const order = dateOrder(ctx.locale);
-  const names = displayNames(ctx.locale);
   if (order === 'YMD') return isoDate(date);
-  const month = names.months.short[date.m - 1]!;
+  const month = monthAbbreviation(names.find((n) => n.language === ctx.locale.language) ?? en, date.m);
   const year = String(date.y).padStart(4, '0');
   return order === 'MDY' ? `${month} ${date.d}, ${year}` : `${date.d} ${month} ${year}`;
 }
@@ -25,6 +28,7 @@ export function formatTime(time: CivilTime, ctx: ResolvedCtx): string {
 }
 
 /** `Oct 2, 2026, 3:00 PM`, or `2026-10-02 15:00` in YMD regions. */
-export function formatDateTime(date: CivilDate, time: CivilTime, ctx: ResolvedCtx): string {
-  return dateOrder(ctx.locale) === 'YMD' ? `${formatDate(date, ctx)} ${formatTime(time, ctx)}` : `${formatDate(date, ctx)}, ${formatTime(time, ctx)}`;
+export function formatDateTime(date: CivilDate, time: CivilTime, ctx: ResolvedCtx, names: readonly Names[] = []): string {
+  const day = formatDate(date, ctx, names);
+  return dateOrder(ctx.locale) === 'YMD' ? `${day} ${formatTime(time, ctx)}` : `${day}, ${formatTime(time, ctx)}`;
 }

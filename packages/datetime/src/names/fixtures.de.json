@@ -1,0 +1,16 @@
+[
+  { "parse": "2. Oktober 2026", "value": "2026-10-02" },
+  { "parse": "2. Okt. 2026", "value": "2026-10-02" },
+  { "parse": "2 Okt 2026", "value": "2026-10-02" },
+  { "parse": "3. März 2026", "value": "2026-03-03" },
+  { "parse": "3. Marz 2026", "value": "2026-03-03" },
+  { "parse": "3. Mär 2026", "value": "2026-03-03" },
+  { "parse": "24. Dezember", "ctx": { "now": "2026-09-30T14:02:11-04:00" }, "value": "2026-12-24" },
+  { "parse": "Freitag", "ctx": { "now": "2026-09-30T14:02:11-04:00" }, "value": "2026-10-02" },
+  { "parse": "Fr", "ctx": { "now": "2026-09-30T14:02:11-04:00" }, "value": "2026-10-02" },
+  { "parse": "Di", "ctx": { "now": "2026-09-30T14:02:11-04:00" }, "value": "2026-10-06" },
+  { "parse": "2.10.2026", "ctx": { "locale": "de-DE" }, "value": "2026-10-02" },
+  { "format": "2026-10-02", "ctx": { "locale": "de-DE" }, "text": "2 Okt 2026" },
+  { "format": "2026-03-03", "ctx": { "locale": "de-DE" }, "text": "3 Mär 2026" },
+  { "format": "2026-05-01", "ctx": { "locale": "de-AT" }, "text": "1 Mai 2026" }
+]

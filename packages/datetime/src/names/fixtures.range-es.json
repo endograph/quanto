@@ -1,0 +1,4 @@
+[
+  { "parse": "3-5 de octubre de 2026", "value": { "start": "2026-10-03", "end": "2026-10-05" } },
+  { "parse": "3 al 5 de octubre", "ctx": { "now": "2026-09-30T14:02:11-04:00" }, "issues": ["unparseable"] }
+]

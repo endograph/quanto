@@ -1,0 +1,22 @@
+[
+  { "parse": "2 de octubre de 2026", "value": "2026-10-02", "context": { "locale": "en-US" } },
+  { "parse": "2 octubre 2026", "value": "2026-10-02" },
+  { "parse": "2 Octubre 2026", "value": "2026-10-02" },
+  { "parse": "2 oct 2026", "value": "2026-10-02" },
+  { "parse": "2 de oct. de 2026", "value": "2026-10-02" },
+  { "parse": "1 de enero de 2027", "value": "2027-01-01" },
+  { "parse": "15 de marzo", "ctx": { "now": "2026-09-30T14:02:11-04:00" }, "value": "2026-03-15" },
+  { "parse": "15 mar 2026", "value": "2026-03-15" },
+  { "parse": "2 de octubre del 2026", "value": "2026-10-02" },
+  { "parse": "miércoles", "ctx": { "now": "2026-09-30T14:02:11-04:00" }, "value": "2026-09-30" },
+  { "parse": "miercoles", "ctx": { "now": "2026-09-30T14:02:11-04:00" }, "value": "2026-09-30" },
+  { "parse": "viernes", "ctx": { "now": "2026-09-30T14:02:11-04:00" }, "value": "2026-10-02" },
+  { "parse": "vie", "ctx": { "now": "2026-09-30T14:02:11-04:00" }, "value": "2026-10-02" },
+  { "parse": "martes", "ctx": { "now": "2026-09-30T14:02:11-04:00" }, "value": "2026-10-06" },
+  { "parse": "Oct 2, 2026", "value": "2026-10-02" },
+  { "parse": "2 de octubre de 2026", "ctx": { "locale": "es-ES" }, "value": "2026-10-02", "context": { "locale": "es-ES" } },
+  { "parse": "2 de brumario de 2026", "issues": ["unparseable"] },
+  { "format": "2026-10-02", "ctx": { "locale": "es-ES" }, "text": "2 oct 2026" },
+  { "format": "2026-09-15", "ctx": { "locale": "es-MX" }, "text": "15 sept 2026" },
+  { "format": "2026-10-02", "ctx": { "locale": "en-US" }, "text": "Oct 2, 2026" }
+]
