@@ -3,6 +3,8 @@
 </p>
 
 <p align="center">
+  <a href="https://endograph.github.io/quanto/">Website</a> ·
+  <a href="https://endograph.github.io/quanto/play/">Playground</a> ·
   <a href="DESIGN.md">Design</a> ·
   <a href="packages/quanto/README.md">Usage</a> ·
   <a href="packages/quanto/AUTHORING.md">Writing a codec</a> ·
