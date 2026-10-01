@@ -6,8 +6,16 @@ export type { QuantoField, QuantoInputProps, UseQuantoOptions } from './use-quan
 export { QuantoInput } from './quanto-input';
 export type { AccessoryProps, QuantoInputComponentProps } from './quanto-input';
 export { useExternalQuanto } from './use-external-quanto';
-export type { ExternalQuantoField, ExternalQuantoInputProps, UseExternalQuantoOptions } from './use-external-quanto';
-export { echo, initialState, reduce } from './field';
+export type {
+  CompletionItem,
+  CompletionItemProps,
+  CompletionListProps,
+  ExternalQuantoCompletions,
+  ExternalQuantoField,
+  ExternalQuantoInputProps,
+  UseExternalQuantoOptions,
+} from './use-external-quanto';
+export { alternatives, echo, initialState, reduce } from './field';
 export type { Commit, Display, Echo, FieldEnv, FieldEvent, FieldState, Transition } from './field';
-export { initialExternalState, reduceExternal } from './external-field';
-export type { ExternalFieldEnv, ExternalFieldEvent, ExternalFieldState, ExternalTransition } from './external-field';
+export { entries, initialExternalState, isOpen, reduceExternal } from './external-field';
+export type { Entry, ExternalFieldEnv, ExternalFieldEvent, ExternalFieldState, ExternalTransition } from './external-field';

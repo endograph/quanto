@@ -213,7 +213,8 @@ export function defineRange<T>(codec: Codec<T>, rules?: RangeRules<T>, options?:
       // One bound: its issues are the ones to report, since the text was written as one.
       if (bound.side === '') return { ok: false, issues: [{ code: 'unparseable', message: `Add a value, like "${normalized} 5".` }] };
       const side = codec.parse(bound.side, ctx);
-      if (!side.ok) return side;
+      // A side's alternatives aren't a range's: the range would need one per reading of the other side.
+      if (!side.ok) return { ok: false, issues: side.issues };
       const exclusive = bound.bound.exclusive;
       const value: OpenRange<T> = bound.bound.side === 'start'
         ? { start: side.value, end: null, ...(exclusive ? { startExclusive: true } : {}) }

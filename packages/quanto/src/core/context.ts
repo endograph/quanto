@@ -48,6 +48,7 @@ export function startSession(ctx: Ctx | undefined): Session {
       locale,
       grammars,
       ...(ctx?.signal ? { signal: ctx.signal } : {}),
+      ...(ctx?.session !== undefined ? { session: ctx.session } : {}),
       now() {
         now ??= ctx?.now ?? machineNow();
         return now;

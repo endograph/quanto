@@ -1,0 +1,11 @@
+[
+  { "parse": "Springfield", "issues": ["ambiguous", "unparseable"],
+    "alternatives": [
+      { "codec": "city", "value": { "name": "Springfield", "region": "IL" } },
+      { "codec": "city", "value": { "name": "Springfield", "region": "MO" } },
+      { "codec": "city", "value": { "name": "Springfield", "region": "MA" } }
+    ] },
+  { "parse": "Chicago", "value": { "codec": "city", "value": { "name": "Chicago", "region": "IL" } } },
+  { "parse": "5 ft", "value": { "codec": "length", "value": { "value": 5, "unit": "ft" } } },
+  { "parse": "Atlantis", "issues": ["unparseable", "unparseable"] }
+]

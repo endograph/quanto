@@ -1,7 +1,7 @@
 import { startSession } from '../core/context';
 import { isExternalCodec } from '../core/define-external-codec';
 import type { StandardSchemaV1 } from '../core/standard-schema';
-import type { Codec, Ctx, ExternalCodec, ParseResult } from '../core/types';
+import type { Codec, Ctx, ExternalCodec, ExternalParseResult, ParseResult } from '../core/types';
 
 /**
  * Allows empty input: `''` and whitespace parse to `null`, and `null` formats as `''`. Keeps the
@@ -26,11 +26,14 @@ export function optional<T>(codec: Codec<T> | ExternalCodec<T>): Codec<T | null>
 
   if (isExternalCodec(codec)) {
     const external = codec;
-    const parse = async (text: string, ctx?: Ctx): Promise<ParseResult<T | null>> => {
+    const parse = async (text: string, ctx?: Ctx): Promise<ExternalParseResult<T | null>> => {
       if (ctx?.signal?.aborted) throw ctx.signal.reason;
       return isEmpty(text) ? empty(ctx) : external.parse(text, ctx);
     };
-    return { external: true, id: external.id, parse, format, schema };
+    return {
+      external: true, id: external.id, parse, format, schema,
+      ...(external.complete ? { complete: (text: string, ctx?: Ctx) => external.complete!(text, ctx) } : {}),
+    };
   }
 
   const sync = codec;

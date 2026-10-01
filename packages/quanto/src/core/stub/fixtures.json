@@ -1,0 +1,13 @@
+[
+  { "parse": "Chicago", "value": { "name": "Chicago", "region": "IL" } },
+  { "parse": "springfield, mo", "value": { "name": "Springfield", "region": "MO" } },
+  { "parse": "Springfield", "issues": ["ambiguous"],
+    "alternatives": [{ "name": "Springfield", "region": "IL" }, { "name": "Springfield", "region": "MO" }, { "name": "Springfield", "region": "MA" }] },
+  { "parse": "Springfield", "options": { "regions": ["IL", "MA"] }, "issues": ["ambiguous"],
+    "alternatives": [{ "name": "Springfield", "region": "IL" }, { "name": "Springfield", "region": "MA" }] },
+  { "parse": "Portland", "options": { "regions": ["IL"] }, "issues": ["ambiguous"] },
+  { "parse": "Chicago", "options": { "regions": ["MO"] }, "issues": ["invalid"] },
+  { "parse": "Atlantis", "issues": ["unparseable"] },
+  { "parse": "", "issues": ["empty"] },
+  { "format": { "name": "Springfield", "region": "IL" }, "text": "Springfield, IL" }
+]

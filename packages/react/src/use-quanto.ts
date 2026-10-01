@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, type ChangeEvent, type CompositionEvent, type HTMLAttributes, type KeyboardEvent } from 'react';
 import type { Codec, Ctx, Issue, ParseContext, QuantoValue } from 'quanto';
 import { useQuantoCtx } from './context';
-import { echo as computeEcho, initialState, reduce, type Display, type Echo, type FieldEnv, type FieldEvent, type FieldState } from './field';
+import { alternatives as computeAlternatives, echo as computeEcho, initialState, reduce, type Display, type Echo, type FieldEnv, type FieldEvent, type FieldState } from './field';
 
 export interface UseQuantoOptions<T> {
   /**
@@ -61,6 +61,13 @@ export interface QuantoField<T> {
   readonly focused: boolean;
   /** Sets the value from a picker: the text becomes `format(value)`, and it commits. */
   readonly pick: (value: T) => void;
+  /**
+   * Other readings of the text, to offer as choices: while typing, the live parse's (also when it's
+   * `ambiguous`); otherwise the last commit's. Never stored.
+   */
+  readonly alternatives: readonly T[];
+  /** Chooses an alternative: it becomes the value, and `raw` stays the text it's a reading of. */
+  readonly choose: (value: T) => void;
   /** Commits the current text now, as a blur would but keeping focus. */
   readonly commit: () => void;
   /** Element ids for the echo and the issues; `inputProps['aria-describedby']` points at both. */
@@ -129,6 +136,8 @@ export function useQuanto<T>(codec: Codec<T>, options: UseQuantoOptions<T> = {})
     value: state.committed,
     focused: state.focused,
     pick: (value) => dispatch({ type: 'pick', value }),
+    alternatives: computeAlternatives(env, state),
+    choose: (value) => dispatch({ type: 'choose', value }),
     commit: () => dispatch({ type: 'enter' }),
     ids,
   };

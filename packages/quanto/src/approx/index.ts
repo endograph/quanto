@@ -44,15 +44,22 @@ export function approx<T>(codec: Codec<T>, options?: CodecOptions<Approx<T>>): C
     const stripped = stripMarkers(normalize(text).trim());
     if (stripped === '') return { ok: false, issues: [{ code: 'unparseable', message: `Add a value, like "about 5".` }] };
     const inner = codec.parse(stripped ?? text, ctx);
-    if (!inner.ok) return inner;
     const approximate = stripped !== undefined;
+    // The inner codec's alternatives, marked the same way and through the user's schema like the value.
+    const wrapped = (inner.alternatives ?? []).flatMap((v): Approx<T>[] => {
+      const alternative: Approx<T> = { value: v, approximate };
+      if (!userSchema) return [alternative];
+      const validated = runUserSchema(userSchema, alternative, id);
+      return validated.ok ? [validated.value] : [];
+    });
+    const alternatives = wrapped.length > 0 ? wrapped : undefined;
+    if (!inner.ok) return alternatives ? { ok: false, issues: inner.issues, alternatives } : { ok: false, issues: inner.issues };
     let value: Approx<T> = { value: inner.value, approximate };
     if (userSchema) {
       const validated = runUserSchema(userSchema, value, id);
-      if (!validated.ok) return validated;
+      if (!validated.ok) return alternatives ? { ...validated, alternatives } : validated;
       value = validated.value;
     }
-    const alternatives = inner.alternatives?.map((v) => ({ value: v, approximate }));
     return alternatives ? { ok: true, value, context: inner.context, alternatives } : { ok: true, value, context: inner.context };
   };
 

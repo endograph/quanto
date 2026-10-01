@@ -1,0 +1,15 @@
+[
+  { "parse": "about Chicago", "value": { "value": { "name": "Chicago", "region": "IL" }, "approximate": true } },
+  { "parse": "around Springfield", "issues": ["ambiguous"],
+    "alternatives": [
+      { "value": { "name": "Springfield", "region": "IL" }, "approximate": true },
+      { "value": { "name": "Springfield", "region": "MO" }, "approximate": true },
+      { "value": { "name": "Springfield", "region": "MA" }, "approximate": true }
+    ] },
+  { "parse": "Springfield", "issues": ["ambiguous"],
+    "alternatives": [
+      { "value": { "name": "Springfield", "region": "IL" }, "approximate": false },
+      { "value": { "name": "Springfield", "region": "MO" }, "approximate": false },
+      { "value": { "name": "Springfield", "region": "MA" }, "approximate": false }
+    ] }
+]

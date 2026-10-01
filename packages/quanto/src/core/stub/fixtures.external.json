@@ -1,0 +1,31 @@
+[
+  { "complete": "Spring", "completions": [
+    { "label": "Springfield, IL", "id": "springfield-il", "value": { "name": "Springfield", "region": "IL" } },
+    { "label": "Springfield, MO", "id": "springfield-mo", "value": { "name": "Springfield", "region": "MO" } },
+    { "label": "Springfield, MA", "id": "springfield-ma", "value": { "name": "Springfield", "region": "MA" } }
+  ] },
+  { "complete": "portland, m", "completions": [
+    { "label": "Portland, ME", "id": "portland-me", "value": { "name": "Portland", "region": "ME" } }
+  ] },
+  { "complete": "Atlantis", "completions": [] },
+  { "complete": "  ", "completions": [] },
+
+  { "parse": "Chicago", "value": { "name": "Chicago", "region": "IL" } },
+  { "parse": "Chi", "value": { "name": "Chicago", "region": "IL" } },
+  { "parse": "Springfield", "issues": ["ambiguous"], "completions": [
+    { "label": "Springfield, IL", "id": "springfield-il", "value": { "name": "Springfield", "region": "IL" } },
+    { "label": "Springfield, MO", "id": "springfield-mo", "value": { "name": "Springfield", "region": "MO" } },
+    { "label": "Springfield, MA", "id": "springfield-ma", "value": { "name": "Springfield", "region": "MA" } }
+  ] },
+  { "parse": "Springfield, MA", "value": { "name": "Springfield", "region": "MA" } },
+  { "parse": "Atlantis", "issues": ["unparseable"] },
+  { "parse": "", "issues": ["empty"] },
+
+  { "parse": "Chi", "options": { "strict": true }, "issues": ["ambiguous"], "completions": [
+    { "label": "Chicago, IL", "id": "chicago-il", "value": { "name": "Chicago", "region": "IL" } }
+  ] },
+  { "parse": "chicago, il", "options": { "strict": true }, "value": { "name": "Chicago", "region": "IL" } },
+  { "parse": "Chicago", "options": { "regions": ["MO"] }, "issues": ["invalid"] },
+
+  { "format": { "name": "Paris", "region": "FR" }, "text": "Paris, FR" }
+]

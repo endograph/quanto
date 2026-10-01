@@ -42,12 +42,12 @@ export const percent = (options?: CodecOptions<number>) =>
 You write:
 
 - **`id`**: letters, digits, `_`, `-` and `.`.
-- **`parse(text, ctx)`**: return `{ ok: true, value }` or `{ ok: false, issues }`. Never throw on bad input. `text` is trimmed and never empty.
+- **`parse(text, ctx)`**: return `{ ok: true, value }` or `{ ok: false, issues }`. Never throw on bad input. `text` is trimmed and never empty. When the text reads several ways, add `alternatives`: on success, the other readings; or, if you won't choose, fail with an `ambiguous` issue and the readings as `alternatives`, and the person chooses. Never pick one silently.
 - **`format(value, ctx)`**: the default formatter.
 - **`check(value)`**: the structural check. Return `{ message, path? }[]`, empty when `value` is a well-formed `T`. Servers validate stored values with it.
 - **`options`**: pass the caller's `CodecOptions<T>` (`schema`, `format`) straight through. Codec-specific options extend `CodecOptions<T>`.
 
-`defineCodec` handles the rest: empty input, running `check` and the user's `schema` (keeping its output), throwing from `format` on a malformed value, reporting the parse `context`, the `format` override and the composed `schema`. Don't reimplement any of it.
+`defineCodec` handles the rest: empty input, running `check` and the user's `schema` (keeping its output, on the value and on each alternative, dropping alternatives the schema rejects), throwing from `format` on a malformed value, reporting the parse `context`, the `format` override and the composed `schema`. Don't reimplement any of it.
 
 ## External codecs
 
@@ -74,6 +74,8 @@ export const recipe = (options: Options) =>
 - **Resolve with issues for bad input; reject when the service can't answer.** Never turn a network error or timeout into issues.
 - **Pass `ctx.signal`** to whatever you call. An aborted parse rejects with `signal.reason` either way.
 - **`format`, `check` and the `schema` option stay sync.**
+- **Completions** are optional: add `complete(text, ctx)`, returning candidate values for text that may not be finished. Each is `{ label, id?, value }`, or `{ label, id?, resolve(ctx) }` when the value needs a fetch once chosen (a place's details). Pass `ctx.signal` and `ctx.session` on to the service. An ambiguous parse can return its candidates as `completions` too, so the field offers them without a second call.
+- **A service that only completes** can build `parse` with `parseFromCompletions(complete, { accept? })`: one candidate is the value, none is `unparseable`, several are `ambiguous`. Pass `accept` to choose better (an exact match), never "the first": completion services read text as a prefix.
 - **Inject the service** as an option, and ship a deterministic stub next to the fixtures (`stub.ts`). Fixtures and `roundTrip` run through a factory that passes the stub: `runFixtures((o) => recipe({ ...o, service: stub }), fixtures, { test })`.
 
 ## Quantity codecs
@@ -141,6 +143,7 @@ Don't use `Intl` in `parse` or default `format`: its output varies between runti
 | `missing_currency` | A bare number, and the codec has no default currency. |
 | `unknown_currency` | A currency was written but isn't known. |
 | `excess_precision` | More decimals than the value allows (`$3.459`). |
+| `ambiguous` | The text reads several ways and the codec won't choose. Return the readings as `alternatives` (or, external codecs, `completions`). |
 | `invalid` | Produced by `defineCodec` from the user's `schema`; you never return it. |
 
 Messages are English. UIs localize by `code`.
@@ -165,8 +168,9 @@ Fixtures are JSON and cover everything finicky: common inputs, locales, compound
 ]
 ```
 
-- **Parse:** `{ parse, ctx?, options?, value | issues, alternatives?, context? }`. `issues` lists codes in order. A missing `alternatives` means none are expected. `context` is checked only when given.
+- **Parse:** `{ parse, ctx?, options?, value | issues, alternatives?, completions?, context? }`. `issues` lists codes in order. `alternatives` go with either `value` or `issues`; a missing `alternatives` (or `completions`, for external codecs) means none are expected. `context` is checked only when given.
 - **Format:** `{ format, ctx?, options?, text }`.
+- **Complete** (external codecs with `complete`): `{ complete, ctx?, options?, completions }`. Each expected completion is `{ label, id?, value }`; lazy ones are resolved through your stub before comparing.
 - `options` go to the codec factory.
 - Anything time-dependent passes `ctx.now`. A fixture that reads the machine clock fails.
 

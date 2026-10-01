@@ -4,15 +4,18 @@ export const VERSION: string = '0.0.0';
 
 export { defineCodec, formatWithFallback } from './core/define-codec';
 export type { CheckProblem, CodecDefinition } from './core/define-codec';
-export { defineExternalCodec, isExternalCodec } from './core/define-external-codec';
-export type { ExternalCodecDefinition } from './core/define-external-codec';
+export { defineExternalCodec, isExternalCodec, parseFromCompletions } from './core/define-external-codec';
+export type { ExternalCodecDefinition, ParseFromCompletionsOptions } from './core/define-external-codec';
 export { isInvalidValueError } from './core/errors';
 export type { InvalidValueError } from './core/errors';
 export type {
   Codec,
   CodecOptions,
+  Completion,
   Ctx,
   ExternalCodec,
+  ExternalParseOutcome,
+  ExternalParseResult,
   Grammar,
   Issue,
   IssueCode,

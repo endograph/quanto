@@ -252,8 +252,6 @@ height.parse('6 ft');         // approximate: false
 
 ### Alternatives
 
-Status: designed, not built. Today only `merge` sets `alternatives`, and only on success.
-
 An **alternative** is another reading of the text as typed: a whole value, not a guess at what the text might grow into (that's a completion; see [Completions](#completions)). Any codec can report them, on either branch:
 
 ```ts
@@ -264,9 +262,10 @@ postalCode().parse('90210');
 
 - **On success**, the codec chose and is saying what else it could have meant: merge's later codecs, or a codec's own second reading.
 - **On failure**, with an `ambiguous` issue, the codec won't choose: the readings are equally good, and picking one would be a silent guess. The person chooses.
-- **Choosing one** replaces `value` and keeps `raw`, on either branch: `raw` is still what was typed, and the alternative is a reading of it. It commits without parsing again.
+- **Choosing one** replaces `value` and keeps `raw`, on either branch: `raw` is still what was typed, and the alternative is a reading of it. It commits without parsing again or re-running the schema on an offered alternative, which already contains the validated output. An arbitrary value passed to `choose` still runs through the schema. The fields' `choose(value)` does it (a `choose` event in both machines); the reading it replaces becomes an alternative, so the choice can be undone. `pick` is different: it's for pickers, and sets `raw` to `format(value)`.
 - Alternatives are values, so they go through the codec's `check` and schema like the value (see [Defining a codec](#defining-a-codec)), and they are a parse-time hint: never stored. A failed commit stores `{ raw, issues }`; choosing an alternative afterwards stores `{ raw, value }`.
 - Alternatives are plain `T`s, JSON-safe and compared by fixtures. Candidates that are only labels until fetched are completions, which only external codecs have.
+- A value the user's schema rejects comes back as `invalid` issues, still with the alternatives that passed.
 - **Wrappers:** `merge` tags them (below); `approx` and `optional` wrap them; `range` and `defineRange` don't report their sides' alternatives, since a range already chooses between readings by its completion rules.
 
 ### Merging codecs
@@ -277,7 +276,7 @@ const heightOrWeight = merge([length(), mass()]);
 
 - Takes an array of codecs. Earlier codecs win: the first whose `parse` succeeds provides the value. The order therefore also decides what bare input means.
 - The result is tagged by `id`: `{ codec: 'length', value: … } | { codec: 'mass', value: … }`. `format` dispatches on the tag.
-- **Alternatives are reported.** A successful `ParseResult` also carries `alternatives`, tagged: the winning codec's own alternatives first, then the values from every later codec that also parsed, in codec order. `1m` under `merge([length(), duration()])` returns length as `value` and duration in `alternatives`, so a UI can offer a chooser instead of guessing silently. See [Alternatives](#alternatives).
+- **Alternatives are reported.** A successful `ParseResult` also carries `alternatives`, tagged: every other reading of the text, in codec order, where each member contributes its value (if it parsed) and then its own alternatives. So an `ambiguous` member's readings are offered even when another member wins. `1m` under `merge([length(), duration()])` returns length as `value` and duration in `alternatives`, so a UI can offer a chooser instead of guessing silently. See [Alternatives](#alternatives).
 - **Failures report everything.** If every codec fails, the result carries all of their issues, in codec order, each with `codec` set to the id that reported it, and all of their alternatives, tagged, in the same order.
 - Two codecs with the same `id` are a definition-time error.
 - **Its `id` is derived**, so it is deterministic: `merge(length,mass)`, from the inner ids in order. Nested merges flatten: `merge([merge([a, b]), c])` is the same codec as `merge([a, b, c])`, and tags are always leaf ids. Custom ids can't contain parentheses or commas, so derived ids never collide with them.
@@ -599,8 +598,8 @@ dateRange(date()).parse('Oct 3-5');
 - **`defineRange(codec, rules?, options?)`** is what they're all built on, and it's public, like `defineCodec`. It does everything that isn't domain-specific: splitting, trying completions, choosing between them, the user's schema, the `start`/`end` schema and formatting. `rules` supply the domain part:
   - `propose(left, right, ctx)` returns textual completions of the two sides, most preferred first. The sides as typed are always tried after them. Completion is textual, so `ctx.now()` throws in it: relative words (`tomorrow`) are left for the sides' parse, which is where the one clock reading for the range happens and is reported.
   - A proposal may carry `adjustEnd(end)`: if the sides parse out of order, try this end instead (checked against the inner codec's schema). Dates use it to roll into the next day or year, since "the next day" can't be written back into text like `tomorrow`.
-  - `format(start, end, ctx)` may return a shorter text for a closed range that shares what its sides have in common, or `undefined` for the default `start – end`. Like every format, it must read back through `propose` to the same range. Dates use it when both sides are in one year: `Oct 3–5, 2026`, `Oct 30 – Nov 2, 2026`, `3–5 Oct 2026`. A `date()` with its own `format` option keeps the full form, since a shortened range wouldn't match its look.
   - `inOrder(start, end)` says whether the range is in order, or `undefined` when it can't tell.
+  - `format(start, end, ctx)` may return a shorter text for a closed range that shares what its sides have in common, or `undefined` for the default `start – end`. Like every format, it must read back through `propose` to the same range. Dates use it when both sides are in one year: `Oct 3–5, 2026`, `Oct 30 – Nov 2, 2026`, `3–5 Oct 2026`. A `date()` with its own `format` option keeps the full form, since a shortened range wouldn't match its look.
   - With no rules, both sides must be written in full. That's the right default for a custom codec with no shorthand.
 - The value is `{ start: T; end: T }` using the inner codec's values. There is one `raw` for the whole field, not one per endpoint.
 - **Open ranges** are opt-in: `range(codec, { open: true })` (and the same option on `moneyRange`, `dateRange` and `defineRange`) also reads one bound, and its value type widens to `OpenRange<T>`: `{ start: T | null; end: T | null; startExclusive?: true; endExclusive?: true }`. It's an option rather than always on because the wider type would make every consumer handle a missing end, and a schema can't narrow a TypeScript type.
@@ -649,7 +648,7 @@ type QuantoValue<T> =
 `quanto-react` is a thin UI over a codec's `parse` and `format`, so the core package has no UI code and no React dependency. Everything UI-specific (accessories, keyboard hints, display modes, echo) is a component prop, never a codec property. It has three layers:
 
 1. **The field state machine** (`reduce`, `initialState`, `echo`): plain TypeScript, `(state, event) → { state, commit? }`. It holds every rule below, so a React Native adapter can share it later; it moves to its own package when there's a second user. Its spec is a JSON fixtures file of event scripts, like a codec's.
-2. **`useQuanto(codec, options)`**, the real API: it owns the text and returns `inputProps` to spread on any `<input>`, plus `echo`, `showEcho`, `issues`, `value`, `pick` and `commit`, for building your own field.
+2. **`useQuanto(codec, options)`**, the real API: it owns the text and returns `inputProps` to spread on any `<input>`, plus `echo`, `showEcho`, `issues`, `value`, `pick`, `alternatives`, `choose` and `commit`, for building your own field.
 3. **`<QuantoInput>`**, an unstyled default built on the hook: an input, the echo, the issues and an optional accessory, targeted by `data-quanto` attributes. It takes sync and external codecs alike (see [External codecs](#external-codecs)).
 
 **Features go in the hook; the component is the minimal default.** Most apps are expected to build their field on the hook, with their own markup or a form library's. `<QuantoInput>` exists for the quickstart and as the reference wiring (its `aria-describedby` always points at elements that exist), and grows only when the default experience needs it. Anything an app's markup decides (where a list goes, how it looks, how it's positioned) stays out of it: completions, for instance, are in the hook only.
@@ -681,7 +680,7 @@ import { length } from 'quanto/codecs';
   - `formatted`: every commit, including Enter, shows `format(value)`.
   - `raw`: the text stays as typed. Use it with a display-only formatter (`feetInches` rounds, so `180 cm` would show as `5'11"`).
 - **`restoreOnEdit`** (off by default) is for the formatted modes: focusing the field puts back the committed `raw`, so people edit the text they typed rather than the formatted value. The restored text counts as unedited, so it isn't re-parsed, it echoes the stored value, and leaving it untouched shows `format(value)` again without committing. A pick or a default has no typed text, so there is nothing to restore. With it on, a display-only formatter is safe in a formatted mode, since the rounded text is never what gets edited.
-- **Live echo**: the hook parses on every keystroke to show its interpretation (`5'11` → `5'11"`), but only emits on commit. There is no "incomplete" parse state; while the text doesn't parse, there's simply no echo. The hook's `showEcho` says whether to display the echo: not when it only repeats the text, and not while issues show, so every field built on it follows the same rule. `echo` itself stays set either way, since its value and alternatives are still the reading. The echo carries alternatives, so a field can offer a chooser, and an `ambiguous` failure shows its alternatives with the issue. Alternatives from a commit remain in transient field state across blur and Enter, so choosing one is not interrupted by the blur that precedes a click. They clear on editing, a new external value or a pick; they never enter the stored envelope, and restored text is not re-parsed to reconstruct them. Composing an IME character is never parsed.
+- **Live echo**: the hook parses on every keystroke to show its interpretation (`5'11` → `5'11"`), but only emits on commit. There is no "incomplete" parse state; while the text doesn't parse, there's simply no echo. The hook's `showEcho` says whether to display the echo: not when it only repeats the text, and not while issues show, so every field built on it follows the same rule. `echo` itself stays set either way, since its value and alternatives are still the reading. The hook's `alternatives` are the live parse's while typing (an `ambiguous` failure's too) and otherwise the last commit's, so a field can offer a chooser, shown with the issue after an `ambiguous` commit; `choose(value)` takes one. Alternatives from a commit remain in transient field state across blur and Enter, so choosing one is not interrupted by the blur that precedes a click. They clear on editing, a new external value or a pick; they never enter the stored envelope, and restored text is not re-parsed to reconstruct them. Composing an IME character is never parsed.
 - **Raw display** always shows the interpretation next to the text, so stale relative input (`tomorrow`) is never misleading.
 - **Accessories** are a component prop (e.g. a calendar icon that opens the OS picker). An accessory receives `{ value, onChange, focused }`, and choosing a value sets the text to `format(value)` and commits it, after the codec's schema. Text entry always stays available.
 - **Context** comes from `<QuantoProvider ctx>` or a field's `ctx` prop, and defaults to `en-US`. The browser's locale is never read implicitly, so server and client render the same text. In a browser, leave `now` unset.
@@ -824,24 +823,23 @@ export const recipeYield = (options: RecipeYieldOptions) =>
 
 ### Completions
 
-Status: designed, not built.
-
 A **completion** is a candidate value for the text as it stands, which may not be finished. There is no point at which input is complete: `1600 Amph` wants completions, and so does an address that already parses but could be more precise (a suite number, a nearby match). So completions are offered for whatever the text is, parsed or not.
 
 ```ts
 type Completion<T> =
-  | { label: string; value: T }                         // the value is known
-  | { label: string; resolve(ctx?: Ctx): Promise<T> };  // fetched only when chosen (a place's details)
+  | { label: string; id?: string; value: T }                         // the value is known
+  | { label: string; id?: string; resolve(ctx?: Ctx): Promise<T> };  // fetched only when chosen (a place's details)
 ```
 
-- **`complete` is optional**, on `ExternalCodecDefinition` and on the codec. It uses the same service as `parse`, so an app wires the provider once. `defineExternalCodec` returns `[]` for empty text without calling the service, runs `check` and the schema on known values (dropping ones the schema rejects), and wraps `resolve` so a resolved value goes through them too; a resolved value the schema rejects shows its issues and commits nothing.
+- **`id`** identifies a completion when labels repeat (`12 Main St` in two towns); the field uses it for list keys.
+- **`complete` is optional**, on `ExternalCodecDefinition` and on the codec. It uses the same service as `parse`, so an app wires the provider once. `defineExternalCodec` returns `[]` for empty text without calling the service, runs `check` and the schema on known values (dropping ones the schema rejects), and wraps `resolve` so its value goes through `check` (a failure is a bug, so it throws) and the signal. The schema runs on a resolved value when it's picked, as for any pick: one it rejects commits `{ raw, issues }`.
 - **A completion is never applied without being chosen.** Commit parses the typed text; it never takes the first completion. That is the line between completing and guessing.
-- **Choosing one is a pick**: the text becomes `format(value)`, `raw` is set from it, and it commits without a parse, after the schema. This is the difference from an alternative, which is a reading of the typed text and keeps `raw`.
+- **Choosing one is a pick**: the text becomes `format(value)`, `raw` is set from it, and it commits without a parse. A known completion already contains the schema's output and is committed as offered; a lazy result runs through the schema once when picked, as does an arbitrary picker value. This is the difference from an alternative, which is a reading of the typed text and keeps `raw`.
 - **Parse results carry completions.** An external parse may return `completions` on either branch: with an `ambiguous` issue, the candidates it couldn't choose between; on success, refinements of the value. They're the candidates the parse actually saw, without a second call to the service. Lazy candidates (labels that need a fetch to become values) go here; candidates that are already values can go in `alternatives` instead. Only external results carry completions: `resolve` is async, and only the external field can wait for a pick.
 - **Parse and complete are different operations on one service.** `complete` answers "what might this become?" and an empty list is a normal answer; `parse` answers "what is this?" and has to commit. Parse is complete plus a choosing rule, and the rule is the codec's to state.
 - **`parseFromCompletions(complete, { accept? })`**, from `quanto`, builds an author `parse` from a `complete` function for services that only complete. The default `accept`: no completions is `unparseable`; exactly one is resolved and becomes the value; several are an `ambiguous` failure carrying them as `completions`. A codec with a better signal (an exact match with the text, a confidence score) passes its own `accept`. "Take the first" is never a default: completion services treat text as a prefix, so `12 Main St` completes to `120 Main St`.
 - **Failures are quiet.** A `complete` that rejects shows no list; it doesn't put the field in `failed`, since completions are help, not the value. A `resolve` that rejects is a service failure like a parse's (below).
-- **`ctx.session?: string`** identifies a completion session, for services that bill completions and the details fetch as one (Google's session tokens). The field sets it: a new session starts with the first edit and ends with a commit or a pick, and `complete`, `resolve` and `parse` within it get the same one. It isn't recorded in `ParseContext`. `ctx.signal` cancels `complete` and `resolve` as it does `parse`.
+- **`ctx.session?: string`** identifies a completion session, for services that bill completions and the details fetch as one (Google's session tokens). The field sets it: a new session starts with the first edit and ends when a value is committed (by a parse or a pick), and `complete`, `resolve` and `parse` within it get the same one. It isn't recorded in `ParseContext`. `ctx.signal` cancels `complete` and `resolve` as it does `parse`.
 - Not to be confused with a range's textual completions (see [Ranges](#ranges)), which are internal to `defineRange`.
 
 ### Wrappers
@@ -856,18 +854,20 @@ External codecs get their own hook, `useExternalQuanto`, over their own field st
 - **Kept from the sync field:** commits on blur, Enter and a pick (a pick commits at once, without a parse, after the codec's sync schema); display modes and `restoreOnEdit` (`format` is sync, so they work unchanged); controlled and uncontrolled use; unedited text never re-commits; issues show after a failed commit. Unlike the sync field, issues stay until the next commit settles, since nothing is parsed while typing.
 - **Dropped:** the live echo. Nothing is parsed per keystroke; completions take its place (below).
 - **Alternatives** come from a commit: a successful one's, or an `ambiguous` failure's alongside its issue. They're kept and cleared as in the sync field, and choosing one commits it with the typed `raw`.
-- **The machine stays pure.** `reduceExternal` returns, alongside the state and any commit, effects: `request: { id, text }`, a parse to start, and `abort: id`, a parse that's no longer wanted. The adapter runs them and dispatches the outcome back as `resolved { id, result }` or `rejected { id, error }`. A result whose `id` isn't the current request is ignored. Its spec is a fixtures file of event scripts, like the sync field's, and a React Native adapter can share it.
+- **The machine stays pure.** `reduceExternal` returns, alongside the state and any commit, effects: `request: { id, text }`, a parse to start, and `abort: ids`, requests that are no longer wanted. The adapter runs them and dispatches the outcome back as `resolved { id, result }` or `rejected { id, error }`. A result whose `id` isn't the current request is ignored. Its spec is a fixtures file of event scripts, like the sync field's, and a React Native adapter can share it.
 - **States** add `pending` (a parse is in flight, and what started it: blur or Enter, which decides whether the result is shown formatted) and `failed` (the service rejected). A failure keeps the text, still edited, and commits nothing, so the next blur or Enter parses it again; a `retry` event does it now. An edit clears it.
 - **Cancelling.** The hook owns an `AbortController` per request. Editing the text or a pick aborts the one in flight, and so does unmounting. React can also tear the hook's effects down and set them up again while keeping its state (StrictMode, a hidden `<Activity>`): the teardown aborts the parse, and the setup starts it again under the same id, so the field picks up where it left off rather than staying pending. The service gets a signal that also follows the caller's `ctx.signal` (a form-level timeout, say); a cancellation from there isn't the field's own, so it comes back as a rejection and the field settles as failed. Blurring and refocusing without editing lets it finish and commit. A blur while an Enter's parse is pending doesn't start another.
-- **The hook exposes** `pending`, `failed`, `error`, `retry()` and `settled(): Promise<QuantoValue<T> | undefined>`, which resolves once no parse is in flight, with the committed envelope, and rejects with the service's error if that parse failed, or with an `AbortError` if the field is unmounted or hidden first (and at once, when called while it is), so a submit awaiting it never hangs. An app awaits it before submitting. `inputProps` add `aria-busy` while pending.
+- **The hook exposes** `pending`, `failed`, `error`, `retry()`, `alternatives`, `choose(value)` and `settled(): Promise<QuantoValue<T> | undefined>`, which resolves once no parse (or chosen completion's fetch) is in flight, with the committed envelope, and rejects with the service's error if that parse failed, or with an `AbortError` if the field is unmounted or hidden first (and at once, when called while it is), so a submit awaiting it never hangs. An app awaits it before submitting. `inputProps` add `aria-busy` while pending.
 - **`<QuantoInput>` with an external codec** renders the input, an optional accessory and the alert region, with `data-quanto-pending` and `data-quanto-failed` on the wrapper while those hold. A failure shows `failedMessage` (English by default) in the alert region. It has no echo. It switches on `codec.external`, rendering one of two inner components by the codec's kind, so each calls one hook and a change of kind remounts the field rather than breaking the rules of hooks. `failedMessage` is accepted with either kind and only used by an external field, so the props stay one plain type.
 - **Controlled values.** As in the sync field, an edit wins over a controlled value that arrives meanwhile, and that includes an edit whose parse is still in flight after blur.
-- **Completions** (designed, not built) are in the hook only, and opt-in: `useExternalQuanto(codec, { completions: true })`, with a codec that has `complete`. Opt-in for two reasons: the input's combobox attributes are only correct when the app renders the list, and a billed service shouldn't be asked for completions nobody shows. No component renders them; the list's markup, look and positioning are the app's (see the recipe below).
-  - An edit emits a `complete: { id, text }` effect; the adapter debounces it, so the machine has no timers. Results come back as `completed { id, completions }`; stale ids are ignored, and a rejection just leaves the list empty.
+- **Completions** are in the hook only, and opt-in: `useExternalQuanto(codec, { completions: true })`. With a codec that has `complete`, it asks while typing; without one, the list still shows a commit's completions and alternatives. Opt-in for two reasons: the input's combobox attributes are only correct when the app renders the list, and a billed service shouldn't be asked for completions nobody shows. No component renders them; the list's markup, look and positioning are the app's (see the recipe below).
+  - An edit emits a `complete: { id, text }` effect; the hook debounces it (`completionDelay`, default 150 ms), so the machine has no timers. Starting a parse cancels the completions request in flight, since the parse's answer supersedes it. Results come back as `completed { id, completions }`; stale ids are ignored, and a rejection just leaves the list empty.
   - **One list.** While typing it shows the completions for the current text; after a commit, the result's completions and alternatives. Each entry says which it is, since choosing them sets `raw` differently.
   - **Choosing** a known value picks it at once. A lazy one enters `resolving` until `resolve` settles: an edit or another pick aborts it, `settled()` waits for it, and a rejection puts the field in `failed`, where `retry()` resolves again.
-  - **Keyboard:** the arrow keys move the highlight; Enter picks the highlighted entry, or with none commits the text as usual; Escape closes the list. Moving focus into the list isn't a blur, so choosing with the pointer doesn't start a parse the pick then aborts.
-  - The machine sets `ctx.session` (see [Completions](#completions)).
+  - **Keyboard:** the arrow keys move the highlight (wrapping, and reopening a list Escape closed); Enter picks the highlighted entry, without letting the form submit, or with none commits the text as usual; Escape closes the list until the next edit or arrow key. The pointer highlights what it's over. `listProps` and `itemProps` keep focus in the input on mousedown, so choosing with the pointer isn't a blur that would start a parse. The hook's `commit()` always commits the text (a `commit` event), whatever is highlighted.
+  - **An edit counts as focus.** Text only changes in a focused input, so an edit that arrives without a focus event (autofill, automation) still opens the list.
+  - A blur while a chosen completion is fetched doesn't commit the text: the fetch will. A controlled value that arrives meanwhile is dropped.
+  - The machine numbers sessions, and the hook turns each into a token (a UUID where the platform has one) for `ctx.session` (see [Completions](#completions)).
   - **The hook exposes `completions`**, undefined unless the option is on, so the opt-in shows in the types:
 
     ```ts
@@ -892,12 +892,14 @@ External codecs get their own hook, `useExternalQuanto`, over their own field st
     {field.completions?.open && (
       <ul {...field.completions.listProps}>
         {field.completions.items.map((item) => (
-          <li {...field.completions.itemProps(item)}>{item.label}</li>
+          <li key={item.key} {...field.completions.itemProps(item)}>{item.label}</li>
         ))}
       </ul>
     )}
     ```
-- **Enter still bubbles.** Whether a form may submit while a parse is pending is the app's decision; `pending` and `settled()` give it what it needs.
+
+    `item.key` is the completion's `id` when it has one, so labels can repeat (`12 Main St` in two towns).
+- **Enter still bubbles**, unless it picks a highlighted entry. Whether a form may submit while a parse is pending is the app's decision; `pending` and `settled()` give it what it needs.
 
 ### Testing external codecs
 

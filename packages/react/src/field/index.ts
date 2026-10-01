@@ -11,7 +11,10 @@ export interface FieldState<T> {
   readonly raw: string;
   /** The last committed envelope, or undefined before the first commit or default. */
   readonly committed: QuantoValue<T> | undefined;
-  /** Alternatives from the last successful commit. Transient UI hints; never part of the envelope. */
+  /**
+   * Other readings of the committed text, from the last commit: a success's, or an `ambiguous` failure's.
+   * Transient UI hints; never part of the envelope.
+   */
   readonly alternatives: readonly T[];
   /** Whether the committed issues are showing. They show after a failed commit and clear once the text parses. */
   readonly showIssues: boolean;
@@ -29,8 +32,10 @@ export type FieldEvent<T> =
   | { readonly type: 'focus' }
   | { readonly type: 'blur' }
   | { readonly type: 'enter' }
-  /** An accessory (a picker) chose a value. */
+  /** An accessory (a picker) chose a value: the text becomes `format(value)`. */
   | { readonly type: 'pick'; readonly value: T }
+  /** An alternative was chosen: it becomes the value, and `raw` stays the text it's a reading of. */
+  | { readonly type: 'choose'; readonly value: T }
   /** A controlled `value` prop changed. `null` or `undefined` clears the field. */
   | { readonly type: 'external'; readonly value: QuantoValue<T> | null | undefined };
 
@@ -104,7 +109,8 @@ function commit<T>(env: FieldEnv<T>, state: FieldState<T>, trigger: 'blur' | 'en
   }
   const result = env.codec.parse(state.raw, env.ctx);
   if (!result.ok) {
-    return { state: { ...state, committed: { raw: state.raw, issues: result.issues }, alternatives: [], showIssues: true, edited: false }, commit: { value: { raw: state.raw, issues: result.issues } } };
+    const value: QuantoValue<T> = { raw: state.raw, issues: result.issues };
+    return { state: { ...state, committed: value, alternatives: result.alternatives ?? [], showIssues: true, edited: false }, commit: { value } };
   }
   const reformat = env.display === 'formatted' || (env.display === 'formatted-on-blur' && trigger === 'blur');
   const shown = (reformat ? tryFormat(env, result.value) : undefined) ?? state.raw;
@@ -155,6 +161,21 @@ export function reduce<T>(env: FieldEnv<T>, state: FieldState<T>, event: FieldEv
       const value: QuantoValue<T> = validated.ok ? { raw, value: validated.value } : { raw, issues: validated.issues };
       return { state: { ...state, raw, committed: value, alternatives: [], showIssues: !validated.ok, edited: false }, commit: { value } };
     }
+    case 'choose': {
+      if (state.composing) return { state };
+      const readings = alternatives(env, state);
+      // The text the alternatives are readings of: what's being typed, or what was committed.
+      const source = !state.edited && state.committed ? state.committed.raw : state.raw;
+      // Offered alternatives already contain the schema's output; arbitrary choices still validate.
+      const offered = readings.some((reading) => JSON.stringify(reading) === JSON.stringify(event.value));
+      const validated = offered ? { ok: true as const, value: event.value } : validate(env.codec, event.value);
+      const value: QuantoValue<T> = validated.ok ? { raw: source, value: validated.value } : { raw: source, issues: validated.issues };
+      const shown = (env.display !== 'raw' && validated.ok ? tryFormat(env, validated.value) : undefined) ?? source;
+      // The reading it replaces becomes an alternative, so the choice can be undone.
+      const current = state.edited ? echo(env, state)?.value : state.committed && 'value' in state.committed ? state.committed.value : undefined;
+      const others = [...(current === undefined ? [] : [current]), ...readings].filter((reading) => JSON.stringify(reading) !== JSON.stringify(event.value));
+      return { state: { ...state, raw: shown, committed: value, alternatives: others, showIssues: !validated.ok, edited: false }, commit: { value } };
+    }
     case 'external': {
       const value = event.value ?? undefined;
       if (sameEnvelope(value, state.committed)) return { state };
@@ -171,8 +192,18 @@ export interface Echo<T> {
   readonly value: T;
   /** The value formatted, e.g. `5 ft 11 in` for `5'11`. */
   readonly text: string;
-  /** From `merge()`: other readings of the same text. */
+  /** Other readings of the same text: from `merge()`, or the codec's own. */
   readonly alternatives: readonly T[];
+}
+
+/**
+ * Other readings of the text, to offer as choices: while typing, the live parse's (on success, or with
+ * an `ambiguous` failure); otherwise the last commit's. Unedited text is never re-parsed for them.
+ */
+export function alternatives<T>(env: FieldEnv<T>, state: FieldState<T>): readonly T[] {
+  if (!state.edited) return state.alternatives;
+  if (state.composing || state.raw.trim() === '') return [];
+  return env.codec.parse(state.raw, env.ctx).alternatives ?? [];
 }
 
 /**

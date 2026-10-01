@@ -45,7 +45,14 @@ export interface ExternalCodec<T> {
    * service can't answer (network error, rate limit, timeout), and with `ctx.signal.reason` when
    * aborted: an outage isn't the user's mistake, so it never becomes issues. Retrying is up to you.
    */
-  parse(text: string, ctx?: Ctx): Promise<ParseResult<T>>;
+  parse(text: string, ctx?: Ctx): Promise<ExternalParseResult<T>>;
+  /**
+   * Candidate values for the text as it stands, which may not be finished: what it might become, or a
+   * more precise version of it. Present only if the codec completes. An empty list is a normal answer.
+   * Rejects when the service can't answer, like `parse`. Completions are offered, never applied: only a
+   * person choosing one commits it.
+   */
+  complete?(text: string, ctx?: Ctx): Promise<readonly Completion<T>[]>;
   /** Formats a value for display. Sync, and throws on a malformed value, like `Codec.format`. */
   format(value: T, ctx?: Ctx): string;
   /** Validates a structured `T`, like `Codec.schema`. Servers validate stored values with it. */
@@ -64,13 +71,55 @@ export type ParseResult<T> =
       readonly value: T;
       /** What the parse was based on. Optional to store; needed only for replay. */
       readonly context: ParseContext;
-      /** Set only by `merge()`: values from later codecs that also parsed. A hint; never store it. */
+      /**
+       * Other readings of the same text: from `merge()`'s other codecs, or the codec's own. Choosing
+       * one replaces `value` and keeps `raw`. A hint; never store it.
+       */
       readonly alternatives?: readonly T[] | undefined;
     }
-  | { readonly ok: false; readonly issues: readonly Issue[] };
+  | {
+      readonly ok: false;
+      readonly issues: readonly Issue[];
+      /**
+       * With an `ambiguous` issue: the readings the codec wouldn't choose between. Choosing one gives
+       * `{ raw, value }`, keeping `raw`. A hint; never store it.
+       */
+      readonly alternatives?: readonly T[] | undefined;
+    };
 
-/** What a codec's own `parse` returns to `defineCodec`: no `context`, no `alternatives`. */
-export type ParseOutcome<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly issues: readonly Issue[] };
+/**
+ * What a codec's own `parse` returns to `defineCodec`: no `context`. `alternatives` are other readings
+ * of the text: on success, what else it could mean; on failure, with an `ambiguous` issue, the readings
+ * the codec won't choose between.
+ */
+export type ParseOutcome<T> =
+  | { readonly ok: true; readonly value: T; readonly alternatives?: readonly T[] | undefined }
+  | { readonly ok: false; readonly issues: readonly Issue[]; readonly alternatives?: readonly T[] | undefined };
+
+/**
+ * An external codec's parse result: either branch may also carry `completions`. With an `ambiguous`
+ * issue, they're the candidates the parse couldn't choose between; on success, refinements of the value.
+ */
+export type ExternalParseResult<T> = ParseResult<T> & { readonly completions?: readonly Completion<T>[] | undefined };
+
+/** What an external codec's own `parse` returns: a `ParseOutcome`, optionally with `completions`. */
+export type ExternalParseOutcome<T> = ParseOutcome<T> & { readonly completions?: readonly Completion<T>[] | undefined };
+
+/**
+ * A candidate value for text that may not be finished, from an external codec's `complete` (or its
+ * parse, when it couldn't choose). Choosing one is a pick: the text becomes `format(value)`.
+ *
+ * Either the value is known, or `resolve` fetches it when the completion is chosen (a place's details,
+ * say), so a list of candidates doesn't cost a fetch each. Never stored.
+ */
+export type Completion<T> =
+  | { readonly label: string; readonly id?: string | undefined; readonly value: T }
+  | {
+      readonly label: string;
+      readonly id?: string | undefined;
+      /** Fetches the value. Rejects when the service can't answer, and with `ctx.signal.reason` when aborted. */
+      resolve(ctx?: Ctx): Promise<T>;
+    };
 
 /** Context for parsing and formatting. Every field is optional. */
 export interface Ctx {
@@ -89,6 +138,12 @@ export interface Ctx {
    * ignore it. Not recorded in `ParseContext`.
    */
   readonly signal?: Signal | undefined;
+  /**
+   * Identifies a completion session, for services that bill completions and the fetch of the chosen one
+   * together (Google's session tokens). The external field sets it: a session starts with the first
+   * edit and ends with a commit or a pick. Not recorded in `ParseContext`.
+   */
+  readonly session?: string | undefined;
 }
 
 /**
@@ -148,6 +203,8 @@ export interface ResolvedCtx {
   readonly grammars: readonly Grammar[];
   /** `ctx.signal`: an external codec passes it to whatever it calls. */
   readonly signal?: Signal | undefined;
+  /** `ctx.session`: an external codec passes it to a service that groups calls into sessions. */
+  readonly session?: string | undefined;
 }
 
 export type IssueCode =
@@ -158,6 +215,7 @@ export type IssueCode =
   | 'missing_currency' // a bare number, and the codec has no default currency
   | 'unknown_currency' // a currency was written but isn't known
   | 'excess_precision' // more decimals than the value allows ("$3.459")
+  | 'ambiguous' //        the text reads several ways and the codec won't choose; see `alternatives`
   | 'invalid'; //         the user's schema rejected the value (or, server-side, the structural check did)
 
 /** A Standard Schema–shaped issue with a `code`. `message` is English; localize by `code`. */

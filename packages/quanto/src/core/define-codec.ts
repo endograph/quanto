@@ -68,6 +68,11 @@ export function runUserSchema<T>(
 export interface CodecParts<T> {
   /** Checks and validates the author's outcome for `text`, and attaches `context`. */
   finish(text: string, outcome: ParseOutcome<T>, session: Session): ParseResult<T>;
+  /**
+   * Checks a value the author produced from `text` (a bug if it fails, so it throws) and runs the
+   * user's schema: its output, or undefined when the schema rejects it.
+   */
+  accept(text: string, value: T): T | undefined;
   format(value: T, ctx?: Ctx): string;
   readonly schema: StandardSchemaV1<T, T>;
 }
@@ -85,21 +90,45 @@ export function codecParts<T>(definition: Omit<CodecDefinition<T>, 'parse'>): Co
   const userSchema = options?.schema;
   const formatter = options?.format ?? definition.format;
 
-  const finish = (text: string, outcome: ParseOutcome<T>, session: Session): ParseResult<T> => {
-    if (!outcome.ok) return outcome;
-    const problems = definition.check(outcome.value);
+  const assertWellFormed = (text: string, value: T): void => {
+    const problems = definition.check(value);
     if (problems.length > 0) {
       throw new Error(
         `quanto: codec "${id}" parsed ${JSON.stringify(text)} into a value its own check rejects (${problems[0]!.message}). This is a bug in the codec's parse or check.`,
       );
     }
+  };
+
+  const accept = (text: string, value: T): T | undefined => {
+    assertWellFormed(text, value);
+    if (!userSchema) return value;
+    const validated = runUserSchema(userSchema, value, id);
+    return validated.ok ? validated.value : undefined;
+  };
+
+  // Alternatives go through the check and the schema like the value. One the schema rejects can't be
+  // chosen, so it's dropped.
+  const alternativesOf = (text: string, outcome: ParseOutcome<T>): readonly T[] | undefined => {
+    const kept = (outcome.alternatives ?? []).flatMap((alternative) => {
+      const value = accept(text, alternative);
+      return value === undefined ? [] : [value];
+    });
+    return kept.length > 0 ? kept : undefined;
+  };
+
+  const finish = (text: string, outcome: ParseOutcome<T>, session: Session): ParseResult<T> => {
+    const alternatives = alternativesOf(text, outcome);
+    if (!outcome.ok) return alternatives ? { ok: false, issues: outcome.issues, alternatives } : { ok: false, issues: outcome.issues };
+    assertWellFormed(text, outcome.value);
     let value = outcome.value;
     if (userSchema) {
       const validated = runUserSchema(userSchema, value, id);
-      if (!validated.ok) return validated;
+      // The other readings may still be valid, so they're offered with the schema's issues.
+      if (!validated.ok) return alternatives ? { ...validated, alternatives } : validated;
       value = validated.value;
     }
-    return { ok: true, value, context: session.context() };
+    const context = session.context();
+    return alternatives ? { ok: true, value, context, alternatives } : { ok: true, value, context };
   };
 
   const format = (value: T, ctx?: Ctx): string => {
@@ -124,7 +153,7 @@ export function codecParts<T>(definition: Omit<CodecDefinition<T>, 'parse'>): Co
     },
   };
 
-  return { finish, format, schema };
+  return { finish, accept, format, schema };
 }
 
 /**

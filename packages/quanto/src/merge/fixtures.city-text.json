@@ -1,0 +1,13 @@
+[
+  { "parse": "Springfield",
+    "value": { "codec": "text", "value": "Springfield" },
+    "alternatives": [
+      { "codec": "city", "value": { "name": "Springfield", "region": "IL" } },
+      { "codec": "city", "value": { "name": "Springfield", "region": "MO" } },
+      { "codec": "city", "value": { "name": "Springfield", "region": "MA" } }
+    ] },
+  { "parse": "Chicago",
+    "value": { "codec": "text", "value": "Chicago" },
+    "alternatives": [{ "codec": "city", "value": { "name": "Chicago", "region": "IL" } }] },
+  { "parse": "Atlantis", "value": { "codec": "text", "value": "Atlantis" } }
+]

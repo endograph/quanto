@@ -1,13 +1,20 @@
 // Codec testing helpers: runFixtures, roundTrip and quantityWithin. See DESIGN.md, "Testing: fixtures are the spec".
 // Framework-agnostic: callers pass their test function (vitest's `test`, `node:test`, …).
 
-import type { Codec, Ctx, ExternalCodec, IssueCode, ParseContext, ParseResult, Quantity } from '../core/types';
+import type { Codec, Completion, Ctx, ExternalCodec, ExternalParseResult, IssueCode, ParseContext, ParseResult, Quantity } from '../core/types';
 import { convert, type QuantityTable } from '../quantity';
 
 /** Registers one test case. Matches vitest's and node:test's `test(name, fn)`; `fn` is async for external codecs. */
 export type TestFn = (name: string, fn: () => void | Promise<void>) => unknown;
 
-/** A parse fixture: `{ parse, ctx?, options?, value | issues, alternatives?, context? }`. */
+/** A completion as a fixture expects it: lazy ones are resolved through the codec's stub first. */
+export interface ExpectedCompletion {
+  readonly label: string;
+  readonly id?: string;
+  readonly value: unknown;
+}
+
+/** A parse fixture: `{ parse, ctx?, options?, value | issues, alternatives?, completions?, context? }`. */
 export interface ParseFixture {
   readonly parse: string;
   readonly ctx?: Ctx;
@@ -15,10 +22,20 @@ export interface ParseFixture {
   readonly value?: unknown;
   /** Expected issue codes, in order. */
   readonly issues?: readonly IssueCode[];
-  /** Expected alternatives. Missing means none are expected. */
+  /** Expected alternatives, with either `value` or `issues`. Missing means none are expected. */
   readonly alternatives?: readonly unknown[];
+  /** External codecs: expected completions on the result. Missing means none are expected. */
+  readonly completions?: readonly ExpectedCompletion[];
   /** Checked only when given. */
   readonly context?: ParseContext;
+}
+
+/** A complete fixture, for external codecs that complete: `{ complete, ctx?, options?, completions }`. */
+export interface CompleteFixture {
+  readonly complete: string;
+  readonly ctx?: Ctx;
+  readonly options?: unknown;
+  readonly completions: readonly ExpectedCompletion[];
 }
 
 /** A format fixture: `{ format, ctx?, options?, text }`. */
@@ -29,7 +46,7 @@ export interface FormatFixture {
   readonly text: string;
 }
 
-export type Fixture = ParseFixture | FormatFixture;
+export type Fixture = ParseFixture | FormatFixture | CompleteFixture;
 
 /**
  * A codec factory. Fixture `options` are passed to it. For an external codec, it closes over the
@@ -66,7 +83,7 @@ function fail(name: string, expected: unknown, actual: unknown, note?: string): 
 }
 
 function describeCase(fixture: Fixture): string {
-  const input = 'parse' in fixture ? `parse ${show(fixture.parse)}` : `format ${show(fixture.format)}`;
+  const input = 'parse' in fixture ? `parse ${show(fixture.parse)}` : 'complete' in fixture ? `complete ${show(fixture.complete)}` : `format ${show(fixture.format)}`;
   const extras = [fixture.ctx && show(fixture.ctx), fixture.options !== undefined && `options ${show(fixture.options)}`].filter(Boolean);
   return extras.length ? `${input} (${extras.join(', ')})` : input;
 }
@@ -75,32 +92,61 @@ function checkShape(fixture: unknown, index: number): Fixture {
   const f = fixture as Record<string, unknown>;
   const where = `fixture #${index}`;
   if (!f || typeof f !== 'object') throw new Error(`${where} is not an object.`);
-  const isParse = 'parse' in f;
-  const isFormat = 'format' in f;
-  if (isParse === isFormat) throw new Error(`${where} must have exactly one of "parse" or "format".`);
-  if (isParse) {
+  const kinds = ['parse', 'format', 'complete'].filter((kind) => kind in f);
+  if (kinds.length !== 1) throw new Error(`${where} must have exactly one of "parse", "format" or "complete".`);
+  if ('parse' in f) {
     if (typeof f.parse !== 'string') throw new Error(`${where}: "parse" must be a string.`);
     if (('value' in f) === ('issues' in f)) throw new Error(`${where}: a parse fixture needs exactly one of "value" or "issues".`);
+  } else if ('complete' in f) {
+    if (typeof f.complete !== 'string') throw new Error(`${where}: "complete" must be a string.`);
+    if (!Array.isArray(f.completions)) throw new Error(`${where}: a complete fixture needs a "completions" array.`);
   } else if (typeof f.text !== 'string') throw new Error(`${where}: a format fixture needs a "text" string.`);
   return f as unknown as Fixture;
 }
 
 function runParseFixture(factory: CodecFactory, fixture: ParseFixture, name: string): void | Promise<void> {
   const codec = factory(fixture.options as never);
-  return whenParsed(codec.parse(fixture.parse, fixture.ctx), (result) => checkParse(fixture, name, result));
+  const result = codec.parse(fixture.parse, fixture.ctx);
+  if (!(result instanceof Promise)) {
+    if (fixture.completions) fail(name, fixture.completions, 'a sync codec', 'only external codecs have completions');
+    return checkParse(fixture, name, result);
+  }
+  return result.then(async (settled: ExternalParseResult<unknown>) => {
+    checkParse(fixture, name, settled);
+    const completions = await expectedForm(settled.completions ?? [], fixture.ctx);
+    if (!approxEqual(completions, fixture.completions ?? [])) fail(name, fixture.completions ?? [], completions, 'completions differ');
+  });
+}
+
+/** Completions in a fixture's terms: `{ label, id?, value }`, resolving lazy ones through the codec's stub. */
+async function expectedForm(completions: readonly Completion<unknown>[], ctx: Ctx | undefined): Promise<ExpectedCompletion[]> {
+  const out: ExpectedCompletion[] = [];
+  for (const completion of completions) {
+    const value = 'value' in completion ? completion.value : await completion.resolve(ctx);
+    out.push(completion.id === undefined ? { label: completion.label, value } : { label: completion.label, id: completion.id, value });
+  }
+  return out;
+}
+
+async function runCompleteFixture(factory: CodecFactory, fixture: CompleteFixture, name: string): Promise<void> {
+  const codec = factory(fixture.options as never);
+  if (!('complete' in codec) || !codec.complete) fail(name, 'a codec with complete()', codec.id, "the codec doesn't complete");
+  const completions = await expectedForm(await codec.complete(fixture.complete, fixture.ctx), fixture.ctx);
+  if (!approxEqual(completions, fixture.completions)) fail(name, fixture.completions, completions, 'completions differ');
 }
 
 function checkParse(fixture: ParseFixture, name: string, result: ParseResult<unknown>): void {
+  const alternatives = result.alternatives ?? [];
   if (fixture.issues) {
     if (result.ok) fail(name, { issues: fixture.issues }, { value: result.value });
     const codes = result.issues.map((i) => i.code);
     if (!approxEqual(codes, fixture.issues)) fail(name, fixture.issues, codes, 'issue codes differ');
+    if (!approxEqual(alternatives, fixture.alternatives ?? [])) fail(name, fixture.alternatives ?? [], alternatives, 'alternatives differ');
     return;
   }
 
   if (!result.ok) fail(name, { value: fixture.value }, { issues: result.issues });
   if (!approxEqual(result.value, fixture.value)) fail(name, fixture.value, result.value, 'value differs');
-  const alternatives = result.alternatives ?? [];
   if (!approxEqual(alternatives, fixture.alternatives ?? [])) fail(name, fixture.alternatives ?? [], alternatives, 'alternatives differ');
   if (fixture.context && !approxEqual(result.context, fixture.context)) fail(name, fixture.context, result.context, 'context differs');
   if (result.context.now !== undefined && fixture.ctx?.now === undefined) {
@@ -129,6 +175,7 @@ export function runFixtures(factory: CodecFactory, fixtures: readonly unknown[],
     options.test(name, () => {
       const fixture = checkShape(raw, index);
       if ('parse' in fixture) return runParseFixture(factory, fixture, name);
+      if ('complete' in fixture) return runCompleteFixture(factory, fixture, name);
       runFormatFixture(factory, fixture, name);
     });
   });

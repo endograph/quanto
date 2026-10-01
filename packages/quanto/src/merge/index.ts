@@ -21,8 +21,9 @@ export type LeafValue<C> = C extends MergedCodec<infer T> ? T : C extends Codec<
 const isMerged = (codec: Codec<unknown>): codec is MergedCodec<unknown> => Array.isArray((codec as Partial<MergedCodec<unknown>>).codecs);
 
 /**
- * Accepts any of several codecs. Earlier codecs win; later codecs that also parse are reported as
- * `alternatives`. The value is tagged by codec id: `{ codec: 'length', value: … }`.
+ * Accepts any of several codecs. Earlier codecs win; every other reading (later codecs that also parse,
+ * and each member's own alternatives) is reported in `alternatives`, in codec order. The value is tagged
+ * by codec id: `{ codec: 'length', value: … }`.
  */
 export function merge<const Cs extends readonly Codec<unknown>[]>(codecs: Cs): MergedCodec<LeafValue<Cs[number]>> {
   type T = LeafValue<Cs[number]>;
@@ -42,18 +43,26 @@ export function merge<const Cs extends readonly Codec<unknown>[]>(codecs: Cs): M
     startSession(ctx);
     const successes: Array<{ value: Tagged<T>; context: ParseContext }> = [];
     const issues: Issue[] = [];
+    // Every reading of the text, tagged, in codec order: each member's value, then its own alternatives.
+    const readings: Tagged<T>[] = [];
     // Every member sees the same clock: once one reads it, later members get that reading as ctx.now.
     let pinned: Ctx | undefined = ctx;
     for (const m of members) {
       const result = m.parse(text, pinned);
       if (pinned?.now === undefined && result.ok && result.context.now !== undefined) pinned = { ...ctx, now: result.context.now };
-      if (result.ok) successes.push({ value: { codec: m.id, value: result.value as T }, context: result.context });
-      else issues.push(...result.issues.map((issue) => ({ ...issue, codec: m.id })));
+      const tag = (value: unknown): Tagged<T> => ({ codec: m.id, value: value as T });
+      if (result.ok) {
+        const value = tag(result.value);
+        successes.push({ value, context: result.context });
+        readings.push(value);
+      } else issues.push(...result.issues.map((issue) => ({ ...issue, codec: m.id })));
+      readings.push(...(result.alternatives ?? []).map(tag));
     }
-    const [first, ...rest] = successes;
-    if (!first) return { ok: false, issues };
+    const first = successes[0];
+    if (!first) return readings.length > 0 ? { ok: false, issues, alternatives: readings } : { ok: false, issues };
     const context = mergeContexts(successes.map((s) => s.context));
-    return rest.length > 0 ? { ok: true, value: first.value, context, alternatives: rest.map((s) => s.value) } : { ok: true, value: first.value, context };
+    const alternatives = readings.filter((reading) => reading !== first.value);
+    return alternatives.length > 0 ? { ok: true, value: first.value, context, alternatives } : { ok: true, value: first.value, context };
   };
 
   const memberOf = (value: unknown): Codec<unknown> | undefined => {
