@@ -70,13 +70,16 @@
 .hero-field.labelled .input-label { grid-area: 1 / 1; }
 .hero-field.labelled .reading-label { grid-area: 1 / 2; }
 .hero-field.labelled .hero-input { grid-area: 2 / 1; }
-.hero-field.labelled .reading { grid-area: 2 / 2; }
+.hero-field.labelled .reading-cell { grid-area: 2 / 2; min-width: 0; }
+/* The value as plain JSON, one line, under the reading. */
+.reading-json { min-height: 1.5em; margin: 4px 0 0; overflow: hidden; color: var(--muted); font: 12px/1.5 var(--mono); text-overflow: ellipsis; white-space: nowrap; }
 
 @media (max-width: 820px) {
   .hero-field.beside { grid-template-columns: minmax(0, 1fr); }
-  /* Under the field, the reading needs no label, and keeps its line while empty so nothing below jumps. */
+  /* Under the field, the reading needs no label, and keeps its lines while empty so nothing below jumps. */
   .hero-field.labelled .reading-label { display: none; }
   /* Clear of the field's shadow, and in line with the text inside it (its padding plus its border). */
-  .hero-field.labelled .reading { grid-area: 3 / 1; min-height: 1.25em; margin-top: 12px; padding-left: 23px; }
+  .hero-field.labelled .reading-cell { grid-area: 3 / 1; margin-top: 12px; padding-left: 23px; }
+  .hero-field.labelled .reading { min-height: 1.25em; }
   .hero-field.labelled .reading.bad { min-height: 1.875em; }
 }

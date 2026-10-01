@@ -4,7 +4,7 @@
 import { resolve } from 'node:path';
 import type { BunPlugin } from 'bun';
 
-export const entrypoints = ['src/landing.tsx', 'src/play.ts', 'src/demo.tsx'].map((p) => `${import.meta.dir}/${p}`);
+export const entrypoints = ['src/landing.tsx', 'src/playground.ts', 'src/demo.tsx', 'src/codecs.tsx'].map((p) => `${import.meta.dir}/${p}`);
 
 const packages = resolve(import.meta.dir, '../../packages');
 const sources: BunPlugin = {

@@ -11,7 +11,7 @@ import { money } from 'quanto/money';
 import { compare } from 'quanto/quantity';
 import { date, dateRange } from 'quanto-datetime';
 import { QuantoInput, QuantoProvider, useQuanto, type Display } from 'quanto-react';
-import { locales } from './codecs';
+import { locales } from './catalog';
 import { model, readDuration, vaguePhrases } from './demo/model';
 import { DatePicker } from './demo/pickers';
 import { names, Omni, Try } from './demo/omni';
@@ -473,7 +473,8 @@ function Page() {
           </div>
           <nav className="views" aria-label="Playground">
             <a href="./index.html" aria-current="page">demo</a>
-            <a href="../play/index.html">codecs</a>
+            <a href="../playground/index.html">playground</a>
+            <a href="../codecs/index.html">codecs</a>
           </nav>
           <label className="ctx">
             <span className="label">ctx.locale</span>

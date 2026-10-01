@@ -73,6 +73,8 @@
     text-align: left;
   }
   .omni .status { --gap: 28px; min-height: 140px; }
+  /* One line per row, so a long value (a money range) doesn't make the panel taller and move the button. */
+  .omni .status dd { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   /* The chips go above the field, on one line, and show while someone is at the field or the chips. They
      keep their room while hidden, so nothing moves when they appear. */
   .omni { display: flex; flex-direction: column; }
@@ -95,11 +97,11 @@
     transition: opacity 120ms;
   }
 
+  /* Pinned to the corner, so it takes no height from the page. */
   footer {
-    width: 100%;
-    display: flex;
-    justify-content: flex-end;
-    padding: 20px 28px;
+    position: fixed;
+    right: 28px;
+    bottom: 20px;
     color: var(--muted);
     font: 12px/1.5 var(--mono);
   }
@@ -107,14 +109,15 @@
   footer a:hover { color: var(--ink); }
 
   @media (max-width: 820px) {
-    .omni { min-height: calc(296px + 2.5 * var(--field-font)); }
+    .omni { min-height: calc(318px + 2.5 * var(--field-font)); }
   }
   @media (max-width: 640px) {
     main { padding-left: 18px; padding-right: 18px; }
     .steps { gap: 10px; padding: 18px 12px 0; }
     .step { gap: 12px; padding: 8px 10px 8px 12px; }
     .step-stars { padding-left: 10px; }
-    footer { justify-content: center; }
+    /* On a phone it stays at the end of the page, as before. */
+    footer { position: static; width: 100%; display: flex; justify-content: center; padding: 20px 28px; }
   }
 </style>
 </head>
@@ -131,7 +134,7 @@
       <svg class="i-done" viewBox="0 0 24 24" aria-hidden="true"><path d="m4.5 12.5 5 5 10-11"/></svg>
     </span>
   </button>
-  <a class="step" href="https://github.com/endograph/quanto">
+  <a class="step" href="https://github.com/endograph/quanto" target="_blank" rel="noopener">
     <span>
       <span class="overline">GitHub</span>
       <code>Star on GitHub</code>
@@ -154,10 +157,10 @@
 
   <div class="omni" id="omni"></div>
 
-  <a class="btn" href="demo/index.html">Open the playground <span aria-hidden="true">→</span></a>
+  <a class="btn" href="demo/index.html">Open the demo <span aria-hidden="true">→</span></a>
 </main>
 <footer>
-  <span>v%version% · <a href="https://github.com/endograph/quanto/blob/main/LICENSE">MIT</a> · <a href="https://github.com/endograph/quanto">GitHub</a></span>
+  <span><a href="https://www.npmjs.com/package/quanto/v/%version%" target="_blank" rel="noopener">v%version%</a> · <a href="codecs/index.html">Codecs</a> · <a href="https://github.com/endograph/quanto/blob/main/LICENSE" target="_blank" rel="noopener">MIT</a> · <a href="https://github.com/endograph/quanto" target="_blank" rel="noopener">GitHub</a></span>
 </footer>
 
 <script type="module" src="landing.js"></script>

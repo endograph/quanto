@@ -13,8 +13,8 @@ const nextGlyph = cycler(el('mark'));
 const omni = createRef<OmniHandle>();
 el('mark-button').addEventListener('click', () => omni.current?.next());
 // The examples that fit the chip row on one line.
-const examples = ['next fri', '$1.2k', 'October 3 to 5', 'about 6 ft', '9-5pm', 'roughly 2-3 hours', '€12,50'];
-createRoot(el('omni')).render(<Omni examples={examples} labels={['input anything', 'formatted result']} handle={omni} onExample={nextGlyph} />);
+const examples = ['€5-10', 'tomorrow', '10^100ℓₚ', `about 5'11"`, 'October 3 to 5', '1h30', 'π rad', '451°'];
+createRoot(el('omni')).render(<Omni examples={examples} labels={['input', 'result']} handle={omni} onExample={nextGlyph} />);
 
 // The install button copies its command, and says so for a moment.
 for (const button of document.querySelectorAll<HTMLButtonElement>('[data-copy]')) {

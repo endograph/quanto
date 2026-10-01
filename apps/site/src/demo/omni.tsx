@@ -2,8 +2,9 @@
 // them as chips, and shows what it makes of the text. The demo page puts its switches above it; the
 // landing page shows it as it comes.
 import { Fragment, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
-import { approx, merge, range, type Codec, type Issue } from 'quanto';
-import { duration, length, mass, temperature } from 'quanto/codecs';
+import { approx, merge, range, type Codec, type Issue, type Quantity, type ResolvedCtx } from 'quanto';
+import { angle, dataSize, duration, length, mass, power, speed, temperature, type LengthUnit } from 'quanto/codecs';
+import { convert } from 'quanto/quantity';
 import { feetInches, hoursMinutes } from 'quanto/formats';
 import { money, moneyRange } from 'quanto/money';
 import { date, dateRange, dateTime, time } from 'quanto-datetime';
@@ -47,20 +48,37 @@ export function Try(props: { field: string; codec?: Codec<any>; bad?: readonly s
   );
 }
 
-// Single values, a range of each, and all of it optionally approximate. Wrappers compose from the
+// Single values, a range of most, and all of it optionally approximate. Wrappers compose from the
 // outside in: approx reads the marker, merge picks the reading, and each range completes its own two
-// sides. Money goes after the quantities because it reads `ft` as the forint.
+// sides. Money goes after length because it reads `ft` as the forint. Speed, power, data size and
+// angle are there for the fun of `88 mph`, `1.21 GW`, `1.5 GB` and `π rad`.
+const plainLength = length();
+/**
+ * The built-in length format, with two twists for the demo: feet and inches read as 5'11", and Planck
+ * lengths, which no one has a feel for, become light-years, spelled out (10¹⁰⁰ ℓₚ is 1.708×10⁴⁹
+ * light-years). `light-year` and `light-years` are aliases, so the text still reads back.
+ */
+const lengthFormat = (value: Quantity<LengthUnit>, ctx: ResolvedCtx): string => {
+  if (value.unit === 'ft' || value.unit === 'in') return feetInches(value, ctx);
+  if (value.unit !== 'planck') return plainLength.format(value, { locale: ctx.locale.tag });
+  const years = convert(plainLength, value, 'ly');
+  return plainLength.format(years, { locale: ctx.locale.tag }).replace(/ ly$/, years.value === 1 ? ' light-year' : ' light-years');
+};
 const singles = {
   date: date({ names }),
   time: time(),
   dateTime: dateTime({ names }),
-  length: length({ format: feetInches }),
+  length: length({ format: lengthFormat }),
   mass: mass(),
   duration: duration({ format: hoursMinutes }),
   temperature: temperature(),
   money: money(),
+  speed: speed(),
+  power: power(),
+  dataSize: dataSize(),
+  angle: angle(),
 };
-const anything = approx(
+const merged = approx(
   merge([
     ...Object.values(singles),
     dateRange(singles.date),
@@ -73,7 +91,18 @@ const anything = approx(
     moneyRange(singles.money),
   ]),
 );
-export const heroExamples = ['next fri', '$1.2k', '180 cm', 'October 3 to 5', 'about 6 ft', '9-5pm', '$10-20k', 'roughly 2-3 hours', '€12,50', '2. Oktober'];
+
+const SUPERSCRIPT_DIGITS = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+/**
+ * quanto prints huge numbers as powers of ten (`1.708×10⁴⁹`, `10¹⁰⁰`); the demo prefers e notation
+ * (`1.708e49`, `1e100`), which reads back just the same.
+ */
+const eNotation = (text: string): string =>
+  text.replace(/(?:(\d+(?:[.,]\d+)?)×)?10(⁻?[⁰¹²³⁴⁵⁶⁷⁸⁹]+)/g, (_, factor: string | undefined, power: string) =>
+    `${factor ?? '1'}e${[...power].map((c) => (c === '⁻' ? '-' : SUPERSCRIPT_DIGITS.indexOf(c))).join('')}`,
+  );
+const anything: typeof merged = { ...merged, format: (value, ctx) => eNotation(merged.format(value, ctx)) };
+export const heroExamples = ['next fri', '$1.2k', '180 cm', 'October 3 to 5', 'about 6 ft', '9-5pm', '$10-20k', '~2-3h', '€12,50', '2. Oktober'];
 
 type Anything = typeof anything extends Codec<infer T> ? T : never;
 
@@ -89,7 +118,7 @@ function problem(issues: readonly Issue[]): string | undefined {
 }
 
 /** A value as a one-line JS literal, coloured by token. */
-function Code({ value }: { value: unknown }): ReactNode {
+export function Code({ value }: { value: unknown }): ReactNode {
   const p = (text: string) => <span className="j-p">{text}</span>;
   if (Array.isArray(value)) {
     return (
@@ -137,6 +166,10 @@ const sources: Readonly<Record<string, string>> = {
   duration: 'tree/main/packages/quanto/src/codecs/duration',
   temperature: 'tree/main/packages/quanto/src/codecs/temperature',
   money: 'tree/main/packages/quanto/src/money',
+  speed: 'tree/main/packages/quanto/src/codecs/speed',
+  power: 'tree/main/packages/quanto/src/codecs/power',
+  dataSize: 'tree/main/packages/quanto/src/codecs/data-size',
+  angle: 'tree/main/packages/quanto/src/codecs/angle',
   'range(date)': 'blob/main/packages/datetime/src/range.ts',
   'range(time)': 'blob/main/packages/datetime/src/range.ts',
   'range(dateTime)': 'blob/main/packages/datetime/src/range.ts',
@@ -276,8 +309,11 @@ export function Omni(props: {
   const echo = error ? undefined : field.echo;
   const ghost = echo && echo.text !== field.inputProps.value.trim() ? echo.text : undefined;
   // Beside the field, the reading holds on briefly when the text stops parsing. An issue replaces it at once.
-  const lingering = useLinger(echo?.text, 100);
+  const lingering = useLinger(echo?.text, 150);
   const reading = error ? undefined : lingering;
+  // Under a labelled reading, the value it stands for, as plain JSON: what the app is handed.
+  const lingeringJson = useLinger(echo && JSON.stringify(echo.value.value.value), 150);
+  const json = error ? undefined : lingeringJson;
   // The reading and an issue share one place: whichever the field has to say about the text.
   const said = (
     <>
@@ -315,7 +351,15 @@ export function Omni(props: {
           />
           {!beside && <span className={error ? 'ghost bad' : 'ghost'}>{said}</span>}
         </span>
-        {beside && <p className={error ? 'reading bad' : 'reading'}>{said}</p>}
+        {beside && !labelled && <p className={error ? 'reading bad' : 'reading'}>{said}</p>}
+        {labelled && (
+          <div className="reading-cell">
+            <p className={error ? 'reading bad' : 'reading'}>{said}</p>
+            <p className="reading-json" aria-hidden="true">
+              {json}
+            </p>
+          </div>
+        )}
       </div>
       <Try field="hero" codec={anything} texts={examples} onRun={() => setAuto(false)} />
       <Status field={field} />

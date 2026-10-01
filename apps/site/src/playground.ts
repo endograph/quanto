@@ -1,7 +1,7 @@
 // The playground: every panel calls the real packages.
 import type { Codec, ParseResult, Quantity } from 'quanto';
 import { convert } from 'quanto/quantity';
-import { byId, entries, leafById, locales, type Entry } from './codecs';
+import { byId, entries, leafById, locales, type Entry } from './catalog';
 import { cycleOnClick } from './mark';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
