@@ -2,6 +2,7 @@
   "name": "quanto",
   "version": "0.0.0",
   "description": "Turn messy human text into well-typed values and back: lengths, weights, durations, money and custom types. Dates are in quanto-datetime.",
+  "license": "MIT",
   "type": "module",
   "sideEffects": false,
   "files": [

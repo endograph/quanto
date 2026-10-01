@@ -2,6 +2,7 @@
   "name": "quanto-datetime",
   "version": "0.0.0",
   "description": "Dates and times for quanto: parse \"tomorrow 3pm\", \"Oct 2\" and \"03/04/2026\" into ISO strings, with ranges.",
+  "license": "MIT",
   "type": "module",
   "sideEffects": false,
   "files": [
