@@ -1,4 +1,4 @@
-import { quantity, type QuantityCodec, type QuantityOptions, type UnitDefinition } from 'quanto/codecs';
+import { quantity, type QuantityCodec, type QuantityOptions, type UnitDefinition } from '../quantity';
 
 /**
  * Data rate units. Base unit: bits per second. Bits and bytes differ only by case (`Mb/s`, `MB/s`), so

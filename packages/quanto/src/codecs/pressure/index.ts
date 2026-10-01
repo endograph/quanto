@@ -1,4 +1,4 @@
-import { quantity, type QuantityCodec, type QuantityOptions, type UnitDefinition } from 'quanto/codecs';
+import { quantity, type QuantityCodec, type QuantityOptions, type UnitDefinition } from '../quantity';
 
 /**
  * Pressure units. Base unit: the pascal. There's no millipascal, so `mpa` means megapascals. Compound

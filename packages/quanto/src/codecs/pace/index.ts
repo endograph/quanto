@@ -1,5 +1,5 @@
-import { quantity, type NumberSyntax, type QuantityCodec, type QuantityOptions, type UnitDefinition } from 'quanto/codecs';
-import { readNumber } from 'quanto';
+import { quantity, type NumberSyntax, type QuantityCodec, type QuantityOptions, type UnitDefinition } from '../quantity';
+import { readNumber } from '../../primitives/number';
 
 /** The ways people write "per kilometer" or "per mile", with an optional minutes word: `/km`, `min/km`, `minutes per mile`. */
 function paceAliases(unitWords: readonly string[]): string[] {

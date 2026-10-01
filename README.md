@@ -7,8 +7,7 @@
   <a href="packages/quanto/README.md">Usage</a> ·
   <a href="packages/quanto/AUTHORING.md">Writing a codec</a> ·
   <a href="packages/money/README.md">Money</a> ·
-  <a href="packages/datetime/README.md">Dates</a> ·
-  <a href="packages/units/README.md">More units</a>
+  <a href="packages/datetime/README.md">Dates</a>
 </p>
 
 # quanto
@@ -30,7 +29,7 @@ length().parse('70 kg');  // { ok: false, issues: [{ code: 'unknown_unit', … }
 - **Round-trips.** Whatever `format` prints, `parse` reads back.
 - **Yours to extend.** Custom codecs use the same API as the built-ins, and a fixtures file is the spec.
 
-Built in: length, mass, duration, temperature, volume, area, speed and percent. [`@quanto/money`](packages/money/README.md) adds money, [`@quanto/datetime`](packages/datetime/README.md) dates and times, and [`@quanto/units`](packages/units/README.md) data sizes, energy, pace, pressure and a few more. Not sure which one you'll get? `merge` them and take the first that parses.
+Built in: length, mass, duration, temperature, volume, area, speed, data size and rate, energy, power, pressure, angle, frequency, fuel economy, pace and percent, all from `quanto/codecs`. [`@quanto/money`](packages/money/README.md) adds money, and [`@quanto/datetime`](packages/datetime/README.md) dates and times. Not sure which one you'll get? `merge` them and take the first that parses.
 
 Pre-release, not on npm yet.
 
@@ -44,4 +43,4 @@ bun run test
 bun run site        # the website and playground, on localhost:4173
 ```
 
-It's a bun workspace: the core lives in `packages/quanto`, the extra codecs in `packages/units`, and the website in `apps/site`. Tests resolve `quanto` to source, so nothing needs building first.
+It's a bun workspace: the core lives in `packages/quanto`, money and dates in `packages/money` and `packages/datetime`, and the website in `apps/site`. Tests resolve `quanto` to source, so nothing needs building first.

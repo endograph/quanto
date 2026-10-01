@@ -1,4 +1,4 @@
-import { quantity, type QuantityCodec, type QuantityOptions, type UnitDefinition } from 'quanto/codecs';
+import { quantity, type QuantityCodec, type QuantityOptions, type UnitDefinition } from '../quantity';
 
 /**
  * Data size units. Base unit: the byte. `KB`, `MB`, … are decimal (1000), as on drives and in macOS;

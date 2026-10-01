@@ -1,4 +1,4 @@
-import { quantity, type QuantityCodec, type QuantityOptions, type UnitDefinition } from 'quanto/codecs';
+import { quantity, type QuantityCodec, type QuantityOptions, type UnitDefinition } from '../quantity';
 
 /**
  * Angle units. Base unit: the arcsecond, so degrees, minutes and seconds convert exactly. Degrees take

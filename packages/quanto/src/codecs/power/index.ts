@@ -1,4 +1,4 @@
-import { quantity, type QuantityCodec, type QuantityOptions, type UnitDefinition } from 'quanto/codecs';
+import { quantity, type QuantityCodec, type QuantityOptions, type UnitDefinition } from '../quantity';
 
 /**
  * Power units. Base unit: the watt. `mW` (milliwatt) and `MW` (megawatt) differ only by case, so they

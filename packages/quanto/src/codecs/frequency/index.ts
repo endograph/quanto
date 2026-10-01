@@ -1,4 +1,4 @@
-import { quantity, type QuantityCodec, type QuantityOptions, type UnitDefinition } from 'quanto/codecs';
+import { quantity, type QuantityCodec, type QuantityOptions, type UnitDefinition } from '../quantity';
 
 /** Frequency units. Base unit: the hertz. There's no millihertz, so `mhz` means megahertz. */
 export const frequencyUnits: {

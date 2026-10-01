@@ -1,6 +1,6 @@
 // compare() and convert() across a linear unit (mpg) and a function unit (L/100km), which JSON
 // fixtures can't express. The base unit is km/L, so bigger compares greater: more efficient.
-import { compare, convert } from 'quanto/quantity';
+import { compare, convert } from '../../quantity';
 import { expect, test } from 'vitest';
 import { fuelEconomy } from './index';
 

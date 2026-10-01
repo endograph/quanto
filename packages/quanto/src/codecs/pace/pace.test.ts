@@ -1,6 +1,6 @@
-import { range } from 'quanto';
+import { range } from '../../range';
 import { test } from 'vitest';
-import { roundTrip, runFixtures } from 'quanto/testing';
+import { roundTrip, runFixtures } from '../../testing';
 import fixtures from './fixtures.json';
 import rangeFixtures from './fixtures.range.json';
 import { pace } from './index';
