@@ -49,5 +49,5 @@
   {"format": {"value": 4, "unit": "GiB"}, "text": "4 GiB"},
   {"format": {"value": 1, "unit": "kB"}, "text": "1 kB"},
   {"format": {"value": 100, "unit": "B"}, "text": "100 B"},
-  {"format": {"value": 1073.741824, "unit": "MB"}, "text": "1,073.742 MB"}
+  {"format": {"value": 1073.741824, "unit": "MB"}, "text": "1,073.74 MB"}
 ]

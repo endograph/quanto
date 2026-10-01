@@ -96,7 +96,7 @@ export const horseHeight = quantity({
 - **Conversions that are neither use a function pair**, like L/100km over a km/L base: `{ toBase: (v) => 100 / v, fromBase: (b) => 100 / b, aliases: […] }`. Both functions are required, must invert each other and must be strictly monotonic; `quantity()` spot-checks this. Pick a base where bigger means more, since `compare` orders by it.
 - **The first alias is what `format` prints.** Aliases match case-insensitively, except those that differ only by case from another unit's alias (`mW` and `MW`), which match exactly as written. Adding such a unit can change what existing input means: next to megabit `Mb`, typing `mb` no longer matches megabyte `MB` unless you list `mb` as an alias of `MB`.
 - **`subunit`** makes a trailing bare number work: `ft: { …, subunit: 'in' }` reads `5'11` as 5 ft 11 in.
-- **`markers`** are words that can follow a number without naming a unit, so it reads as a bare number and takes the default unit: `quantity({ …, markers: ['°', 'degrees'] })` makes `20°` work in `temperature`. Aliases take precedence.
+- **`markers`** are words that can follow a number without naming a unit, so it reads as a bare number and takes the default unit: `quantity({ …, markers: ['°', 'degrees'] })` makes `20°` work in `temperature`. Aliases take precedence. A **`markerUnit`** (one unit, or `{ us, uk, metric }`) is what a marked number means when there's no default unit, so `451°` reads as °F in the US while a bare `451` still asks for a unit.
 - **`number`** gives a quantity its own number syntax when people don't write plain numbers: `quantity({ …, number: { read, format } })`. The built-in `pace` uses it to read `5:30` as 330 seconds. Everything else (aliases, default and canonical units, issues, conversion) still comes from `quantity()`.
 
 ## Ranges
@@ -126,7 +126,7 @@ An optional `format(start, end, ctx)` rule can print a closed range shorter than
 Use the exported primitives rather than writing your own lexing:
 
 - **`normalize(text)`**: smart quotes, primes, Unicode fractions, superscript exponents (`10³` → `10^3`), odd spaces. It doesn't fold case.
-- **`readNumber(text, ctx, { from?, suffixes? })`**: reads one locale-aware number and returns `{ value, end }` or `undefined`. It also reads a product of powers (`10^3`, `2*5`), unless `suffixes` is set, and numbers in words through `ctx.grammars` and the built-in English grammar (`twenty-five`, `three quarters`). Use it rather than lexing digits yourself, and your codec reads dictated numbers too.
+- **`readNumber(text, ctx, { from?, suffixes? })`**: reads one locale-aware number and returns `{ value, end }` or `undefined`. It also reads a product of powers (`10^3`, `2*5`) and the constants `π`, `φ` and `e` (`π/2`, `2π`), unless `suffixes` is set, and numbers in words through `ctx.grammars` and the built-in English grammar (`twenty-five`, `three quarters`). Use it rather than lexing digits yourself, and your codec reads dictated numbers too.
 - **Grammars** (`Grammar`, `NumberGrammar`) teach quanto another language. A number grammar's `read(text, from)` returns the number as plain digit text (`"1500.5"`, `"2/3"`, `"2 3/4"`) and the index past the words, or undefined, including when the words aren't one well-formed number. Apps pass grammars in `ctx.grammars`.
 - **`formatNumber(n, ctx, { maxFractionDigits? })`**: formats a number so `readNumber` reads it back.
 

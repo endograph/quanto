@@ -44,5 +44,5 @@
   {"format": {"value": 150, "unit": "hp"}, "text": "150 hp"},
   {"format": {"value": 100, "unit": "PS"}, "text": "100 PS"},
   {"format": {"value": 12000, "unit": "BTUh"}, "text": "12,000 BTU/h"},
-  {"format": {"value": 111.85498073734054, "unit": "kW"}, "text": "111.855 kW"}
+  {"format": {"value": 111.85498073734054, "unit": "kW"}, "text": "111.85 kW"}
 ]

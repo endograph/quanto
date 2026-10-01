@@ -211,7 +211,7 @@ export function roundTrip<T>(
 /**
  * A `same` for quantity codecs whose formatter rounds: both values, converted to `unit` (default: the
  * original's unit), differ by at most half a unit in the `places`-th decimal place. The default
- * formatter prints 3 places; `feetInches` rounds to whole inches, so it's `{ unit: 'in', places: 0 }`.
+ * formatter prints 2 places; `feetInches` rounds to whole inches, so it's `{ unit: 'in', places: 0 }`.
  */
 export function quantityWithin<U extends string>(
   codec: QuantityTable<U>,

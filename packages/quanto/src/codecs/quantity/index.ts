@@ -53,11 +53,11 @@ export interface NumberSyntax {
 }
 
 /**
- * The fraction digits that show a value: 3, or for a non-zero value that would round to 0 at 3, enough
+ * The fraction digits that show a value: 2, or for a non-zero value that would round to 0 at 2, enough
  * to show three significant digits, so `0.0001 L/100km` doesn't print as `0 L/100km`, which means nothing.
  */
 const fractionDigits = (value: number): number =>
-  value !== 0 && Math.abs(value) < 0.0005 ? -Math.floor(Math.log10(Math.abs(value))) + 2 : 3;
+  value !== 0 && Math.abs(value) < 0.005 ? -Math.floor(Math.log10(Math.abs(value))) + 2 : 2;
 
 const DEFAULT_SYNTAX: NumberSyntax = {
   read: (text, ctx, from) => readNumber(text, ctx, { from }),
@@ -78,6 +78,11 @@ export interface QuantityDefinition<T extends UnitTable, C extends keyof T & str
    */
   readonly markers?: readonly string[] | undefined;
   /**
+   * The unit a number followed by a marker takes when there's no `defaultUnit`: temperature's `451°` is
+   * °F in the US and °C elsewhere, while a bare `451` still needs a unit. `defaultUnit` takes precedence.
+   */
+  readonly markerUnit?: DefaultUnit<keyof T & string> | undefined;
+  /**
    * A different number syntax, for quantities written like `5:30 /km`. Defaults to `readNumber`/`formatNumber`.
    * Magnitude suffixes (`2k ft`) are read only with the default syntax.
    */
@@ -89,6 +94,8 @@ export interface QuantityDefinition<T extends UnitTable, C extends keyof T & str
 interface Component {
   readonly value: number;
   readonly unit: string | undefined;
+  /** Followed by a marker (`20°`) rather than nothing. */
+  readonly marked?: true;
 }
 
 const exactKey = (alias: string): string => normalize(alias).trim();
@@ -194,11 +201,11 @@ function checkFunctionUnit(id: string, unit: string, def: UnitDefinition): void 
 }
 
 /** Definition-time checks of a quantity codec's options. Shared by `quantity()` and `pace()`. */
-export function assertQuantityOptions(id: string, units: UnitTable, defaultUnit: DefaultUnit<string> | undefined, canonicalUnit: string | undefined): void {
+export function assertQuantityOptions(id: string, units: UnitTable, defaultUnit: DefaultUnit<string> | undefined, canonicalUnit: string | undefined, name = 'defaultUnit'): void {
   assertUnit(id, units, canonicalUnit, 'canonicalUnit');
   if (typeof defaultUnit === 'object') {
-    for (const system of ['us', 'uk', 'metric'] as const) assertUnit(id, units, defaultUnit[system], `defaultUnit.${system}`);
-  } else assertUnit(id, units, defaultUnit, 'defaultUnit');
+    for (const system of ['us', 'uk', 'metric'] as const) assertUnit(id, units, defaultUnit[system], `${name}.${system}`);
+  } else assertUnit(id, units, defaultUnit, name);
 }
 
 /** The unit a bare number means under a measurement system, if any. */
@@ -250,6 +257,7 @@ export function quantity<const T extends UnitTable, C extends keyof T & string =
   }
   markers.sort((a, b) => b.key.length - a.key.length);
   assertQuantityOptions(id, units, defaultUnit, canonicalUnit);
+  assertQuantityOptions(id, units, definition.markerUnit, undefined, 'markerUnit');
   const exampleAlias = units[Object.keys(units)[0]!]!.aliases[0]!;
 
 
@@ -339,7 +347,7 @@ export function quantity<const T extends UnitTable, C extends keyof T & string =
       }
       const marker = matchEntry(markers, s, lower, pos);
       if (marker) {
-        components.push({ value: n.value, unit: undefined });
+        components.push({ value: n.value, unit: undefined, marked: true });
         pos = marker.end;
         continue;
       }
@@ -359,7 +367,8 @@ export function quantity<const T extends UnitTable, C extends keyof T & string =
     for (const [i, c] of components.entries()) {
       if (c.unit !== undefined) resolved.push({ value: c.value, unit: c.unit });
       else if (i === 0) {
-        const unit = resolveDefaultUnit<string>(defaultUnit, ctx.locale.measurementSystem);
+        const system = ctx.locale.measurementSystem;
+        const unit = resolveDefaultUnit<string>(defaultUnit, system) ?? (c.marked ? resolveDefaultUnit<string>(definition.markerUnit, system) : undefined);
         if (unit === undefined) {
           return { ok: false, issues: [{ code: 'missing_unit', message: `Add a unit, like "${number.format(c.value, ctx)} ${exampleAlias}".` }] };
         }

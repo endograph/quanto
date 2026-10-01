@@ -252,6 +252,15 @@ const MAX_MAGNITUDE = 400;
 const POWER_LIMIT = 1100;
 const POWER = /^ ?\^ ?([+-]?\d+)(?![\d.,/^])/;
 const TIMES = /^ ?[*×·⋅] ?/;
+/**
+ * Math constants: `π` or `pi`, `φ` or `phi` (the golden ratio; NFKC turns `ϕ` into `φ`), and `e`, which
+ * needs an operator after a number (`2*e`), since `2e` is the start of an exponent or of a unit (`2eV`).
+ * A symbol can touch a unit (`πrad`); a word can't (`PiB` is pebibytes).
+ */
+const CONSTANT = /^(?:[πφ](?!\p{N})|(?:[Pp][Hh]?[Ii]|e)(?![\p{L}\p{N}]))/u;
+const CONSTANTS: Readonly<Record<string, number>> = { 'π': Math.PI, pi: Math.PI, 'φ': (1 + Math.sqrt(5)) / 2, phi: (1 + Math.sqrt(5)) / 2, e: Math.E };
+/** A constant written right after a number, multiplying it: `2π`, `2 pi`. */
+const JUXTAPOSED = /^ ?(?=[πφ](?!\p{N})|[Pp][Hh]?[Ii](?![\p{L}\p{N}]))/u;
 
 /**
  * Reads one number starting at `from`, using the locale rules (DESIGN.md, Locale-aware number
@@ -263,7 +272,7 @@ const TIMES = /^ ?[*×·⋅] ?/;
  *
  * Without `suffixes`, it also reads a product of powers: `10^3`, `2*5`, `6.02×10^23`. Powers take an
  * integer exponent and an unsigned base (`-2^2` could mean 4 or -4); the result is computed exactly and
- * rounded once.
+ * rounded once. Factors can be the constants `π`/`pi`, `φ`/`phi` and `e`: `π/2`, `2π`, `e^2`.
  *
  * Returns `{ value, end }`, or `undefined` if there is no number at `from`.
  */
@@ -271,13 +280,14 @@ export function readNumber(text: string, ctx: LocaleCtx, options?: ReadNumberOpt
   const words = readWordToken(text, ctx, options?.from ?? 0);
   if (words) return tokenValue(words);
   const token = readNumberToken(text, ctx, options);
-  if (!token) return undefined;
+  if (!token) return options?.suffixes ? undefined : readProduct(text, ctx, options?.from ?? 0);
   const and = token.kind === 'decimal' && token.frac === '' && token.exponent === 0 && text[token.end] === ' ' ? AND_FRACTION.exec(text.slice(token.end)) : null;
   if (and && token.kind === 'decimal') {
     return tokenValue({ kind: 'fraction', negative: token.negative, whole: token.int, numerator: '1', denominator: String(andFraction(and)), end: token.end + and[0].length });
   }
-  if (!options?.suffixes && (POWER.test(text.slice(token.end)) || TIMES.test(text.slice(token.end)))) {
-    return readProduct(text, ctx, token);
+  const rest = text.slice(token.end);
+  if (!options?.suffixes && (POWER.test(rest) || TIMES.test(rest) || (token.kind === 'decimal' && JUXTAPOSED.test(rest)))) {
+    return readProduct(text, ctx, options?.from ?? 0);
   }
   return tokenValue(token);
 }
@@ -292,48 +302,91 @@ function tokenValue(token: NumberToken): NumberMatch | undefined {
   return { value: value === 0 ? 0 : value, end: token.end };
 }
 
+/** One factor of a product: an exact ratio times a constant (1 for a plain number). */
+interface Factor {
+  readonly ratio: Ratio;
+  readonly constant: number;
+  readonly negative: boolean;
+  /** Whether a constant can follow without an operator: after a decimal (`2π`), not a fraction (`1/2π`). */
+  readonly coefficient: boolean;
+  readonly end: number;
+}
+
+/** A number or a math constant at `from` (after spaces). */
+function readFactor(text: string, ctx: LocaleCtx, from: number): Factor | undefined {
+  const token = readNumberToken(text, ctx, { from });
+  if (token) return { ratio: tokenRatio(token), constant: 1, negative: token.negative, coefficient: token.kind === 'decimal', end: token.end };
+  let i = from;
+  while (text[i] === ' ') i++;
+  let negative = false;
+  if (text[i] === '-' || text[i] === '+') {
+    negative = text[i] === '-';
+    i++;
+  }
+  const match = CONSTANT.exec(text.slice(i));
+  if (!match) return undefined;
+  let end = i + match[0].length;
+  let d = 1n;
+  // `π/2`, and `2π/3`, which is the same number either way.
+  const over = /^\/(\d+)(?![\d.,/^])/.exec(text.slice(end));
+  if (over && /[1-9]/.test(over[1]!)) {
+    d = BigInt(over[1]!);
+    end += over[0].length;
+  }
+  return { ratio: { n: negative ? -1n : 1n, d }, constant: CONSTANTS[match[0].toLowerCase()]!, negative, coefficient: false, end };
+}
+
 /**
- * The product of powers starting with `first`. A malformed operator (`2^1.5`, `2*`, `-2^2`) makes the
- * whole number unreadable rather than stopping before it, so `2^3^2` isn't read as 8 with `^2` left over.
+ * The product of powers at `from`. A malformed operator (`2^1.5`, `2*`, `-2^2`) makes the whole number
+ * unreadable rather than stopping before it, so `2^3^2` isn't read as 8 with `^2` left over. The rational
+ * part is exact; a constant multiplies it once at the end.
  */
-function readProduct(text: string, ctx: LocaleCtx, first: NumberToken): NumberMatch | undefined {
+function readProduct(text: string, ctx: LocaleCtx, from: number): NumberMatch | undefined {
   let n = 1n;
   let d = 1n;
-  let token: NumberToken | undefined = first;
+  let constant = 1;
+  let factor = readFactor(text, ctx, from);
+  if (!factor) return undefined;
   let end: number;
   for (;;) {
-    let factor = tokenRatio(token);
-    let magnitude = factor.n === 0n ? 0 : digits(factor.n) - digits(factor.d);
-    end = token.end;
+    let ratio = factor.ratio;
+    let k = factor.constant;
+    let magnitude = ratio.n === 0n ? 0 : digits(ratio.n) - digits(ratio.d);
+    end = factor.end;
     const power = POWER.exec(text.slice(end));
     if (power) {
       const exponent = Number(power[1]);
       magnitude *= exponent;
-      if (token.negative || Math.abs(exponent) > POWER_LIMIT || Math.abs(magnitude) > MAX_MAGNITUDE) return undefined;
+      if (factor.negative || Math.abs(exponent) > POWER_LIMIT || Math.abs(magnitude) > MAX_MAGNITUDE) return undefined;
       if (exponent < 0) {
-        if (factor.n === 0n) return undefined;
-        factor = factor.n < 0n ? { n: -factor.d, d: -factor.n } : { n: factor.d, d: factor.n };
+        if (ratio.n === 0n) return undefined;
+        ratio = ratio.n < 0n ? { n: -ratio.d, d: -ratio.n } : { n: ratio.d, d: ratio.n };
       }
       const e = BigInt(Math.abs(exponent));
-      factor = { n: factor.n ** e, d: factor.d ** e };
+      ratio = { n: ratio.n ** e, d: ratio.d ** e };
+      k **= exponent;
       end += power[0].length;
     }
-    n *= factor.n;
-    d *= factor.d;
+    n *= ratio.n;
+    d *= ratio.d;
+    constant *= k;
     if (n !== 0n && Math.abs(digits(n) - digits(d)) > MAX_MAGNITUDE) return undefined;
-    const times = TIMES.exec(text.slice(end));
+    const times = TIMES.exec(text.slice(end)) ?? (factor.coefficient && !power ? JUXTAPOSED.exec(text.slice(end)) : null);
     if (!times) break;
-    token = readNumberToken(text, ctx, { from: end + times[0].length });
-    if (!token) return undefined;
+    const next = readFactor(text, ctx, end + times[0].length);
+    if (!next) return undefined;
+    factor = next;
   }
   if (/^ ?\^/.test(text.slice(end))) return undefined;
-  const value = ratioValue({ n, d });
-  if (Number.isNaN(value)) return undefined;
+  const ratioPart = ratioValue({ n, d });
+  if (Number.isNaN(ratioPart)) return undefined;
+  const value = ratioPart * constant;
+  if (!Number.isFinite(value) || (value === 0 && n !== 0n)) return undefined;
   return { value: value === 0 ? 0 : value, end };
 }
 
 export interface FormatNumberOptions {
-  /** Default 3. Rounds half away from zero. */
+  /** Default 2. Rounds half away from zero. */
   readonly maxFractionDigits?: number | undefined;
   /** Default 0. Pads with zeros. */
   readonly minFractionDigits?: number | undefined;
@@ -364,14 +417,32 @@ function incrementDigits(digits: string): string {
   return `1${out.join('')}`;
 }
 
+const SUPERSCRIPT: Readonly<Record<string, string>> = { '-': '⁻', 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹' };
+
+/** From here up, a number prints as a power of ten: its digits past the first 17 are float noise. */
+const SCIENTIFIC = 1e21;
+
 /**
  * Formats a number with the region's bundled separators (DESIGN.md, Formatting), so the result reads
- * back with `readNumber` under the same locale.
+ * back with `readNumber` under the same locale. From 10²¹ up it prints as a power of ten, `1.62×10⁶⁵`,
+ * or `10¹⁰⁰` when the factor is 1; the fraction digits apply to the factor.
  */
 export function formatNumber(n: number, ctx: LocaleCtx, options?: FormatNumberOptions): string {
   if (!Number.isFinite(n)) throw new Error(`quanto: formatNumber can't format ${n}; pass a finite number.`);
+  if (Math.abs(n) >= SCIENTIFIC) {
+    const [digits, exp] = Math.abs(n).toExponential().split('e') as [string, string];
+    let exponent = Number(exp);
+    let factor = formatNumber(Number(digits), ctx, options);
+    // Rounding the factor can carry it to 10: 9.9996×10³⁰ is 10³¹.
+    if (factor === formatNumber(10, ctx, options)) {
+      exponent++;
+      factor = formatNumber(1, ctx, options);
+    }
+    const power = `10${[...String(exponent)].map((c) => SUPERSCRIPT[c]).join('')}`;
+    return `${n < 0 ? '-' : ''}${factor === formatNumber(1, ctx, options) ? '' : `${factor}×`}${power}`;
+  }
   const min = options?.minFractionDigits ?? 0;
-  const max = Math.max(options?.maxFractionDigits ?? 3, min);
+  const max = Math.max(options?.maxFractionDigits ?? 2, min);
   let [int, frac = ''] = plainDecimal(Math.abs(n)).split('.') as [string, string?];
   if (frac.length > max) {
     const roundUp = frac[max]! >= '5';

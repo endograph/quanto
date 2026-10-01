@@ -18,8 +18,9 @@ export type TemperatureUnit = keyof typeof temperatureUnits;
 
 /**
  * Temperatures: `20 °C`, `98.6F`, `-40 degrees fahrenheit`. Compound input doesn't apply. A degree sign
- * or word alone (`20°`, `20 degrees`) is a bare number, so it takes the default unit.
+ * or word alone (`451°`, `20 degrees`) takes the `defaultUnit` if there is one, and otherwise the
+ * region's: °F in the US, °C elsewhere. A bare number (`70`) still needs a unit.
  */
 export const temperature = <C extends TemperatureUnit = TemperatureUnit>(
   options?: QuantityOptions<TemperatureUnit, C>,
-): QuantityCodec<TemperatureUnit, C> => quantity<typeof temperatureUnits, C>({ id: 'temperature', units: temperatureUnits, markers: ['°', 'deg', 'degs', 'degree', 'degrees'], ...options });
+): QuantityCodec<TemperatureUnit, C> => quantity<typeof temperatureUnits, C>({ id: 'temperature', units: temperatureUnits, markers: ['°', 'deg', 'degs', 'degree', 'degrees'], markerUnit: { us: 'F', uk: 'C', metric: 'C' }, ...options });

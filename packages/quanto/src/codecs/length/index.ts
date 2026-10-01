@@ -12,6 +12,8 @@ export const lengthUnits: {
   readonly yd: UnitDefinition;
   readonly mi: UnitDefinition;
   readonly nmi: UnitDefinition;
+  readonly planck: UnitDefinition;
+  readonly ly: UnitDefinition;
 } = {
   um: { toBase: 0.000001, aliases: ['µm', 'um', 'micrometer', 'micrometers', 'micrometre', 'micrometres', 'micron', 'microns'] },
   mm: { toBase: 0.001, aliases: ['mm', 'millimeter', 'millimeters', 'millimetre', 'millimetres'] },
@@ -24,6 +26,10 @@ export const lengthUnits: {
   mi: { toBase: 1609.344, aliases: ['mi', 'mile', 'miles'] },
   // Not `nm` or `NM`: nanometers in one field, nautical miles in another.
   nmi: { toBase: 1852, aliases: ['nmi', 'nautical mile', 'nautical miles'] },
+  // CODATA 2018. NFKC reads `ℓₚ` as `lp`, so `lP` and `l_P` are spelled out.
+  planck: { toBase: 1.616255e-35, aliases: ['ℓₚ', 'ℓP', 'lP', 'l_P', 'planck length', 'planck lengths'] },
+  // IAU: exactly 9,460,730,472,580,800 m.
+  ly: { toBase: 9460730472580800, aliases: ['ly', 'light year', 'light years', 'light-year', 'light-years'] },
 };
 
 export type LengthUnit = keyof typeof lengthUnits;

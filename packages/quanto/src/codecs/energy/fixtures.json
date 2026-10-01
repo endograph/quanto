@@ -40,7 +40,7 @@
   {"format": {"value": 2000, "unit": "kcal"}, "text": "2,000 kcal"},
   {"format": {"value": 250, "unit": "kcal"}, "text": "250 kcal"},
   {"format": {"value": 3.5, "unit": "kWh"}, "ctx": {"locale": "de-DE"}, "text": "3,5 kWh"},
-  {"format": {"value": 4.184, "unit": "kJ"}, "text": "4.184 kJ"},
+  {"format": {"value": 4.184, "unit": "kJ"}, "text": "4.18 kJ"},
   {"format": {"value": 1000, "unit": "BTU"}, "text": "1,000 BTU"},
   {"format": {"value": 2, "unit": "MWh"}, "text": "2 MWh"},
   {"format": {"value": 5, "unit": "J"}, "text": "5 J"}

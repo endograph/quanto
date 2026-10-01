@@ -75,7 +75,7 @@
   { "format": { "value": 70, "unit": "kg" }, "text": "70 kg" },
   { "format": { "value": 70.5, "unit": "kg" }, "ctx": { "locale": "de-DE" }, "text": "70,5 kg" },
   { "format": { "value": 20, "unit": "oz" }, "text": "20 oz" },
-  { "format": { "value": 154.3235835294143, "unit": "lb" }, "text": "154.324 lb" },
+  { "format": { "value": 154.3235835294143, "unit": "lb" }, "text": "154.32 lb" },
   { "format": { "value": 11, "unit": "st" }, "text": "11 st" },
   { "format": { "value": 2, "unit": "t" }, "text": "2 t" }
 ]

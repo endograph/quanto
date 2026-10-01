@@ -33,7 +33,7 @@
   { "format": { "value": 60, "unit": "mph" }, "text": "60 mph" },
   { "format": { "value": 100, "unit": "kmh" }, "text": "100 km/h" },
   { "format": { "value": 12.5, "unit": "kmh" }, "ctx": { "locale": "de-DE" }, "text": "12,5 km/h" },
-  { "format": { "value": 96.56064, "unit": "kmh" }, "text": "96.561 km/h" },
+  { "format": { "value": 96.56064, "unit": "kmh" }, "text": "96.56 km/h" },
   { "format": { "value": 10, "unit": "mps" }, "text": "10 m/s" },
   { "format": { "value": 20, "unit": "kn" }, "text": "20 kn" },
   { "format": { "value": 5, "unit": "fps" }, "text": "5 ft/s" }

@@ -50,7 +50,7 @@
   { "format": { "value": 1.5, "unit": "l" }, "ctx": { "locale": "de-DE" }, "text": "1,5 l" },
   { "format": { "value": 2, "unit": "m3" }, "text": "2 m³" },
   { "format": { "value": 12, "unit": "floz" }, "text": "12 fl oz" },
-  { "format": { "value": 3.785411784, "unit": "l" }, "text": "3.785 l" },
+  { "format": { "value": 3.785411784, "unit": "l" }, "text": "3.79 l" },
   { "format": { "value": 0.5, "unit": "cup" }, "text": "0.5 cup" },
   { "format": { "value": 2, "unit": "dl" }, "text": "2 dl" }
 ]
