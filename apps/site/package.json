@@ -9,6 +9,6 @@
   },
   "dependencies": {
     "quanto": "workspace:*",
-    "@quanto/datetime": "workspace:*"
+    "quanto-datetime": "workspace:*"
   }
 }

@@ -139,7 +139,7 @@ const STRATEGIES = { date, time, localDateTime: dateTime, dateTime } as const;
 export function dateRange(codec: Codec<string>, options?: CodecOptions<Range<string>>): Codec<Range<string>> {
   const kind = calendarKindOf(codec);
   if (!kind) {
-    throw new Error('quanto: dateRange works with codecs made by date(), time(), localDateTime() or dateTime() from @quanto/datetime. For other codecs, use defineRange from quanto.');
+    throw new Error('quanto: dateRange works with codecs made by date(), time(), localDateTime() or dateTime() from quanto-datetime. For other codecs, use defineRange from quanto.');
   }
   const strategy = STRATEGIES[kind];
   return defineRange(codec, { propose: (left, right) => strategy(left, right), inOrder }, options);

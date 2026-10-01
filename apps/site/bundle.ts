@@ -10,8 +10,8 @@ const packages = resolve(import.meta.dir, '../../packages');
 const sources: BunPlugin = {
   name: 'workspace-sources',
   setup(build) {
-    build.onResolve({ filter: /^(quanto|@quanto\/datetime)(\/.*)?$/ }, ({ path }) => {
-      const [, name, sub] = path.match(/^(quanto|@quanto\/datetime)(?:\/(.*))?$/)!;
+    build.onResolve({ filter: /^(quanto-datetime|quanto)(\/.*)?$/ }, ({ path }) => {
+      const [, name, sub] = path.match(/^(quanto-datetime|quanto)(?:\/(.*))?$/)!;
       const dir = name === 'quanto' ? 'quanto' : 'datetime';
       return { path: `${packages}/${dir}/src/${sub ? `${sub}/index.ts` : 'index.ts'}` };
     });

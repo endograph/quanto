@@ -10,8 +10,8 @@
     "paths": {
       "quanto": ["../../packages/quanto/src/index.ts"],
       "quanto/*": ["../../packages/quanto/src/*/index.ts"],
-      "@quanto/datetime": ["../../packages/datetime/src/index.ts"],
-      "@quanto/datetime/*": ["../../packages/datetime/src/*/index.ts"]
+      "quanto-datetime": ["../../packages/datetime/src/index.ts"],
+      "quanto-datetime/*": ["../../packages/datetime/src/*/index.ts"]
     }
   },
   "include": ["src"]

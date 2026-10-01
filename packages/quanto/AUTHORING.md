@@ -84,7 +84,7 @@ export const percentRange = (codec = percent()) =>
   });
 ```
 
-With no rules, both sides must be written in full. `moneyRange` (`quanto/money`) and `dateRange` (`@quanto/datetime`) are written the same way.
+With no rules, both sides must be written in full. `moneyRange` (`quanto/money`) and `dateRange` (`quanto-datetime`) are written the same way.
 
 ## Context and primitives
 

@@ -4,8 +4,8 @@ import { merge, type Codec } from 'quanto';
 import * as q from 'quanto/codecs';
 import { feetInches, hoursMinutes, intlUnit, poundsOunces, stonesPounds } from 'quanto/formats';
 import { money } from 'quanto/money';
-import { date, dateRange, dateTime, time } from '@quanto/datetime';
-import { de, es, fr, it, nl, pt } from '@quanto/datetime/names';
+import { date, dateRange, dateTime, time } from 'quanto-datetime';
+import { de, es, fr, it, nl, pt } from 'quanto-datetime/names';
 
 export interface Entry {
   readonly id: string;
@@ -22,7 +22,7 @@ export interface Entry {
 
 const names = [de, es, fr, it, nl, pt];
 const namesCall = '{ names: [de, es, fr, it, nl, pt] }';
-const namesImport = { '@quanto/datetime/names': ['de', 'es', 'fr', 'it', 'nl', 'pt'] };
+const namesImport = { 'quanto-datetime/names': ['de', 'es', 'fr', 'it', 'nl', 'pt'] };
 
 const quantity = (
   id: keyof typeof q & string,
@@ -85,7 +85,7 @@ const leaves: Entry[] = [
     id: 'date',
     codec: date({ names }),
     call: `date(${namesCall})`,
-    imports: { '@quanto/datetime': ['date'], ...namesImport },
+    imports: { 'quanto-datetime': ['date'], ...namesImport },
     examples: ['tomorrow', 'next fri', 'Oct 2, 2026', '03/04/2026', '13/04', '2. Oktober 2026', '2 de octubre', 'someday'],
     featured: true,
   },
@@ -93,7 +93,7 @@ const leaves: Entry[] = [
     id: 'time',
     codec: time(),
     call: 'time()',
-    imports: { '@quanto/datetime': ['time'] },
+    imports: { 'quanto-datetime': ['time'] },
     examples: ['3pm', '15:30', '3:30 p.m.', 'noon', '25:00'],
     featured: true,
   },
@@ -101,7 +101,7 @@ const leaves: Entry[] = [
     id: 'dateTime',
     codec: dateTime({ names }),
     call: `dateTime(${namesCall})`,
-    imports: { '@quanto/datetime': ['dateTime'], ...namesImport },
+    imports: { 'quanto-datetime': ['dateTime'], ...namesImport },
     examples: ['tomorrow 3pm', 'Oct 2 9am', 'next fri noon', '2026-10-02T15:00Z'],
   },
 ];
@@ -110,7 +110,7 @@ const range: Entry = {
   id: 'dateRange',
   codec: dateRange(date({ names })),
   call: `dateRange(date(${namesCall}))`,
-  imports: { '@quanto/datetime': ['date', 'dateRange'], ...namesImport },
+  imports: { 'quanto-datetime': ['date', 'dateRange'], ...namesImport },
   examples: ['Oct 3-5', 'Dec 30 - Jan 2', 'Oct 3 – Oct 10'],
 };
 

@@ -13,12 +13,12 @@
     "apps/site": {
       "name": "@quanto/site",
       "dependencies": {
-        "@quanto/datetime": "workspace:*",
         "quanto": "workspace:*",
+        "quanto-datetime": "workspace:*",
       },
     },
     "packages/datetime": {
-      "name": "@quanto/datetime",
+      "name": "quanto-datetime",
       "version": "0.0.0",
       "devDependencies": {
         "quanto": "workspace:*",
@@ -42,8 +42,6 @@
     "@oxc-project/types": ["@oxc-project/types@0.152.0", "", {}, "sha512-oM/5rLBm2tPkg0iBgkH/FOeR3PCDpY19GTgAZjMFM8h9WI9VW7cLgzp6nwtarYKmovavIQZ+Fe/RKX/8C8O/Rw=="],
 
     "@quansync/fs": ["@quansync/fs@1.1.0", "", { "dependencies": { "quansync": "^1.0.0" } }, "sha512-qAPG/t3HqML1TlN7sY/pTbEjzFVAKsMjNNMGheyDosro+kT4iw2KCUoHcVdmliwWjorm4elZbgNQyU2eD97eDg=="],
-
-    "@quanto/datetime": ["@quanto/datetime@workspace:packages/datetime"],
 
     "@quanto/site": ["@quanto/site@workspace:apps/site"],
 
@@ -248,6 +246,8 @@
     "quansync": ["quansync@1.0.0", "", {}, "sha512-5xZacEEufv3HSTPQuchrvV6soaiACMFnq1H8wkVioctoH3TRha9Sz66lOxRwPK/qZj7HPiSveih9yAyh98gvqA=="],
 
     "quanto": ["quanto@workspace:packages/quanto"],
+
+    "quanto-datetime": ["quanto-datetime@workspace:packages/datetime"],
 
     "resolve-pkg-maps": ["resolve-pkg-maps@1.0.0", "", {}, "sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw=="],
 

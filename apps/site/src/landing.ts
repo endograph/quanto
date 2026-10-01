@@ -3,7 +3,7 @@
 import type { Codec } from 'quanto';
 import { dataSize, duration, length, speed, temperature } from 'quanto/codecs';
 import { money } from 'quanto/money';
-import { date, dateTime } from '@quanto/datetime';
+import { date, dateTime } from 'quanto-datetime';
 import { glyphs } from './glyphs';
 
 const examples: readonly [string, Codec<unknown>, string][] = [

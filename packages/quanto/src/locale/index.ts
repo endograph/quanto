@@ -5,7 +5,7 @@ export type MeasurementSystem = 'us' | 'uk' | 'metric';
 /**
  * A resolved locale: the language and region a tag stands for, and the conventions every codec needs.
  * Domain data (currencies, date order, month names, …) belongs to its domain (`quanto/money`,
- * `@quanto/datetime`), which looks it up by `region` and `language`. See DESIGN.md, Locales.
+ * `quanto-datetime`), which looks it up by `region` and `language`. See DESIGN.md, Locales.
  */
 export interface Locale {
   /** The canonicalized tag, as recorded in `context.locale`. */

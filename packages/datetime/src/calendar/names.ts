@@ -1,6 +1,6 @@
 /**
  * Month and weekday names for one language. English is built in; other languages are passed to a codec
- * with its `names` option: `date({ names: [de] })`. The six in `@quanto/datetime/names` are generated
+ * with its `names` option: `date({ names: [de] })`. The six in `quanto-datetime/names` are generated
  * from ICU; any other language is just a `Names` object.
  */
 export interface Names {
