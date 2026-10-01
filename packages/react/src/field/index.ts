@@ -166,9 +166,7 @@ export function reduce<T>(env: FieldEnv<T>, state: FieldState<T>, event: FieldEv
       const readings = alternatives(env, state);
       // The text the alternatives are readings of: what's being typed, or what was committed.
       const source = !state.edited && state.committed ? state.committed.raw : state.raw;
-      // Offered alternatives already contain the schema's output; arbitrary choices still validate.
-      const offered = readings.some((reading) => JSON.stringify(reading) === JSON.stringify(event.value));
-      const validated = offered ? { ok: true as const, value: event.value } : validate(env.codec, event.value);
+      const validated = validate(env.codec, event.value);
       const value: QuantoValue<T> = validated.ok ? { raw: source, value: validated.value } : { raw: source, issues: validated.issues };
       const shown = (env.display !== 'raw' && validated.ok ? tryFormat(env, validated.value) : undefined) ?? source;
       // The reading it replaces becomes an alternative, so the choice can be undone.

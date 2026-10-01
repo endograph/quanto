@@ -1,5 +1,5 @@
-# Publishes quanto and quanto-datetime to npm when a version tag is pushed (v0.1.0). Both packages
-# release in lockstep: the tag must match their shared version. Tarballs are packed with bun (which
+# Publishes quanto, quanto-datetime and quanto-react to npm when a version tag is pushed (v0.1.0). The
+# packages release in lockstep: the tag must match their shared version. Tarballs are packed with bun (which
 # rewrites workspace: ranges) and published with npm, with provenance.
 name: Publish
 
@@ -43,10 +43,11 @@ jobs:
             bunx publint@0.3.24 "$t"
             bunx @arethetypeswrong/cli@0.18.5 "$t" --profile esm-only
           done
-      # quanto first: quanto-datetime's peer dependency points at it.
+      # quanto first: the other packages' peer dependency points at it.
       - run: |
           version=$(node -p "require('./packages/quanto/package.json').version")
           npm publish "$RUNNER_TEMP/packs/quanto-$version.tgz" --provenance --access public
           npm publish "$RUNNER_TEMP/packs/quanto-datetime-$version.tgz" --provenance --access public
+          npm publish "$RUNNER_TEMP/packs/quanto-react-$version.tgz" --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

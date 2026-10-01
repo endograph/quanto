@@ -1,7 +1,5 @@
 // Core: defineCodec, the primitives, the wrappers, and the Codec/Issue/value types. See DESIGN.md.
 
-export const VERSION: string = '0.0.0';
-
 export { defineCodec, formatWithFallback } from './core/define-codec';
 export type { CheckProblem, CodecDefinition } from './core/define-codec';
 export { defineExternalCodec, isExternalCodec, parseFromCompletions } from './core/define-external-codec';

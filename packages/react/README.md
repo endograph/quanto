@@ -1,6 +1,6 @@
 # quanto-react
 
-A React input for [quanto](../quanto/README.md). People type `5'11`, `180cm` or `1,8 m`; the field shows its interpretation as they type, parses on blur or Enter, and gives you `{ raw, value }` to store.
+A React input for [quanto](https://github.com/endograph/quanto#readme). People type `5'11`, `180cm` or `1,8 m`; the field shows its interpretation as they type, parses on blur or Enter, and gives you `{ raw, value }` to store.
 
 ```tsx
 import { QuantoInput, QuantoProvider } from 'quanto-react';
@@ -57,7 +57,7 @@ const field = useExternalQuanto(address, { onChange: save, completions: true });
 - With completions on, `inputProps` add the combobox attributes (`role`, `aria-expanded`, `aria-controls`, `aria-activedescendant`, `aria-autocomplete`) and the keys: arrows move the highlight, Enter picks the highlighted item (and doesn't submit), Escape closes the list.
 - `listProps` and `itemProps` keep focus in the input, so choosing with the pointer isn't a blur that starts a parse.
 - A completion is never applied unless chosen: committing parses the text as typed. An ambiguous parse puts its candidates in the list.
-- Choosing a completion that needs a fetch sets `completions.resolving` until its value arrives; `settled()` waits for it, and if the fetch fails, `failed` is set and `retry()` fetches again.
+- Choosing a completion that needs a fetch sets `completions.resolving` until its value arrives; `settled()` waits for it, and if the fetch fails, `failed` is set and `retry()` or Enter fetches again. A blur doesn't re-parse the committed text.
 - Each request gets `ctx.session`, a token that's the same from the first edit to the committed value, for services that bill a session (Google's session tokens).
 - Items are the last commit's alternatives (`kind: 'alternative'`, chosen keeping `raw`), then the completions (`kind: 'completion'`, picked).
 

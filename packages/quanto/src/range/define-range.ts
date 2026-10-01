@@ -117,9 +117,9 @@ export interface RangeRules<T> {
 /**
  * Builds a range codec over any codec: `defineRange` does the splitting (`-`, `–`, `—`, `to`, `until`,
  * `through`, `between … and`), tries each split and completion, prefers the first in order, runs the
- * user's schema and formats `start – end`. `rules` say how sides complete, how values order and, optionally,
- * a shorter format. With no
- * rules, both sides must be written in full. The id is `range(<inner id>)`.
+ * user's schema and formats `start – end`. `rules` say how sides complete, how values order and,
+ * optionally, a shorter format. With no rules, both sides must be written in full. The id is
+ * `range(<inner id>)`.
  *
  * With `open: true` it also reads one bound (`5+ ft`, `at least 5 ft`, `under 7 ft`, `≤ 7 ft`), as an
  * `OpenRange<T>`, and formats it with `≥`, `>`, `≤` or `<`.

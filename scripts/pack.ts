@@ -1,15 +1,15 @@
 // Packs the published packages into a directory and checks the tarballs, so CI tests exactly what
 // `publish.yml` publishes. Run with `bun scripts/pack.ts <out-dir>`.
 //
-// Checks: every published package has the same version (quanto and quanto-datetime release in
-// lockstep), and no tarball still contains a `workspace:` range or a quanto range other than
+// Checks: every published package has the same version (quanto, quanto-datetime and quanto-react
+// release in lockstep), and no tarball still contains a `workspace:` range or a quanto range other than
 // `^<version>`. Bun fills `workspace:^` in from bun.lock, so a stale lockfile after a version bump
 // would otherwise publish a wrong peer range.
 
 import { mkdirSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-const PACKAGES = ['packages/quanto', 'packages/datetime'];
+const PACKAGES = ['packages/quanto', 'packages/datetime', 'packages/react'];
 const out = resolve(process.argv[2] ?? 'packs');
 mkdirSync(out, { recursive: true });
 

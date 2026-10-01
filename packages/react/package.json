@@ -1,7 +1,28 @@
 {
   "name": "quanto-react",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "React input for quanto: a text field that parses on commit, echoes its interpretation and stores { raw, value }.",
+  "license": "MIT",
+  "author": "rt2zz",
+  "homepage": "https://github.com/endograph/quanto/tree/main/packages/react#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/endograph/quanto.git",
+    "directory": "packages/react"
+  },
+  "bugs": {
+    "url": "https://github.com/endograph/quanto/issues"
+  },
+  "keywords": [
+    "quanto",
+    "react",
+    "input",
+    "form",
+    "parse",
+    "units",
+    "combobox",
+    "autocomplete"
+  ],
   "type": "module",
   "sideEffects": false,
   "files": [

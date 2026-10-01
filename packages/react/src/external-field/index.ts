@@ -211,7 +211,7 @@ function cancel<T>(transition: ExternalTransition<T>, previous: ExternalFieldSta
 function commit<T>(env: ExternalFieldEnv<T>, state: ExternalFieldState<T>, trigger: 'blur' | 'enter'): ExternalTransition<T> {
   // The chosen completion will commit; the text it replaces shouldn't.
   if (state.resolving) return { state };
-  if (!state.edited && !state.failed) {
+  if (!state.edited) {
     // Leaving restored text untouched puts the formatted value back. Nothing changed, so nothing commits.
     if (env.restoreOnEdit && trigger === 'blur' && state.committed) return { state: { ...state, raw: settled(env, state.committed) } };
     return { state };
@@ -258,9 +258,9 @@ function validate<T>(codec: ExternalCodec<T>, value: T): { readonly ok: true; re
 }
 
 /** Commits a picked value (an accessory's, or a chosen completion's): the text becomes `format(value)`. */
-function pick<T>(env: ExternalFieldEnv<T>, state: ExternalFieldState<T>, picked: T, alreadyValidated = false): ExternalTransition<T> {
-  // Known completions already contain the schema's output. Raw picker values and lazy fetches don't.
-  const validated = alreadyValidated ? { ok: true as const, value: picked } : validate(env.codec, picked);
+function pick<T>(env: ExternalFieldEnv<T>, state: ExternalFieldState<T>, picked: T): ExternalTransition<T> {
+  // The schema's output is what's stored and shown, so a transforming schema is respected.
+  const validated = validate(env.codec, picked);
   const raw = tryFormat(env, validated.ok ? validated.value : picked);
   if (raw === undefined) return { state };
   const value: QuantoValue<T> = validated.ok ? { raw, value: validated.value } : { raw, issues: validated.issues };
@@ -271,9 +271,7 @@ function pick<T>(env: ExternalFieldEnv<T>, state: ExternalFieldState<T>, picked:
 /** Commits an alternative: it's another reading of the committed text, so `raw` stays what was typed. */
 function choose<T>(env: ExternalFieldEnv<T>, state: ExternalFieldState<T>, chosen: T): ExternalTransition<T> {
   const source = !state.edited && state.committed ? state.committed.raw : state.raw;
-  // Offered alternatives already passed the schema. A caller may also supply an arbitrary value.
-  const offered = state.alternatives.some((reading) => JSON.stringify(reading) === JSON.stringify(chosen));
-  const validated = offered ? { ok: true as const, value: chosen } : validate(env.codec, chosen);
+  const validated = validate(env.codec, chosen);
   const value: QuantoValue<T> = validated.ok ? { raw: source, value: validated.value } : { raw: source, issues: validated.issues };
   const shown = (env.display !== 'raw' && validated.ok ? tryFormat(env, validated.value) : undefined) ?? source;
   // The value it replaces becomes an alternative, so the choice can be undone.
@@ -289,7 +287,7 @@ function select<T>(env: ExternalFieldEnv<T>, state: ExternalFieldState<T>, index
   if (!entry) return { state };
   if (entry.kind === 'alternative') return choose(env, state, entry.value);
   const { completion } = entry;
-  if ('value' in completion) return pick(env, state, completion.value, true);
+  if ('value' in completion) return pick(env, state, completion.value);
   return fetchCompletion(state, completion);
 }
 
@@ -331,6 +329,9 @@ export function reduceExternal<T>(env: ExternalFieldEnv<T>, state: ExternalField
     case 'enter':
       if (state.composing) return { state };
       if (isOpen(env, state) && state.highlighted !== undefined) return select(env, state, state.highlighted);
+      // After a chosen completion's fetch failed, the text is still what was committed, so there's
+      // nothing to parse: Enter fetches the completion again, as `retry` does.
+      if (!state.edited && state.failed?.completion) return fetchCompletion(state, state.failed.completion);
       return commit(env, state, 'enter');
     case 'commit':
       return state.composing ? { state } : commit(env, state, 'enter');
