@@ -1,4 +1,6 @@
-import { defineRange, readNumber, type Codec, type CodecOptions, type Range, type RangeProposal, type ResolvedCtx } from 'quanto';
+import type { Codec, CodecOptions, ResolvedCtx } from '../core/types';
+import { readNumber } from '../primitives/number';
+import { defineRange, type Range, type RangeProposal } from '../range';
 import type { Money } from './types';
 
 const MAGNITUDE = /^(bn|k|m|b|t)(?![\p{L}])/iu;

@@ -3,7 +3,7 @@
 // - Compound formatters (`feetInches`, …) use bundled data only: deterministic, and they round-trip.
 // - `intlUnit` uses Intl for richer, localized output. It's display-only: its output varies
 //   between ICU versions and isn't guaranteed to parse back, so use it with `display="raw"` and never
-//   set `raw` from it. Money and date formatters, including their Intl ones, are in @quanto/money and
+//   set `raw` from it. Money and date formatters, including their Intl ones, are in quanto/money and
 //   @quanto/datetime.
 
 import { durationUnits } from '../codecs/duration';

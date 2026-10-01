@@ -1,8 +1,8 @@
-// Generates src/regions.ts: each region's currency and where it writes a currency symbol.
+// Generates src/money/regions.ts: each region's currency and where it writes a currency symbol.
 //
 // Intl has no region → currency API, so that table is maintained by hand below (ISO 3166-1 → ISO 4217,
 // as of 2026). The symbol position comes from the runtime's ICU data. Run with
-// `bun scripts/generate-region-data.ts`; the output is reviewed and committed, never read from Intl at
+// `bun scripts/generate-money-data.ts`; the output is reviewed and committed, never read from Intl at
 // runtime.
 
 import { writeFileSync } from 'node:fs';
@@ -71,5 +71,5 @@ ${lines(exceptions)}
 };
 `;
 
-writeFileSync(new URL('../src/regions.ts', import.meta.url), out);
+writeFileSync(new URL('../src/money/regions.ts', import.meta.url), out);
 console.log(`currencies: ${currencies.length}, positions: ${regions.length}, exceptions: ${exceptions.length}`);

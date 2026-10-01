@@ -1,4 +1,5 @@
-import { formatNumber, type ResolvedCtx } from 'quanto';
+import type { ResolvedCtx } from '../core/types';
+import { formatNumber } from '../primitives/number';
 import { minorDigits } from './currencies';
 import type { Money } from './types';
 

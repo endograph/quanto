@@ -1,6 +1,6 @@
 // Shared helpers for the packages' locale-data generators (dev only, never shipped). Each package
-// generates the per-region data it owns from the runtime's ICU data: quanto its number conventions,
-// @quanto/money currencies, @quanto/datetime date order, clocks and names. See DESIGN.md, Locales.
+// generates the per-region data it owns from the runtime's ICU data: quanto its number conventions and
+// (for quanto/money) currencies, @quanto/datetime date order, clocks and names. See DESIGN.md, Locales.
 
 /** Every ISO 3166-1 region quanto knows. */
 export const REGION_CODES: readonly string[] = `AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN

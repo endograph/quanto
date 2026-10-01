@@ -8,14 +8,14 @@ quanto is a library for turning messy human text into well-typed values, and bac
 
 Think of it as a universal moment.js, generalized beyond dates, or as "what if Zod were unit-aware". `5'11"`, `180cm` and `1,8 m` all parse into the same typed value, which can be converted, compared and formatted.
 
-It ships as a small core (`quanto`: the codec contract, primitives, quantities and the wrappers) plus domain packages that build on its public API: `@quanto/money` and `@quanto/datetime` (see [Packaging](#packaging)). Simple first-party codecs are in the core; anything complex, heavy or likely to change in breaking ways gets its own package, which owns its codecs, operations and range rules and versions on its own.
+It ships as a small core (`quanto`: the codec contract, primitives, quantities and the wrappers) plus `@quanto/datetime`, a separate package built on its public API (see [Packaging](#packaging)). First-party codecs whose behaviour is complete and settled are in the core, including money (`quanto/money`); a domain that's intentionally incomplete or still evolving, like dates, gets its own package, which owns its codecs and range rules and versions on its own.
 
 The input component (`<QuantoInput />`) is one consumer of this core, shipped as a separate package. It is not the core, and nothing UI-specific lives in the core.
 
 ## Principles
 
 1. **Values are plain, immutable, JSON-safe data.** No class instances. The same value works on client and server without serializers.
-2. **Operations are standalone functions.** Nothing is hung off a prototype or namespace object. Everything is a named export and tree-shakes. There are no overloads. Subpaths and packages act as namespaces, so `quanto/quantity` and `@quanto/money` can both export `convert`; import with an alias when a file needs both.
+2. **Operations are standalone functions.** Nothing is hung off a prototype or namespace object. Everything is a named export and tree-shakes. There are no overloads. Subpaths and packages act as namespaces, so `quanto/quantity` and `quanto/money` can both export `convert`; import with an alias when a file needs both.
 3. **Context is explicit when you want it, inferred when you don't.** `locale` and `now` can be passed in. When `now` is missing, parsing uses the machine's clock and local offset, because that is what the person typing means. Every successful parse reports the `context` it was based on (see [Parse context](#parse-context)), so apps that want replayability can keep it. There is no global, mutable context.
 4. **Don't rebuild what exists.** Validation is delegated to Standard Schema libraries (Zod, Valibot, ArkType…). Opt-in rich formatters lean on `Intl`. Date math, if ever shipped, is a separate package built on Temporal.
 5. **One contract, two authors.** Built-in codecs and custom (often LLM-written) codecs use the exact same API and the same fixture requirements. Every built-in codec is defined with `defineCodec` and the exported primitives. Built-ins get no special hooks.
@@ -136,7 +136,7 @@ The lexing built-ins use is exported from `quanto`, so custom codecs get the sam
 - **`readNumber(text, ctx, { from?, suffixes? })`**: reads one number starting at `from` (default 0, leading spaces skipped) using the locale rules, and returns `{ value, end }` or `undefined`. It accepts a leading `-` or `+`; whether negatives make sense is the codec's call. `suffixes: true` accepts `k`, `m`, `b`/`bn` and `t`, attached to the number and case-insensitive. When the locale's reading of an ambiguous separator gives invalid grouping, the other reading is used (`1234,567` in en-US is 1234.567).
 - **`formatNumber(n, ctx, { maxFractionDigits?, minFractionDigits? })`**: formats with the region's bundled separators and grouping, so the result reads back with `readNumber`. Defaults: at most 3 fraction digits, at least 0; rounding is half away from zero, on the number's shortest decimal representation (`1.005` → `1.01` at two digits). Space and apostrophe grouping print as plain ` ` and `'`.
 - **`ctx.locale`**: the resolved language and region, the number separators and grouping, and the measurement system, for codecs that need them directly.
-- **`lookupRegional(locale, regions, exceptions?)`**: looks up a codec's own region-keyed data (the `language-region` row if there is one, otherwise the region's), so every package resolves a locale the same way. Domain packages use it for their currencies, date orders and the like.
+- **`lookupRegional(locale, regions, exceptions?)`**: looks up a codec's own region-keyed data (the `language-region` row if there is one, otherwise the region's), so every codec resolves a locale the same way. `quanto/money` uses it for currencies, `@quanto/datetime` for date orders and clocks, and custom codecs for their own tables.
 
 The built-in date grammar is not exported in v1.
 
@@ -158,7 +158,7 @@ height.parse(raw, storedContext);            // the same value, on the same pack
 ```
 
 - `ParseContext` is assignable to `Ctx`, so replay needs no merging.
-- Replay is exact on the same versions of `quanto` and of the package that owns the codec: a date's result depends on `@quanto/datetime` as well as the core, a price's on `@quanto/money`. A later version of either can differ where its parser or bundled data changed, which is exactly what a migration wants to detect. `context` doesn't record versions; apps that need exact replay keep their dependency versions alongside (a lockfile in their history is usually enough).
+- Replay is exact on the same versions of `quanto` and of the package that owns the codec: a date's result depends on `@quanto/datetime` as well as the core. A later version of either can differ where its parser or bundled data changed, which is exactly what a migration wants to detect. `context` doesn't record versions; apps that need exact replay keep their dependency versions alongside (a lockfile in their history is usually enough).
 
 ### Issues
 
@@ -339,7 +339,7 @@ const height = length({
 
 ## Money
 
-Money lives in **`@quanto/money`**: the `money` codec, the `Money` type, its operations, `moneyRange` and `intlMoney`. It owns its region data too: each region's currency and where it writes the symbol, generated by its own script and looked up with `lookupRegional`.
+Money lives in **`quanto/money`**: the `money` codec, the `Money` type, its operations, `moneyRange` and `intlMoney`. It's in the core because it's complete: the value shape, the currency table, the ambiguity rules, the operations and the range rules are settled, and its data changes (a country adopting the euro) are rare, additive refreshes. It has its own subpath because it has its own types and operations. Its region data (each region's currency and where it writes the symbol) is generated by its own script, `scripts/generate-money-data.ts`.
 
 Money is **not** a quantity. Converting currencies has no fixed factor: it needs exchange rates, which are external data that change over time.
 
@@ -362,7 +362,7 @@ type Money<C extends string = string> = { minorUnits: number; currency: C }; // 
 Opt-in, in their own subpath, with the same status as quantity operations. Unlike quantities, money keeps its arithmetic: the currency and safe-integer checks, rounding modes and loss-free splitting are exactly what apps get wrong on their own, and money has no affine or non-linear cases to rule on.
 
 ```ts
-import { add, subtract, compare, scale, allocate, convert } from '@quanto/money';
+import { add, subtract, compare, scale, allocate, convert } from 'quanto/money';
 ```
 
 - `add`, `subtract` and `compare` require the same currency. Mismatches always throw at runtime, and are also a type error when both currencies are literal types (`Money<'USD'>` vs `Money<'EUR'>`). Values typed as plain `Money` are only checked at runtime.
@@ -438,15 +438,15 @@ Write a custom codec for any of these:
 
 Bundled data is keyed at its natural level, and each level resolves on its own. A locale is never swapped wholesale for a different one because its language lacks data: `en-AU` must not become `en-US` and read `03/04` as March 4.
 
-The core resolves a tag to a **language and region**, and owns the data every codec needs. Each domain package owns its own data, keyed the same way and looked up with `lookupRegional`, so adding a language's month names is a `@quanto/datetime` release that doesn't touch the core.
+The core resolves a tag to a **language and region**, and owns the data every codec needs. Each domain owns its own data (money's currencies, dates' orders and names), keyed the same way and looked up with `lookupRegional`, so adding a language's month names is a `@quanto/datetime` release that doesn't touch the core.
 
 | Data | Owned by | Keyed by | Coverage |
 |---|---|---|---|
 | Decimal and grouping separators, grouping pattern | `quanto` | region, with language exceptions (`fr-CA`, `de-CH`, …) | Every region |
 | Measurement system (`us`, `uk`, `metric`) | `quanto` | region: US → `us`, GB → `uk`, everything else → `metric` | Every region |
 | Likely region of a language | `quanto` | language | About 90 languages |
-| Currency | `@quanto/money` | region | Every region |
-| Currency symbol position (before or after the amount) | `@quanto/money` | region, with language exceptions | Every region |
+| Currency | `quanto/money` | region | Every region |
+| Currency symbol position (before or after the amount) | `quanto/money` | region, with language exceptions | Every region |
 | Numeric date order (MDY, DMY, YMD) | `@quanto/datetime` | region, with language exceptions | Every region |
 | Hour cycle (12- or 24-hour clock) | `@quanto/datetime` | region, with language exceptions | Every region |
 | Month and weekday names | `@quanto/datetime` | language | The v1 languages (open question). English names are accepted in every locale, so an unsupported language still parses English names. |
@@ -482,15 +482,15 @@ Default formatters use only bundled data, so they're deterministic and round-tri
 `quanto/formats` has ready-made formatters for a codec's `format` option:
 
 - **Compound formatters**, from bundled data only, so they're deterministic and round-trip: `feetInches` (`5'11"`, `6'0"`, `11"`), `poundsOunces` (`1 lb 4 oz`), `stonesPounds` (`11 st 4 lb`) and `hoursMinutes` (`2 h 30 min`; days show as hours). The smallest part is rounded to a whole number and carried (`71.6 in` is `6'0"`), leading zero parts are left out, and later zero parts are kept (`6'0"`, `2 lb 0 oz`). Each works with its built-in codec (`length`, `mass`, `duration`); given a unit outside that table, it throws.
-- **`Intl` formatters**, opt-in, for richer output: `intlUnit({ unitDisplay })` in `quanto/formats` (localized unit names: `5 feet`, `5 Fuß`), `intlMoney({ currencyDisplay })` in `@quanto/money` (`12.34 US dollars`), and `intlDate({ dateStyle })`, `intlTime({ timeStyle })` and `intlDateTime({ dateStyle, timeStyle })` in `@quanto/datetime`. They're outside the determinism guarantee and display-only: their output varies between ICU versions and isn't guaranteed to parse back, so a field using one shows raw text for editing (`display="raw"`). `intlMoney` takes decimal places from quanto's bundled table, not Intl's. `intlUnit` covers built-in units that Intl knows, and prints the number and unit ID for the rest. `intlDateTime` shows a date-time's wall-clock time as entered, without its offset. They have no fixtures, since exact output depends on the runtime.
+- **`Intl` formatters**, opt-in, for richer output: `intlUnit({ unitDisplay })` in `quanto/formats` (localized unit names: `5 feet`, `5 Fuß`), `intlMoney({ currencyDisplay })` in `quanto/money` (`12.34 US dollars`), and `intlDate({ dateStyle })`, `intlTime({ timeStyle })` and `intlDateTime({ dateStyle, timeStyle })` in `@quanto/datetime`. They're outside the determinism guarantee and display-only: their output varies between ICU versions and isn't guaranteed to parse back, so a field using one shows raw text for editing (`display="raw"`). `intlMoney` takes decimal places from quanto's bundled table, not Intl's. `intlUnit` covers built-in units that Intl knows, and prints the number and unit ID for the rest. `intlDateTime` shows a date-time's wall-clock time as entered, without its offset. They have no fixtures, since exact output depends on the runtime.
 
 ## Ranges
 
-A range is two values of one codec, entered in one field. The core has the machinery and quantity ranges; each domain package brings its own range function:
+A range is two values of one codec, entered in one field. The core has the machinery and quantity ranges; money and dates bring their own range functions:
 
 ```ts
 import { range } from 'quanto';
-import { moneyRange } from '@quanto/money';
+import { moneyRange } from 'quanto/money';
 import { dateRange } from '@quanto/datetime';
 
 range(length({ defaultUnit: 'ft' })).parse('5-7 ft');  // { start: { value: 5, unit: 'ft' }, end: { value: 7, unit: 'ft' } }
@@ -519,7 +519,7 @@ dateRange(date()).parse('Oct 3-5');
 - **Which split wins:** splits are tried left to right, and the first split with any completion where both sides parse provides the value. If none does, the result carries the issues of the first side that failed, which is the most specific failure (`5-7 kg` reports `unknown_unit`, from `5 kg`). Text with no separator is `unparseable`.
 - **Where ordering is knowable:** quantities (compared in the base unit, with `compare`'s tolerance), money in a single currency, dates, times and local date-times (as strings), and date-times (as instants). A range built with `defineRange` and no `inOrder` counts every reading as in order.
 - **Formatting** prints both sides in full, separated by ` – ` (an en dash with spaces): `5 ft – 7 ft`, `$10.00 – $20.00`. It reads back under the same `ctx`, even with negative values.
-- Ordering only picks between completions. It isn't enforced: `7-5 ft` parses as typed, and rejecting it is left to the user's schema, which can use `compare` from `quanto/quantity` or `@quanto/money`.
+- Ordering only picks between completions. It isn't enforced: `7-5 ft` parses as typed, and rejecting it is left to the user's schema, which can use `compare` from `quanto/quantity` or `quanto/money`.
 - Open-ended ranges (`5ft+`, `under 10 kg`) are deferred.
 
 ## The stored envelope
@@ -578,16 +578,15 @@ import { feetInches } from 'quanto/formats';
   - `quanto`: core. `defineCodec`; `formatWithFallback`; the primitives `normalize`, `readNumber` and `formatNumber`; `merge`, `optional`, `range` and `defineRange`; and the types `Codec`, `CodecOptions`, `Ctx`, `ResolvedCtx`, `Locale`, `ParseResult`, `ParseOutcome`, `ParseContext`, `Issue`, `IssueCode`, `QuantoValue`, `Quantity`, `Range`, `RangeRules`, `RangeProposal` and `UnitTable`.
   - `quanto/codecs`: `quantity` and the `NumberSyntax` type; the built-in quantity codecs and their unit tables (`length`/`lengthUnits`, `mass`/`massUnits`, …); `percent`.
   - `quanto/quantity`: quantity operations (`convert`, `compare`).
+  - `quanto/money`: `money`, the `Money` type, `add`, `subtract`, `compare`, `scale`, `convert`, `allocate`, `roundWithMode`, `moneyRange`, `intlMoney`, and the currency data (`isKnownCurrency`, `minorDigits`).
   - `quanto/formats`: ready-made formatters (`feetInches`, `poundsOunces`, `stonesPounds`, `hoursMinutes`, `intlUnit`) and the `Formatter<T>` type.
   - `quanto/testing`: `roundTrip` and `runFixtures`, the generic fixture runner.
-- **Repository layout.** A bun workspace: `packages/quanto` (the core, npm `quanto`), `packages/money` (`@quanto/money`), `packages/datetime` (`@quanto/datetime`) and `apps/site` (the website). The private root holds the shared dev tooling (TypeScript, tsdown, vitest, `tsconfig.base.json`, one `vitest.config.ts` for every package) and the repo docs (`DESIGN.md`, `AGENTS.md`, `PRIOR_ART.md`). `bun run typecheck`, `bun run build` and `bun run test` at the root cover every package.
+- **Repository layout.** A bun workspace: `packages/quanto` (the core, npm `quanto`), `packages/datetime` (`@quanto/datetime`) and `apps/site` (the website). The private root holds the shared dev tooling (TypeScript, tsdown, vitest, `tsconfig.base.json`, one `vitest.config.ts` for every package) and the repo docs (`DESIGN.md`, `AGENTS.md`, `PRIOR_ART.md`). `bun run typecheck`, `bun run build` and `bun run test` at the root cover every package.
 - UI adapters are separate packages (web React first, React Native later). The core package never imports them.
-- **Domain packages** build on the core:
-  - **`@quanto/money`** (`packages/money`): `money`, the `Money` type, `add`, `subtract`, `compare`, `scale`, `convert`, `allocate`, `roundWithMode`, `moneyRange`, `intlMoney`, and the currency data (`isKnownCurrency`, `minorDigits`).
-  - **`@quanto/datetime`** (`packages/datetime`): `date`, `time`, `localDateTime`, `dateTime`, `dateRange`, `intlDate`, `intlTime`, `intlDateTime`.
-- **Core or package?** Simple first-party codecs go in the core: a unit table, or a small parser that's settled (`length`, `dataSize`, `percent`, `pace` with its number syntax). Anything complex, heavy, or likely to change in breaking ways gets a dedicated package (`@quanto/datetime`: a large heuristic grammar; `@quanto/money`: currency tables, ambiguous symbols, its own operations).
-- **Why packages.** Not bundle size: everything tree-shakes. A complex domain's parsing rules change on their own schedule, and parse changes affect replay (see [Parse context](#parse-context)). A package lets that domain evolve without moving the core's version, while the core stays small and steady.
-- **How they're built.** Every domain package uses **only quanto's public API**, imported by name (`quanto`, `quanto/codecs`, `quanto/quantity`, `quanto/testing`), exactly as a custom codec would. That keeps Principle 5 honest: anything a package needs that isn't public is a gap in the API, not a reason to reach into internals.
+- **`@quanto/datetime`** (`packages/datetime`) is the one separate package: `date`, `time`, `localDateTime`, `dateTime`, `dateRange`, `intlDate`, `intlTime`, `intlDateTime`.
+- **Core or package?** First-party codecs whose behaviour is complete and settled go in the core: unit tables (`length`, `dataSize`), small parsers (`percent`, `pace` with its number syntax), and finished domains with their own subpath (`quanto/money`). A domain that's intentionally incomplete or still evolving, so its parse results are expected to change between releases, gets a dedicated package: `@quanto/datetime`, whose grammar covers the common case with a list of omissions that will shrink.
+- **Why packages.** Not bundle size: everything tree-shakes. An evolving domain's parsing rules change on their own schedule, and parse changes affect replay (see [Parse context](#parse-context)). A package lets that domain evolve without moving the core's version, while the core stays steady.
+- **How they're built.** A separate package uses **only quanto's public API**, imported by name (`quanto`, `quanto/codecs`, `quanto/quantity`, `quanto/testing`), exactly as a custom codec would. That keeps Principle 5 honest: anything a package needs that isn't public is a gap in the API, not a reason to reach into internals.
   - `quanto` is a peer dependency (`workspace:^` in the repo, replaced by the real version on publish). In the repo, `quanto` resolves to the core's source (tsconfig paths for typechecking, a vitest alias for tests), so nothing needs building first.
   - Their codecs follow the same rules as the core's: extensive fixtures, round-trip properties, and `DESIGN.md` as the source of truth.
 - Nothing is attached to the component or a namespace object.

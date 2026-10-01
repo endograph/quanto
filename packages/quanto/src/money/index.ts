@@ -1,8 +1,8 @@
-// Money for quanto: the money codec, operations, ranges and an Intl formatter, built only on quanto's
-// public API. See the repository's DESIGN.md, "Money".
+// quanto/money: the money codec, the Money type, operations, ranges and an Intl formatter. See DESIGN.md,
+// "Money".
 
-export { money } from './money';
-export type { MoneyOptions } from './money';
+export { money } from './codec';
+export type { MoneyOptions } from './codec';
 export type { Money } from './types';
 export { isKnownCurrency, minorDigits } from './currencies';
 export { add, allocate, compare, convert, roundWithMode, scale, subtract } from './operations';

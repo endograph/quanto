@@ -4,8 +4,8 @@ export type MeasurementSystem = 'us' | 'uk' | 'metric';
 
 /**
  * A resolved locale: the language and region a tag stands for, and the conventions every codec needs.
- * Domain data (currencies, date order, month names, …) belongs to the domain packages, which look it up
- * by `region` and `language`. See DESIGN.md, Locales.
+ * Domain data (currencies, date order, month names, …) belongs to its domain (`quanto/money`,
+ * `@quanto/datetime`), which looks it up by `region` and `language`. See DESIGN.md, Locales.
  */
 export interface Locale {
   /** The canonicalized tag, as recorded in `context.locale`. */
@@ -48,8 +48,8 @@ export function canonicalizeTag(tag: string): string {
 
 /**
  * Looks up a row in region-keyed data with language exceptions: the `language-region` row if there is
- * one, otherwise the region's. Domain packages use it for their own tables, so every package resolves
- * a locale the same way.
+ * one, otherwise the region's. Domains and custom codecs use it for their own tables, so every codec
+ * resolves a locale the same way.
  */
 export function lookupRegional<Row>(locale: Locale, regions: Readonly<Record<string, Row>>, exceptions?: Readonly<Record<string, Row>>): Row | undefined {
   return exceptions?.[`${locale.language}-${locale.region}`] ?? regions[locale.region];

@@ -1,4 +1,4 @@
-import { lookupRegional, type Locale } from 'quanto';
+import { lookupRegional, type Locale } from '../locale';
 import { REGION_CURRENCY, SYMBOL_POSITION, SYMBOL_POSITION_EXCEPTIONS } from './regions';
 
 /** The currency of the locale's region (ISO 4217), if it has one. */
