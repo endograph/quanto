@@ -91,13 +91,13 @@ export function parseNow(now: string): { date: CivilDate; time: CivilTime; offse
 }
 
 /**
- * Moves the date part of an ISO date, local date-time or date-time value forward by a day or a year,
+ * Moves the date part of an ISO date, local date-time or date-time value forward by a day, a week or a year,
  * keeping the rest. Undefined if the result isn't a real date (Feb 29 plus a year).
  */
-export function rollIso(value: string, by: 'day' | 'year'): string | undefined {
+export function rollIso(value: string, by: 'day' | 'week' | 'year'): string | undefined {
   const date = parseIsoDate(value.slice(0, 10));
   if (!date) return undefined;
-  const next = by === 'day' ? addDays(date, 1) : { ...date, y: date.y + 1 };
+  const next = by === 'day' ? addDays(date, 1) : by === 'week' ? addDays(date, 7) : { ...date, y: date.y + 1 };
   return isValidDate(next) ? isoDate(next) + value.slice(10) : undefined;
 }
 

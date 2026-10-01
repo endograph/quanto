@@ -6,7 +6,7 @@ type Sides = readonly [string, string];
 type Strategy = (left: string, right: string) => RangeProposal<string>[];
 
 /** A proposal whose end may roll forward a day or a year if the range comes out of order. */
-const as = (sides: Sides, roll?: 'day' | 'year'): RangeProposal<string> =>
+const as = (sides: Sides, roll?: 'day' | 'week' | 'year'): RangeProposal<string> =>
   roll ? { sides, adjustEnd: (end) => rollIso(end, roll) } : { sides };
 
 const dedupe = (proposals: RangeProposal<string>[]): RangeProposal<string>[] => {
@@ -23,14 +23,17 @@ const YEAR = /(?<!\d)\d{4}(?!\d)/;
 const DAY_ONLY = /^(\d{1,2}(?:st|nd|rd|th)?)(?:,?\s*(\d{4}))?$/i;
 const DAY_IN_TEXT = /(?<![\d:])\d{1,2}(?:st|nd|rd|th)?(?![\d:])/i;
 const hasMonthName = (side: string): boolean => /\p{L}{3,}/u.test(side) && !/^(?:today|tomorrow|yesterday)$/i.test(side.trim());
+/** A weekday with no date: `fri`, `next fri`, `Freitag`. */
+const isWeekday = (side: string): boolean =>
+  /^(?:(?:this|next|last)\s+)?\p{L}+\.?$/iu.test(side.trim()) && !/^(?:today|tomorrow|yesterday)$/i.test(side.trim());
 
 /**
  * A side with only a day number borrows the other side's month and year (`Oct 3-5`); a side with no
- * year borrows the other's (`Oct 30 - Nov 2, 2027`). With no year on either side, the end may roll
- * into the next year (`Dec 30 - Jan 2`).
+ * year borrows the other's (`Oct 30 - Nov 2, 2027`). If the range comes out backwards, the end rolls
+ * forward: a year for two dates with day numbers and no years (`Dec 30 - Jan 2`), a week for an end
+ * that's a bare weekday (`next mon - fri`). Other ranges are kept as typed.
  */
 const date: Strategy = (left, right) => {
-  const roll = !YEAR.test(left) && !YEAR.test(right) ? 'year' : undefined;
   let l = left;
   let r = right;
   // A day (and maybe a year) alone takes the other side's text with its own day: "Oct 3-5, 2027".
@@ -42,6 +45,8 @@ const date: Strategy = (left, right) => {
   const rd = DAY_ONLY.exec(r);
   if (ld && !rd && hasMonthName(r)) l = withDay(ld, r);
   else if (rd && !ld && hasMonthName(l)) r = withDay(rd, l);
+  const datedWithoutYear = (side: string): boolean => DAY_IN_TEXT.test(side) && !YEAR.test(side);
+  const roll = datedWithoutYear(l) && datedWithoutYear(r) ? 'year' : isWeekday(right) ? 'week' : undefined;
   const withYears: Sides = [l, r];
   const ly = YEAR.exec(l)?.[0];
   const ry = YEAR.exec(r)?.[0];
