@@ -30,3 +30,11 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run check
       - run: bun run build
+      # Lint the tarballs exactly as they'd be published: package.json and exports (publint), and type
+      # resolution for ESM consumers (are the types wrong).
+      - run: bun scripts/pack.ts "$RUNNER_TEMP/packs"
+      - run: |
+          for t in "$RUNNER_TEMP"/packs/*.tgz; do
+            bunx publint@0.3.24 "$t"
+            bunx @arethetypeswrong/cli@0.18.5 "$t" --profile esm-only
+          done

@@ -1,6 +1,6 @@
 # quanto-datetime
 
-Dates and times for [quanto](../quanto/README.md): `2026-10-02`, `Oct 2`, `03/04/2026`, `tomorrow 3pm`, `next fri` and `3:30 p.m.` parse into ISO 8601 strings.
+Dates and times for [quanto](https://github.com/endograph/quanto/blob/main/packages/quanto/README.md): `2026-10-02`, `Oct 2`, `03/04/2026`, `tomorrow 3pm`, `next fri` and `3:30 p.m.` parse into ISO 8601 strings.
 
 ```ts
 import { date, dateTime, dateRange } from 'quanto-datetime';
@@ -12,7 +12,7 @@ dateRange(date()).parse('Oct 3-5', { now: '2026-09-30T14:02:11-04:00' });
 ```
 
 - **Codecs**: `date()` (`YYYY-MM-DD`), `time()` (`HH:MM:SS`), `localDateTime()` and `dateTime()` (with the UTC offset it was entered in).
-- **Common forms only.** The grammar and its deliberate omissions (month arithmetic, time zone names, …) are listed in the repository's `DESIGN.md`; anything else is a custom codec.
+- **Common forms only.** The grammar and its deliberate omissions (month arithmetic, time zone names, …) are listed in the repository's [`DESIGN.md`](https://github.com/endograph/quanto/blob/main/DESIGN.md); anything else is a custom codec.
 - **English month and weekday names are built in.** Other languages are opt-in data: `es`, `fr`, `de`, `it`, `pt` and `nl` from `quanto-datetime/names`, or your own `Names` object.
 
   ```ts

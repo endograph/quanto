@@ -2,11 +2,11 @@
 
 Turn messy human text into well-typed values and back: `5'11"`, `180cm` and `1,8 m` all parse into the same typed length, which can be converted, compared and formatted. The same idea covers weights, durations, temperatures, percentages and custom types.
 
-Pre-release. The design and its open questions are in the repository's `DESIGN.md`. Money is in `quanto/money`, and dates and times in [`quanto-datetime`](../datetime/README.md).
+Pre-release. The design and its open questions are in the repository's [`DESIGN.md`](https://github.com/endograph/quanto/blob/main/DESIGN.md). Money is in `quanto/money`, and dates and times in [`quanto-datetime`](https://github.com/endograph/quanto/blob/main/packages/datetime/README.md).
 
 ## Using quanto
 
-Read this before using quanto in an app. To write a codec, read [AUTHORING.md](./AUTHORING.md).
+Read this before using quanto in an app. To write a codec, read [AUTHORING.md](https://github.com/endograph/quanto/blob/main/packages/quanto/AUTHORING.md).
 
 ### Parse, then check `ok`
 

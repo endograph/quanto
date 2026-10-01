@@ -1,8 +1,32 @@
 {
   "name": "quanto",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Turn messy human text into well-typed values and back: lengths, weights, durations, money and custom types. Dates are in quanto-datetime.",
   "license": "MIT",
+  "author": "rt2zz",
+  "homepage": "https://github.com/endograph/quanto#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/endograph/quanto.git",
+    "directory": "packages/quanto"
+  },
+  "bugs": {
+    "url": "https://github.com/endograph/quanto/issues"
+  },
+  "keywords": [
+    "parse",
+    "format",
+    "input",
+    "units",
+    "quantity",
+    "measurement",
+    "money",
+    "currency",
+    "locale",
+    "i18n",
+    "standard-schema",
+    "forms"
+  ],
   "type": "module",
   "sideEffects": false,
   "files": [

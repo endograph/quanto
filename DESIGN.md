@@ -1,6 +1,6 @@
 # quanto — Design
 
-Status: draft, pre-implementation. This document records decisions made so far and the questions still open.
+Status: implemented, pre-release (0.1.0). This document is the source of truth for the design: the decisions made, and the questions still open.
 
 ## What this is
 
@@ -594,6 +594,7 @@ import { feetInches } from 'quanto/formats';
   - `quanto` is a peer dependency (`workspace:^` in the repo, replaced by the real version on publish). In the repo, `quanto` resolves to the core's source (tsconfig paths for typechecking, a vitest alias for tests), so nothing needs building first.
   - Their codecs follow the same rules as the core's: extensive fixtures, round-trip properties, and `DESIGN.md` as the source of truth.
 - Nothing is attached to the component or a namespace object.
+- **Releasing.** `quanto` and `quanto-datetime` release in lockstep, from 0.1.0. To release: bump both versions, run `bun install` (bun fills `workspace:^` ranges in from the lockfile), commit, and push a `vX.Y.Z` tag. `.github/workflows/publish.yml` then checks and builds everything, packs with `scripts/pack.ts` (which fails on mismatched versions or a stale peer range), lints the tarballs (publint, are-the-types-wrong) and publishes with npm provenance, `quanto` first. It needs an `NPM_TOKEN` repository secret. CI runs the same pack and lint steps on every push.
 - **Consumer reference.** The README's "Using quanto" section and the TSDoc on the exported types are the reference for apps and agents using quanto. The README ships in every npm package, so it's at `node_modules/quanto/README.md`; the TSDoc reaches agents at the point of use, through the published `.d.ts` files. The storage rules (store `{ raw, value }`, `value` is authoritative, never re-parse `raw`, validate with `codec.schema`, `context` is opt-in) must appear in both, in particular on `ParseResult`, `QuantoValue`, `ParseContext` and `Codec.schema`. A SKILL.md, if one is ever shipped, is generated from the README, never the source of truth.
 - The package ships an `AUTHORING.md` (see below) so it is discoverable inside `node_modules`. It is deliberately not called `AGENTS.md`: the repo's root `AGENTS.md` holds instructions for agents working on quanto itself and is not shipped.
 
