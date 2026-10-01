@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "build": "bun run --filter './packages/*' build",
-    "typecheck": "bun run --filter './packages/*' typecheck",
+    "typecheck": "bun run --filter './packages/*' --filter './apps/*' typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "bun run typecheck && bun run test",

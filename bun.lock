@@ -12,6 +12,10 @@
     },
     "apps/site": {
       "name": "@quanto/site",
+      "dependencies": {
+        "@quanto/datetime": "workspace:*",
+        "quanto": "workspace:*",
+      },
     },
     "packages/datetime": {
       "name": "@quanto/datetime",

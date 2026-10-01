@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "isolatedDeclarations": false,
+    "declaration": false,
+    "noEmit": true,
+    // The site imports the packages by name, like any app. In the repo they resolve to source, so
+    // nothing needs building first.
+    "paths": {
+      "quanto": ["../../packages/quanto/src/index.ts"],
+      "quanto/*": ["../../packages/quanto/src/*/index.ts"],
+      "@quanto/datetime": ["../../packages/datetime/src/index.ts"],
+      "@quanto/datetime/*": ["../../packages/datetime/src/*/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

@@ -1,11 +1,11 @@
-# Publishes apps/site to GitHub Pages. The site is plain HTML, so there is no
-# build step: the folder is uploaded as-is.
+# Builds apps/site and publishes it to GitHub Pages. The site bundles the packages
+# from source, so it redeploys when they change too.
 name: Pages
 
 on:
   push:
     branches: [main]
-    paths: ['apps/site/**', '.github/workflows/pages.yml']
+    paths: ['apps/site/**', 'packages/quanto/src/**', 'packages/datetime/src/**', 'bun.lock', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -25,9 +25,14 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.10
+      - run: bun install --frozen-lockfile
+      - run: bun run --filter @quanto/site build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: apps/site
+          path: apps/site/dist
       - id: deployment
         uses: actions/deploy-pages@v4
