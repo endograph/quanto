@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="favicon.svg" alt="quanto" width="96" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/mark-dark.svg" />
+    <img src=".github/assets/mark-light.svg" alt="quanto" width="72" />
+  </picture>
 </p>
 
 <p align="center">
