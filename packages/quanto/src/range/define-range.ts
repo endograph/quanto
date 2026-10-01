@@ -69,18 +69,26 @@ export function defineRange<T>(codec: Codec<T>, rules?: RangeRules<T>, options?:
       return { ok: false, issues: [{ code: 'unparseable', message: `Enter a range, like "5-7" or "5 to 7".` }] };
     }
 
+    // Every parse in one range sees the same clock: once a parse reads it, later parses get that
+    // reading as ctx.now, so both sides (and every completion) use one "now".
+    let pinned: Ctx | undefined = ctx;
+    const pin = (result: ParseResult<T>): void => {
+      if (pinned?.now === undefined && result.ok && result.context.now !== undefined) pinned = { ...ctx, now: result.context.now };
+    };
     let firstIssues: readonly Issue[] | undefined;
     for (const [left, right] of candidates) {
       // Parse every proposal, then prefer: in order as parsed; in order after adjusting the end
       // (Dec 30 - Jan 2, Oct 3 10pm-1am); and finally the first that parsed at all.
       const parsed: Array<{ a: ParseResult<T> & { ok: true }; b: ParseResult<T> & { ok: true }; adjustEnd: RangeProposal<T>['adjustEnd'] }> = [];
       for (const { sides: [l, r], adjustEnd } of proposals(left, right, session.ctx)) {
-        const a = codec.parse(l, ctx);
+        const a = codec.parse(l, pinned);
+        pin(a);
         if (!a.ok) {
           firstIssues ??= a.issues;
           continue;
         }
-        const b = codec.parse(r, ctx);
+        const b = codec.parse(r, pinned);
+        pin(b);
         if (!b.ok) {
           firstIssues ??= b.issues;
           continue;

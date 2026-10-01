@@ -221,6 +221,7 @@ const heightOrWeight = merge([length(), mass()]);
 - **Its `id` is derived**, so it is deterministic: `merge(length,mass)`, from the inner ids in order. Nested merges flatten: `merge([merge([a, b]), c])` is the same codec as `merge([a, b, c])`, and tags are always leaf ids. Custom ids can't contain parentheses or commas, so derived ids never collide with them.
 - **Empty input** is one `empty` issue, not one per codec.
 - **`context`** combines the contexts of the codecs that parsed: the locale, and `now` if any of them read the clock.
+- **One clock per parse.** Without `ctx.now`, the first member to read the machine clock pins that reading: later members get it as `ctx.now`, so they all agree. `defineRange` does the same across both sides and every completion, so `today-tomorrow` can't straddle midnight.
 - **Types:** the value is `Tagged<T> = { codec: string; value: T }`, where `T` is the union of the leaf codecs' value types. Codec ids are plain strings at the type level, so narrowing on `codec` doesn't narrow `value`; check the value's shape or cast after checking the tag. The merged codec exposes its leaf codecs as `codecs`.
 - Merge is expected to be uncommon. Custom codecs are the primary extension mechanism.
 
@@ -324,7 +325,7 @@ const height = length({
   - Only the first component carries a sign, and it applies to the whole: `-5 ft 6 in` is -66 in.
   - A trailing bare number takes the previous unit's `subunit`; without one it's unparseable.
   - Conversions scale decimal factors to integers before dividing, so `5 ft 11 in` is exactly 71 in and 1 in is exactly 25.4 mm. Factors are taken as the decimals they're written as; when the scaled integers would pass 2^53 (`hp`'s 745.69987158227022), conversion falls back to plain division, accurate to float precision.
-- **Unit matching**: the longest alias wins (`miles` before `mi` before `m`), aliases may contain spaces and `/` (`fl oz`, `km/h`), and a word alias can't run into a following letter (`5 ms` is not `5 m` + `s`). A period after a word alias is skipped (`5 ft. 11 in.`). A word that matches no alias is `unknown_unit`; anything else left over is `unparseable`.
+- **Unit matching**: the longest alias wins (`miles` before `mi` before `m`), aliases may contain spaces and `/` (`fl oz`, `km/h`), and a word alias can't run into a following letter (`5 ms` is not `5 m` + `s`). A period after a word alias is skipped (`5 ft. 11 in.`). A word that matches no alias, alone or after a slash (`70 kg` in a length field, `5:30 /yd` for pace), is `unknown_unit`; anything else left over is `unparseable`.
 - Default formatting prints at most 3 fraction digits, then the unit's first alias, separated by a space unless the alias is `'`, `"` or `°` (`45°`, `30'`).
 - Built-in quantity codecs in `quanto/codecs`: `length`, `mass`, `duration`, `temperature`, `volume`, `area`, `speed` (its own unit table, not derived), `dataSize`, `dataRate`, `energy`, `power`, `pressure`, `angle`, `frequency`, `fuelEconomy` and `pace`, each exported alongside its unit table (`lengthUnits`, …). The core also has `percent`. Money and dates are in their own packages.
 - `percent` is a plain number in percentage points (`12.5`, not `0.125`): a bare number, or one followed by `%`, `percent`, `per cent` or `pct`. A bare fraction (`3/4`) is unparseable, since it could mean 75% or 0.75%; `3/4%` is fine. Ratios (`3 in 10`), basis points and per mille are left to custom codecs.
@@ -650,14 +651,14 @@ interface Codec<T> {                 // v1, unchanged
   async?: false;                     // absent means sync, so every v1 codec stays valid
   parse(text: string, ctx?: Ctx): ParseResult<T>;
   format(value: T, ctx?: Ctx): string;
-  // id, kind, schema…
+  // id, schema…
 }
 
 interface AsyncCodec<T> {
   async: true;
   parse(text: string, ctx?: Ctx): Promise<ParseResult<T>>;
   format(value: T, ctx?: Ctx): Promise<string>;
-  // id, kind, schema…
+  // id, schema…
 }
 ```
 
@@ -700,6 +701,7 @@ Decided in principle, not in v1:
 - **Sub-minor-unit money** (`$3.459`): an optional `precision` option on the money codec.
 - **Calendar durations** (`2 months`): a separate codec with an ISO 8601 duration value (`P2M`).
 - **Open-ended ranges** (`5ft+`, `under 10 kg`).
+- **Ranges over a merge** (`5-7 kg` against `merge([length(), mass()])`): `range()` takes a quantity codec, and a merged codec has no single unit table. Dropped on purpose when `range()` became quantity-only; `defineRange(merged, rules)` with custom rules covers it if needed.
 - **Gas mark** (`gas mark 4`): the number follows the unit, and only a few discrete marks exist, so it's a custom codec rather than a function unit.
 - **`auto`**, an "accept anything" codec: a merge of all built-ins plus a text fallback. Its merge order and what bare numbers mean are undecided.
 - **Agent tooling** beyond the basics above: an `explain(codec, text, ctx)` trace, a CLI with JSON output, a `new-codec` scaffold, and JSON Schema exports for the value shapes.

@@ -40,8 +40,11 @@ export function merge<const Cs extends readonly Codec<unknown>[]>(codecs: Cs): M
     startSession(ctx);
     const successes: Array<{ value: Tagged<T>; context: ParseContext }> = [];
     const issues: Issue[] = [];
+    // Every member sees the same clock: once one reads it, later members get that reading as ctx.now.
+    let pinned: Ctx | undefined = ctx;
     for (const m of members) {
-      const result = m.parse(text, ctx);
+      const result = m.parse(text, pinned);
+      if (pinned?.now === undefined && result.ok && result.context.now !== undefined) pinned = { ...ctx, now: result.context.now };
       if (result.ok) successes.push({ value: { codec: m.id, value: result.value as T }, context: result.context });
       else issues.push(...result.issues.map((issue) => ({ ...issue, codec: m.id })));
     }

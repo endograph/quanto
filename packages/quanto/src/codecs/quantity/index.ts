@@ -40,7 +40,6 @@ export interface QuantityOptions<U extends string, C extends U = U> extends Code
   readonly canonicalUnit?: C | undefined;
 }
 
-/** A quantity codec. It carries its unit table, which the operations in `quanto/quantity` use. */
 /**
  * How a quantity codec reads and prints its numbers. The default is `readNumber` and `formatNumber`;
  * `pace` reads `5:30` as 330 seconds. `read` returns the value in the unit's own terms, or undefined
@@ -56,6 +55,7 @@ const DEFAULT_SYNTAX: NumberSyntax = {
   format: (value, ctx) => formatNumber(value, ctx),
 };
 
+/** A quantity codec. It carries its unit table, which the operations in `quanto/quantity` use. */
 export interface QuantityCodec<U extends string, C extends U = U> extends Codec<Quantity<C>> {
   readonly units: Readonly<Record<U, UnitDefinition>>;
   /** How the codec reads and prints numbers. Range completion uses it to find each side's number. */
@@ -250,8 +250,9 @@ export function quantity<const T extends UnitTable, C extends keyof T & string =
         continue;
       }
       if (pos < s.length) {
-        if (!isLetter(s[pos])) return unparseable(text);
-        const word = /^[\p{L}\p{M}]+/u.exec(s.slice(pos))![0];
+        // A leftover word, or a word after a slash ("/yd"), names a unit this table doesn't have.
+        const word = /^\/?\s*([\p{L}][\p{L}\p{M}]*)/u.exec(s.slice(pos))?.[1];
+        if (word === undefined) return unparseable(text);
         const issue: Issue = { code: 'unknown_unit', message: `"${word}" isn't a unit this field accepts.` };
         return { ok: false, issues: [issue] };
       }
