@@ -21,7 +21,7 @@ The input component (`<QuantoInput />`) is one consumer of this core, shipped as
 5. **One contract, two authors.** Built-in codecs and custom (often LLM-written) codecs use the exact same API and the same fixture requirements. Every built-in codec is defined with `defineCodec` and the exported primitives. Built-ins get no special hooks.
 6. **Explicit over ergonomic.** Agents will write most custom codecs and unit tables, so APIs favor explicitness and good descriptions over brevity.
 7. **Common case only, in the built-ins.** Built-in codecs implement common-sense behaviour with no knobs for edge cases. Anyone who needs different behaviour writes a custom codec, which has full control over parsing, formatting and units.
-8. **Stable once stored.** User ergonomics come first at parse time: parsing may infer from the machine (clock, local offset). Stability is required of what's stored: once `raw` and `value` exist they are the source of truth and are never re-parsed behind the user's back. Given the same text and the same context, parsing gives the same value on every runtime, because the data it needs (currency minor units, month names for supported locales, separators) is bundled rather than read from `Intl`. Default formatting uses the same bundled data; `Intl` is used only by opt-in formatters in `quanto/formats`.
+8. **Stable once stored.** User ergonomics come first at parse time: parsing may infer from the machine (clock, local offset). Stability is required of what's stored: once `raw` and `value` exist they are the source of truth and are never re-parsed behind the user's back. Given the same text and the same context, parsing gives the same value on every runtime, because the data it needs (currency minor units, month names, separators) is bundled rather than read from `Intl`. Default formatting uses the same bundled data; `Intl` is used only by opt-in formatters in `quanto/formats`.
 9. **Start small.** Ship the minimum contract and build iteratively. Deferred items are listed at the end.
 
 ## Core concepts
@@ -405,7 +405,11 @@ Values are ISO 8601 strings. They're JSON-native and parse losslessly into Tempo
 - Because the parsed value is captured at entry time and stored, relative input is never re-parsed later (see the stored envelope below).
 - Numeric dates follow the region's date order. `03/04/2026` is March 4 in en-US (the default) and 3 April in en-GB and en-AU. Unambiguous forms (`2026-03-04`, `4 Mar`, `13/04`) are accepted in any locale.
 - **Yearless dates** (`4 Mar`, `13/04`) take the year of `ctx.now`, with the same machine default.
-- Month and weekday names come from bundled data for the locale's language, plus English in every locale, not from `Intl`, so results are identical on every runtime.
+- **Month and weekday names: English is built in; other languages are opt-in data.** Each of `date()`, `localDateTime()` and `dateTime()` takes a `names` option: `date({ names: [de] })`. `@quanto/datetime/names` exports name sets for Spanish, French, German, Italian, Portuguese and Dutch (`es`, `fr`, `de`, `it`, `pt`, `nl`), generated from ICU at development time; any other language is just a `Names` object (twelve months and seven weekdays, each a list of accepted forms, plus optional filler words).
+  - **Why opt-in rather than picked from `ctx.locale`.** Opt-in sets tree-shake, and a codec's behaviour changes only when the app changes it: a later release adding a language can't silently change how existing fields parse. Locale-aware numbers stay automatic, because separators matter to every field and don't depend on vocabulary.
+  - **Parsing** accepts the passed sets, in order, then English. Matching ignores case, accents (`fevrier` is `février`) and a trailing period. When a form means two things, months win over weekdays (Spanish, French and Italian `mar` is March; `martes` still works) and earlier sets win over later ones. A set's `fillers` are skipped between parts (`2 de octubre de 2026`), and a period after the day number is accepted (`2. Oktober`).
+  - **Formatting** uses the set whose language matches `ctx.locale`'s language, or English: `2 Okt 2026` in de-DE, still the unambiguous day-month-year form, not the full native style (`2. Okt. 2026`). It round-trips.
+  - **Names are data, grammar is code.** A name set can't add relative words in another language (`mañana`), ordinals (`1er`), or dates that aren't written with names (`2026年10月2日`); those need a custom codec.
 
 ### What the built-in grammar accepts
 
@@ -413,7 +417,7 @@ The four codecs share one grammar, built for the common case. Anything it doesn'
 
 - **ISO:** `2026-10-02`, `2026/10/02`, `2026-10-02T15:00`, `2026-10-02 15:00:30`, with an optional offset (`Z`, `+02:00`, `+0200`). Fractional seconds are dropped.
 - **Numeric dates:** `10/2/2026`, `2.10.26`, `13/04`, with `/`, `.` or `-`, in the region's order. A month over 12 swaps with the day (`13/04` is April 13 everywhere). Regions whose order is YMD read a year-last date as day/month (`03/04/2026` is 3 April in en-CA). Two-digit years fall in the 100 years centred on `now`'s year.
-- **Month names:** `Oct 2`, `October 2nd, 2026`, `2 Oct 2026`, `the 2nd of October`, `Sept 30`, `Oct. 2`, in the locale's language or English. A missing year is `now`'s year, even when that puts the date in the past (`Jan 5`, typed in September, is last January).
+- **Month names:** `Oct 2`, `October 2nd, 2026`, `2 Oct 2026`, `the 2nd of October`, `Sept 30`, `Oct. 2`, in English or any name set passed to the codec. A missing year is `now`'s year, even when that puts the date in the past (`Jan 5`, typed in September, is last January).
 - **Relative dates:** `today`, `tomorrow`, `yesterday`, `in 3 days`, `in a week`, `2 weeks ago`, and weekdays. `fri` and `this fri` are today if today is Friday, otherwise the coming Friday; `next fri` is the first Friday strictly after today; `last fri` is the most recent Friday before today.
 - **Times:** `3pm`, `3 p.m.`, `3p`, `3:30pm`, `15:00`, `15:00:30`, `noon`, `midnight`, `now`. `12am` is 00:00 and `12pm` is 12:00. A bare number (`3`) isn't a time.
 - **Combinations:** a date and a time in either order, with optional `at`, `on` and commas: `tomorrow 3pm`, `3pm tomorrow`, `Oct 2 at 15:00`, `Oct 2, 2026, 3:00 PM`, `fri 9am`.
@@ -438,7 +442,7 @@ Write a custom codec for any of these:
 
 Bundled data is keyed at its natural level, and each level resolves on its own. A locale is never swapped wholesale for a different one because its language lacks data: `en-AU` must not become `en-US` and read `03/04` as March 4.
 
-The core resolves a tag to a **language and region**, and owns the data every codec needs. Each domain owns its own data (money's currencies, dates' orders and names), keyed the same way and looked up with `lookupRegional`, so adding a language's month names is a `@quanto/datetime` release that doesn't touch the core.
+The core resolves a tag to a **language and region**, and owns the data every codec needs. Each domain owns its own data (money's currencies, dates' orders and names), keyed the same way and looked up with `lookupRegional`, so adding a language's month names is a `@quanto/datetime` release that doesn't touch the core (and, being opt-in, doesn't change any existing field).
 
 | Data | Owned by | Keyed by | Coverage |
 |---|---|---|---|
@@ -449,13 +453,13 @@ The core resolves a tag to a **language and region**, and owns the data every co
 | Currency symbol position (before or after the amount) | `quanto/money` | region, with language exceptions | Every region |
 | Numeric date order (MDY, DMY, YMD) | `@quanto/datetime` | region, with language exceptions | Every region |
 | Hour cycle (12- or 24-hour clock) | `@quanto/datetime` | region, with language exceptions | Every region |
-| Month and weekday names | `@quanto/datetime` | language | The v1 languages (open question). English names are accepted in every locale, so an unsupported language still parses English names. |
+| Month and weekday names | `@quanto/datetime` | language | English built in; `es`, `fr`, `de`, `it`, `pt`, `nl` exported as opt-in name sets, passed with the codecs' `names` option. |
 
 - Region data is small (about 250 regions, a few fields each), so it ships complete. Only the language data needs a supported list.
 - Each package generates its data from ICU at development time, with shared helpers in the repo's `scripts/icu.ts`, and commits the output: nothing reads `Intl` at runtime. A date order ICU reports that quanto doesn't support (Kyrgyzstan's YDM) maps by whether the day comes before the month.
 - A tag without a region takes its language's likely region from a small bundled table (`de` → DE, `en` → US). An unknown language with no region resolves to US.
-- So `en-AU` gets English names, DMY dates, AUD and metric, and `pt-BR` gets DMY, `,` decimals and BRL even before Portuguese names ship.
-- `context.locale` records the canonicalized tag, not the resolved data. If Portuguese names ship in a later version, `pt-BR` input that used to fail may start to parse.
+- So `en-AU` gets DMY dates, AUD and metric, and `pt-BR` gets DMY, `,` decimals and BRL; Portuguese month names are one `names: [pt]` away.
+- `context.locale` records the canonicalized tag, not the resolved data. Region data can still change between versions (a country adopting the euro); name sets can't change a codec's behaviour unless the app passes a new one.
 
 ## Locale-aware number parsing
 
@@ -476,7 +480,7 @@ Default formatters use only bundled data, so they're deterministic and round-tri
 - Numbers use the region's bundled separators (`formatNumber`).
 - Quantities print the number and the unit's first alias: `71 in`, `1,8 m`. This works for custom unit tables without any extra data.
 - Money prints exactly the currency's minor digits, and the currency's symbol when that symbol parses back to the same currency under the same `ctx` and codec options, and the ISO code otherwise: `$12.34` for USD in en-US, but `12.34 USD` in en-CA, where `$` means CAD. The symbol goes where the locale puts it (bundled per region, like the separators): `$12.34`, `12,34 €`, `R$12,50`, with a space after a symbol that ends in a letter (`Rp 12,50`). ISO codes always follow the amount: `12.34 CHF`.
-- Dates use unambiguous forms: `Oct 2, 2026` in MDY regions, `2 Oct 2026` in DMY regions (bundled month names; English for languages without bundled names), and ISO `2026-10-02` in YMD regions. Never a numeric day/month order.
+- Dates use unambiguous forms: `Oct 2, 2026` in MDY regions, `2 Oct 2026` in DMY regions (month names from the codec's name set for the locale's language, or English), and ISO `2026-10-02` in YMD regions. Never a numeric day/month order.
 - Times follow the region's hour cycle (bundled, like the separators): `3:00 PM` or `15:00`, with seconds only when they aren't zero. Date-times join the two (`Oct 2, 2026, 3:00 PM`; `2026-10-02 15:00` in YMD regions), and `dateTime()` adds the offset (`… -04:00`), so the instant survives a round trip.
 
 `quanto/formats` has ready-made formatters for a codec's `format` option:
@@ -710,4 +714,3 @@ Decided in principle, not in v1:
 ## Open questions
 
 1. The input component name (`QuantoInput` is a placeholder).
-2. Which languages ship month and weekday names in v1. (Region data ships complete; see [Locales](#locales).)
