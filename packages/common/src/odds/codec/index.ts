@@ -17,6 +17,8 @@ const EVENS = /^(?:evens|evs|even money)$/;
 /** `5/1`, `5-1`, `5:1`, `5 to 1`, then `on` (reversed) or `against`. */
 const FRACTIONAL = /^(\d+)\s*(?:\/|-|:|\s+to\s+)\s*(\d+)(?:\s+(on|against))?$/;
 const PERCENT = /^\s*(?:%|percent|per cent)$/;
+/** A trailing `odds` (`5/1 odds`, `+275 odds`): it says the text is odds, and nothing else reads it. */
+const ODDS_WORD = /\s+odds$/i;
 
 const unparseable = (message: string): ParseOutcome<Odds> => ({ ok: false, issues: [{ code: 'unparseable', message }] });
 
@@ -59,10 +61,11 @@ function read(text: string, ctx: ResolvedCtx, canonicalKind: OddsKind | undefine
 
 /**
  * Betting odds in any notation: fractional (`5/1`, `11/4`, `5 to 1`, `2/1 on`, `evens`), decimal (`6.0`,
- * `3.75`) or American (`+500`, `-200`), and implied probability (`25%`, stored as decimal). The value keeps
- * the notation as written, unless `canonicalKind` is set. A bare whole number of 100 or more (`150`) is
- * `ambiguous`, with the American and decimal readings as alternatives. Formats in the value's notation:
- * `11/4`, `3.75`, `+275`.
+ * `3.75`) or American (`+500`, `-200`), and implied probability (`25%`, stored as decimal), each optionally
+ * followed by `odds` (`5/1 odds`), which settles it in a merge where a date or number would read it. The
+ * value keeps the notation as written, unless `canonicalKind` is set. A bare whole number of 100 or more
+ * (`150`) is `ambiguous`, with the American and decimal readings as alternatives. Formats in the value's
+ * notation: `11/4`, `3.75`, `+275`.
  */
 export function odds<K extends OddsKind = OddsKind>(options?: OddsOptions<K>): Codec<Extract<Odds, { readonly kind: K }>> {
   const canonicalKind = options?.canonicalKind;
@@ -71,13 +74,14 @@ export function odds<K extends OddsKind = OddsKind>(options?: OddsOptions<K>): C
   }
   type V = Extract<Odds, { readonly kind: K }>;
   const parse = (text: string, ctx: ResolvedCtx): ParseOutcome<V> => {
-    const readings = read(text, ctx, canonicalKind);
+    const written = text.trim().replace(ODDS_WORD, '');
+    const readings = read(written, ctx, canonicalKind);
     if (!Array.isArray(readings)) return { ok: false, issues: [readings] };
     const values = readings.map((r) => (canonicalKind ? convert(r, canonicalKind) : r) as V);
     if (values.length === 1) return { ok: true, value: values[0]! };
     return {
       ok: false,
-      issues: [{ code: 'ambiguous', message: `"${text.trim()}" could be American odds or decimal odds. Write +${text.trim()} for American, or ${text.trim()}.0 for decimal.` }],
+      issues: [{ code: 'ambiguous', message: `"${written}" could be American odds or decimal odds. Write +${written} for American, or ${written}.0 for decimal.` }],
       alternatives: values,
     };
   };

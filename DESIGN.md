@@ -512,6 +512,7 @@ type Odds =
 - **Decimal:** an unsigned number above 1 (`6.0`, `3,75` in German). `1.0` and below is unparseable: it would return only the stake.
 - **A bare whole number of 100 or more** (`150`) is `ambiguous`, with the American and decimal readings as alternatives (in that order: decimal odds that long are rare). A decimal point says decimal (`150.0`). In a field with `canonicalKind: 'american'` or `'decimal'`, it's read in that notation.
 - **Implied probability:** `25%`, `25 percent`, between 0 and 100 exclusive, stored as decimal (`4`). There's no probability notation to store, since odds fields show prices.
+- **A trailing `odds`** (`5/1 odds`, `+275 odds`, `70 odds`) is allowed after any of them. It isn't a unit and isn't stored: it says the text is odds, so in a merge, where `11/4` is a date, `+275` a number and `16:9` a ratio, those codecs fail on it and odds reads it.
 - Left out: the Hong Kong, Malay and Indonesian notations, statistical odds (`1:4 in favour`; use `ratio`), and odds ratios (a `number`).
 
 ### Formatting

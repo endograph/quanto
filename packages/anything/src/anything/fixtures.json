@@ -77,6 +77,11 @@
   {"parse": "+275", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "number", "value": 275}, "approximate": false}, "alternatives": [{"value": {"codec": "odds", "value": {"kind": "american", "value": 275}}, "approximate": false}]},
   {"parse": "16:9", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "ratio", "value": [16, 9]}, "approximate": false}, "alternatives": [{"value": {"codec": "odds", "value": {"kind": "fractional", "numerator": 16, "denominator": 9}}, "approximate": false}]},
   {"parse": "1:2:4", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "ratio", "value": [1, 2, 4]}, "approximate": false}},
+  {"parse": "11/4 odds", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "odds", "value": {"kind": "fractional", "numerator": 11, "denominator": 4}}, "approximate": false}},
+  {"parse": "16:9 odds", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "odds", "value": {"kind": "fractional", "numerator": 16, "denominator": 9}}, "approximate": false}},
+  {"parse": "70 odds", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "odds", "value": {"kind": "decimal", "value": 70}}, "approximate": false}},
+  {"parse": "+275 odds", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "odds", "value": {"kind": "american", "value": 275}}, "approximate": false}},
+  {"parse": "12.5% odds", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "odds", "value": {"kind": "decimal", "value": 8}}, "approximate": false}},
   {"parse": "evens", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "odds", "value": {"kind": "fractional", "numerator": 1, "denominator": 1}}, "approximate": false}},
 
   {"parse": "5-7 ft", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "range(length)", "value": {"start": {"value": 5, "unit": "ft"}, "end": {"value": 7, "unit": "ft"}}}, "approximate": false}, "alternatives": [{"value": {"codec": "range(money)", "value": {"start": {"minorUnits": 500, "currency": "HUF"}, "end": {"minorUnits": 700, "currency": "HUF"}}}, "approximate": false}]},
