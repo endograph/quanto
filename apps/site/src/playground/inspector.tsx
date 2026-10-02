@@ -180,39 +180,48 @@ function Value({ choice, result, locale }: { choice: Choice; result: ParseResult
 }
 
 /** The code that does what the page just did, in an app. */
-function snippet(choice: Choice, text: string, locale: string, result: ParseResult<any>): string {
+function snippet(choice: Choice): string {
+  const name = choice.created ? choice.codec.id : (choice.base ?? choice).id;
   const lines = choice.created
-    ? [`// your codec, from the editor, saved in this browser`, `import codec from './${choice.codec.id}';`, '']
+    ? [`// your codec, from the editor, saved in this browser`, `import codec from './${name}';`, '']
     : choice.base
-      ? [`// your edited ${choice.base.id}, from the editor, saved in this browser`, `import { ${choice.base.id} } from './${choice.base.id}';`, '', `const codec = ${choice.call};`]
+      ? [`// your edited ${name}, from the editor, saved in this browser`, `import { ${name} } from './${name}';`, '', `const codec = ${choice.call};`]
       : [...Object.entries(choice.imports).map(([from, names]) => `import { ${names.join(', ')} } from '${from}';`), '', `const codec = ${choice.call};`];
-  lines.push(`const result = codec.parse(${str(text)}, { locale: '${locale}' });`);
-  if (result.ok && result.context.now) lines.push(`// no ctx.now, so this used the machine clock; result.context records it`);
-  lines.push(`if (result.ok) save({ raw: ${str(text)}, value: result.value });`);
+  lines.push(
+    `const result = codec.parse(userInput);`,
+    '',
+    `result.ok // boolean`,
+    `result.value // typesafe schema validated ${name === 'any' ? '' : `${name} `}value`,
+    `codec.format(result.value) // standardized formatted string representation`,
+  );
   return lines.join('\n');
 }
 
 export function Inspector({ choice, text, locale }: { choice: Choice; text: string; locale: string }) {
   const result = choice.codec.parse(text, { locale });
   return (
-    <div className="inspect">
-      <div className="panes" aria-live="polite">
-        <section className="pane">
-          <p className="overline">
-            <code>
-              codec.parse({str(text)}, {`{ locale: '${locale}' }`})
-            </code>
-          </p>
-          <pre>
-            <Pretty value={result} />
-          </pre>
-        </section>
-        <section className="pane">{result.ok ? <Value choice={choice} result={result} locale={locale} /> : <Issues result={result} />}</section>
-      </div>
-      <div className="code">
-        <p className="overline">in your app</p>
-        <pre>{snippet(choice, text, locale, result)}</pre>
-      </div>
+    <div className="panes" aria-live="polite">
+      <section className="pane">
+        <p className="overline">
+          <code>
+            codec.parse({str(text)}, {`{ locale: '${locale}' }`})
+          </code>
+        </p>
+        <pre>
+          <Pretty value={result} />
+        </pre>
+      </section>
+      <section className="pane">{result.ok ? <Value choice={choice} result={result} locale={locale} /> : <Issues result={result} />}</section>
+    </div>
+  );
+}
+
+/** The codec in an app. It doesn't depend on the text, so it shows as soon as a codec is picked. */
+export function Snippet({ choice }: { choice: Choice }) {
+  return (
+    <div className="code">
+      <p className="overline">in your app</p>
+      <pre>{snippet(choice)}</pre>
     </div>
   );
 }

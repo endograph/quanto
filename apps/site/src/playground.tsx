@@ -10,7 +10,7 @@ import editable from 'codec-sources/ids';
 import { byId, entries, locales } from './catalog';
 import { Omni } from './demo/omni';
 import { glyphs } from './glyphs';
-import { Inspector, type Choice } from './playground/inspector';
+import { Inspector, Snippet, type Choice } from './playground/inspector';
 import { evaluate, load, store, type Compiled, type Saved } from './playground/runtime';
 
 const Editor = lazy(() => import('./playground/editor'));
@@ -79,9 +79,25 @@ function useUrl(id: string, text: string, typing: boolean, locale: string): void
   }, [id, text, typing, locale]);
 }
 
-function Inspect({ choice, text, typing, locale }: { choice: Choice; text: string; typing: boolean; locale: string }) {
-  useUrl(choice.id, text, typing, locale);
-  return <Inspector choice={choice} text={text} locale={locale} />;
+/**
+ * The inspector, for the text once it's settled. While the field types an example it keeps the last one,
+ * hidden, so it doesn't twitch through every half-typed prefix and the page doesn't jump. The snippet
+ * doesn't depend on the text, so it's always there.
+ */
+function Inspect({ choice, text, auto, typing, locale }: { choice: Choice; text: string; auto: boolean; typing: boolean; locale: string }) {
+  useUrl(choice.id, text, auto, locale);
+  const settled = useRef<string>(undefined);
+  if (!typing) settled.current = text;
+  return (
+    <div className="inspect">
+      {settled.current !== undefined && (
+        <div className={typing ? 'settling' : undefined}>
+          <Inspector choice={choice} text={settled.current} locale={locale} />
+        </div>
+      )}
+      <Snippet choice={choice} />
+    </div>
+  );
 }
 
 const params = new URLSearchParams(location.search);
@@ -151,6 +167,9 @@ function Page() {
     } else select('any');
   };
 
+  const tabs = choices.filter((c) => c.featured || c.base || c.created);
+  const more = choices.filter((c) => !c.featured && !c.base && !c.created);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const typing = document.activeElement instanceof HTMLInputElement || document.activeElement instanceof HTMLSelectElement || document.querySelector('dialog[open]');
@@ -159,17 +178,17 @@ function Page() {
         e.preventDefault();
         document.querySelector<HTMLInputElement>('#hero')?.select();
       }
+      // In the order the picker shows them: the tabs, then the menu.
       if (e.key === '[' || e.key === ']') {
-        const i = choices.findIndex((c) => c.id === choice.id) + (e.key === ']' ? 1 : -1);
-        select(choices[(i + choices.length) % choices.length]!.id);
+        const order = [...tabs, ...more];
+        const i = order.findIndex((c) => c.id === choice.id) + (e.key === ']' ? 1 : -1);
+        select(order[(i + order.length) % order.length]!.id);
       }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   });
 
-  const tabs = choices.filter((c) => c.featured || c.base || c.created);
-  const more = choices.filter((c) => !c.featured && !c.base && !c.created);
   const label = (c: Choice) => (c.base ? `${c.base.id} (edited)` : c.created ? c.codec.id : c.id);
 
   return (
@@ -253,9 +272,9 @@ function Page() {
             initial={initial}
             display={display}
             restoreOnEdit={restoreOnEdit}
-            inspect={(value, typing) => {
+            inspect={(value, auto, typing) => {
               text.current = value;
-              return <Inspect choice={choice} text={value} typing={typing} locale={locale} />;
+              return <Inspect choice={choice} text={value} auto={auto} typing={typing} locale={locale} />;
             }}
           />
         </div>
@@ -275,7 +294,6 @@ function Page() {
       )}
 
       <footer>
-        <span>Every result on this page comes from the real packages. Pre-release.</span>
         <span className="keys">
           <kbd>/</kbd> focus · <kbd>[</kbd> <kbd>]</kbd> switch codec
         </span>

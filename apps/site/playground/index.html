@@ -119,9 +119,29 @@
   .alts { margin-top: 26px; }
   .alts p:not(.overline) { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
 
-  .code { margin-top: 44px; padding: 20px 22px; background: var(--well); border: 1px solid var(--line); }
+  .code { margin-top: 44px; padding: 20px 22px; background: color-mix(in srgb, var(--well) 90%, transparent); border: 1px solid var(--field-border); }
   .code .overline { margin-bottom: 12px; }
   .code pre { font-size: 13px; }
+  /* On a wide screen the snippet stays in view, pinned to the bottom of the window but never below the grid:
+     the grid fills the page down to the footer, and the inspector fills the grid, so the snippet can sit at
+     its foot and stick there while the results scroll past. */
+  @media (min-width: 821px) {
+    #root, #root > div { display: flex; flex: 1; flex-direction: column; }
+    .hero { display: flex; flex: 1; }
+    .hero-inner { display: flex; flex-direction: column; }
+    .inspect { display: flex; flex: 1; flex-direction: column; }
+    /* The keys stay in view too, at the very bottom, and the snippet docks over them. */
+    body { --foot: 58px; }
+    .hero { border-bottom: 0; }
+    .hero-inner { padding-bottom: 0; }
+    footer { position: sticky; bottom: 0; z-index: 2; box-sizing: border-box; height: var(--foot); align-items: center; padding-block: 0; border-top: 1px solid var(--line); background: var(--paper); }
+    /* The negative margin lets it sink past the grid's foot, onto the footer, to the bottom of the window. */
+    .code { position: sticky; bottom: 0; z-index: 3; max-height: 50svh; margin: auto 0 calc(-1 * var(--foot)); overflow-y: auto; }
+    .inspect > :not(.code) { margin-bottom: 44px; }
+  }
+
+  /* While the field types an example, the inspector waits out of sight with the last one. */
+  .settling { visibility: hidden; }
 
   /* The codec editor, a modal over the page. */
   dialog.editor {
@@ -164,7 +184,7 @@
   .editor-actions { display: flex; flex: none; align-items: center; gap: 10px; }
   .editor-actions .btn kbd { padding: 0 4px; border: 1px solid var(--shade); font: 11px/1.4 var(--mono); }
 
-  footer { display: flex; justify-content: space-between; gap: 16px; padding: 20px 28px; color: var(--muted); font: 12px/1.5 var(--mono); }
+  footer { display: flex; justify-content: flex-end; gap: 16px; padding: 20px 28px; color: var(--muted); font: 12px/1.5 var(--mono); }
   kbd { padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px; font: 11px var(--mono); }
 
   @media (max-width: 820px) {

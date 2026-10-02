@@ -31,7 +31,8 @@
 }
 
 * { box-sizing: border-box; }
-html { background: var(--paper); color: var(--ink); font: 16px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+/* Always a scrollbar, so a page that grows past the fold doesn't shift sideways. */
+html { overflow-y: scroll; background: var(--paper); color: var(--ink); font: 16px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
 /* Scrollbars as near to overlay as a page can ask for: thin, on a clear track, so they sit on the page
    rather than in a gutter of their own. */
 * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--shade) 70%, transparent) transparent; }

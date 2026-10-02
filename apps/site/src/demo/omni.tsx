@@ -303,8 +303,11 @@ export function Omni(props: {
   codec?: Codec<any>;
   /** Text to start with, instead of typing the examples. */
   initial?: string | undefined;
-  /** Shown under the field in place of the status, given its text and whether it's typing an example. */
-  inspect?: (text: string, typing: boolean) => ReactNode;
+  /**
+   * Shown under the field in place of the status, given its text, whether it's showing its examples, and
+   * whether it's in the middle of typing one.
+   */
+  inspect?: (text: string, auto: boolean, typing: boolean) => ReactNode;
   display?: Display;
   restoreOnEdit?: boolean;
   /** What it types and offers as chips. */
@@ -325,6 +328,9 @@ export function Omni(props: {
   const ref = useRef<HTMLInputElement>(null);
   // The field types its own examples until someone takes it over. `skip` restarts it on the next one.
   const [auto, setAuto] = useState(initial === undefined);
+  // Mid-example: from clearing the field to committing the text. A field that types its examples
+  // starts out about to.
+  const [typing, setTyping] = useState(initial === undefined);
   useEffect(() => {
     if (initial !== undefined && ref.current) setText(ref.current, initial);
   }, []);
@@ -360,7 +366,10 @@ export function Omni(props: {
       while (on) {
         const pause = due.current === undefined ? BLANK : Math.max(0, due.current - performance.now());
         due.current = undefined;
-        if (!(await type(input, examples[example.current]!, { delay: pause }))) return;
+        setTyping(true);
+        const typed = await type(input, examples[example.current]!, { delay: pause });
+        if (on) setTyping(false);
+        if (!typed) return;
         if (still) return;
         await wait(4500);
         if (!on) return;
@@ -370,6 +379,7 @@ export function Omni(props: {
     return () => {
       on = false;
       stop(input);
+      setTyping(false);
     };
   }, [auto, skip]);
   // Reaching for a tool stops the typing, and keeps the text it's for.
@@ -473,7 +483,7 @@ export function Omni(props: {
         )}
       </div>
       <Try field="hero" codec={codec} texts={examples} onRun={() => setAuto(false)} />
-      {inspect ? inspect(field.inputProps.value, auto) : <Status field={field} codec={codec} />}
+      {inspect ? inspect(field.inputProps.value, auto, auto && typing) : <Status field={field} codec={codec} />}
     </>
   );
 }
