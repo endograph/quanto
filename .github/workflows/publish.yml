@@ -46,16 +46,14 @@ jobs:
             bunx publint@0.3.24 "$t"
             bunx @arethetypeswrong/cli@0.18.5 "$t" --profile esm-only
           done
-      # quanto first: the other packages' peer dependency points at it. @quantojs/anything last: it depends
-      # on the codec packages. A version already on npm is skipped, so a run that failed partway can be re-run.
+      # In the order of scripts/packages.ts, which pack.ts writes to publish.txt. A version already on npm is
+      # skipped, so a run that failed partway can be re-run.
       - run: |
           version=$(node -p "require('./packages/quanto/package.json').version")
-          for name in quanto @quantojs/common @quantojs/datetime @quantojs/geo @quantojs/music @quantojs/sizes \
-            @quantojs/libphonenumber @quantojs/libpostal @quantojs/react @quantojs/anything; do
+          while read -r name tarball; do
             if [ "$(npm view "$name@$version" version 2>/dev/null)" = "$version" ]; then
               echo "$name@$version is already published."
               continue
             fi
-            tarball="$RUNNER_TEMP/packs/$(echo "$name" | sed 's/^@//; s#/#-#')-$version.tgz"
             npm publish "$tarball" --access public
-          done
+          done < "$RUNNER_TEMP/packs/publish.txt"
