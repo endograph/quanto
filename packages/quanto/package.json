@@ -1,6 +1,6 @@
 {
   "name": "quanto",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "The quanto protocol: turn messy human text into well-typed values and back. Codec contracts, definition helpers, context, issues, composition and shared parsing primitives. The codecs are in @quantojs/common.",
   "license": "MIT",
   "author": "rt2zz",

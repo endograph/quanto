@@ -3,13 +3,26 @@
 //
 // Checks: every published package has the same version (quanto and the @quantojs packages release in
 // lockstep), and no tarball still contains a `workspace:` range or a quanto range other than
-// `^<version>`. Bun fills `workspace:^` in from bun.lock, so a stale lockfile after a version bump
+// `^<version>`, or a range on another @quantojs package other than `^<version>`. Bun fills `workspace:^` in from bun.lock, so a stale lockfile after a version bump
 // would otherwise publish a wrong peer range.
 
 import { mkdirSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-const PACKAGES = ['packages/quanto', 'packages/common', 'packages/datetime', 'packages/react', 'packages/libpostal', 'packages/music'];
+// In publish order: quanto first, since every other package's peer dependency points at it, and
+// @quantojs/anything last, since it depends on the codec packages.
+const PACKAGES = [
+  'packages/quanto',
+  'packages/common',
+  'packages/datetime',
+  'packages/geo',
+  'packages/music',
+  'packages/sizes',
+  'packages/libphonenumber',
+  'packages/libpostal',
+  'packages/react',
+  'packages/anything',
+];
 const out = resolve(process.argv[2] ?? 'packs');
 mkdirSync(out, { recursive: true });
 
@@ -31,8 +44,8 @@ for (const { dir, json } of manifests) {
   for (const field of ['dependencies', 'peerDependencies', 'optionalDependencies']) {
     for (const [name, range] of Object.entries<string>(manifest[field] ?? {})) {
       if (range.startsWith('workspace:')) fail(`${tarball} still has ${field}.${name} = "${range}".`);
-      if (name === 'quanto' && range !== `^${version}`) {
-        fail(`${tarball} has ${field}.quanto = "${range}", expected "^${version}". Run bun install after a version bump.`);
+      if ((name === 'quanto' || name.startsWith('@quantojs/')) && range !== `^${version}`) {
+        fail(`${tarball} has ${field}.${name} = "${range}", expected "^${version}". Run bun install after a version bump.`);
       }
     }
   }

@@ -1,6 +1,6 @@
 {
   "name": "@quantojs/geo",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Geographic coordinates for quanto: parse \"40.7128, -74.0060\", degrees, minutes and seconds, plus codes and geohashes into { lat, lng }, and format them back.",
   "license": "MIT",
   "author": "rt2zz",

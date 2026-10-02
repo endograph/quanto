@@ -1,6 +1,6 @@
 {
   "name": "@quantojs/libpostal",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Mailing addresses for quanto, parsed by libpostal: an external codec that turns libpostal's output into a normalized address.",
   "license": "MIT",
   "author": "rt2zz",
