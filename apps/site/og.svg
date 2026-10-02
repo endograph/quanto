@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <!-- The link preview: the mark, as on the favicon, on the site's paper. Sites want a PNG, so after a
+       change, render og.png from this with headless Chrome:
+       "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --hide-scrollbars \
+         --window-size=1200,630 --screenshot="$PWD/og.png" "file://$PWD/og.svg" -->
+  <rect width="1200" height="630" fill="#F7F7F5"/>
+  <g transform="translate(383 84) scale(7)">
+    <path fill="#969696" transform="translate(2 2)" d="M30 6h6l2 2v6l-2 2h-6l-2-2V8zM30 22h6l2 2v10l-2 2H24l-2 2v6l2 2h14l2-2v-6l2-2h6l2 2v14l-4 4H16l-4-4V30l4-4h12v-2z"/>
+    <path fill="#242424" d="M30 6h6l2 2v6l-2 2h-6l-2-2V8zM30 22h6l2 2v10l-2 2H24l-2 2v6l2 2h14l2-2v-6l2-2h6l2 2v14l-4 4H16l-4-4V30l4-4h12v-2z"/>
+  </g>
+</svg>

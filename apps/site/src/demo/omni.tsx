@@ -330,7 +330,9 @@ export function Omni(props: {
   }, []);
   const [skip, setSkip] = useState(0);
   const example = useRef(0);
-  // After `next`, when the first character is due (300ms after the click, however long React takes to
+  // How long the field stays empty between examples, before the first character.
+  const BLANK = 300;
+  // After `next`, when the first character is due (BLANK after the click, however long React takes to
   // get to the typing), once.
   const due = useRef<number | undefined>(undefined);
   const advance = () => {
@@ -344,7 +346,7 @@ export function Omni(props: {
         stop(ref.current);
         setText(ref.current, '');
       }
-      due.current = performance.now() + 300;
+      due.current = performance.now() + BLANK;
       advance();
       setAuto(true);
       setSkip((s) => s + 1);
@@ -356,7 +358,7 @@ export function Omni(props: {
     let on = true;
     void (async () => {
       while (on) {
-        const pause = due.current === undefined ? undefined : Math.max(0, due.current - performance.now());
+        const pause = due.current === undefined ? BLANK : Math.max(0, due.current - performance.now());
         due.current = undefined;
         if (!(await type(input, examples[example.current]!, { delay: pause }))) return;
         if (still) return;

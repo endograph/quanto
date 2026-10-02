@@ -8,7 +8,7 @@ const out = `${dir}/dist`;
 
 await rm(out, { recursive: true, force: true });
 for (const dir of ['demo', 'playground', 'codecs']) await mkdir(`${out}/${dir}`, { recursive: true });
-for (const file of ['quanto.css', 'omni.css', 'favicon.svg']) await cp(`${dir}/${file}`, `${out}/${file}`);
+for (const file of ['quanto.css', 'omni.css', 'favicon.svg', 'og.png']) await cp(`${dir}/${file}`, `${out}/${file}`);
 for (const page of ['index.html', 'demo/index.html', 'playground/index.html', 'codecs/index.html']) await Bun.write(`${out}/${page}`, stamp(await Bun.file(`${dir}/${page}`).text()));
 for (const [name, blob] of await bundle(true)) await Bun.write(`${out}/${name}`, blob);
 
