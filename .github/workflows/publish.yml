@@ -9,7 +9,7 @@ on:
 
 permissions:
   contents: read
-  id-token: write # npm provenance
+  id-token: write # npm trusted publishing and provenance
 
 concurrency:
   group: publish
@@ -24,6 +24,7 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
+      - run: npm install --global npm@11.21.0
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.10
@@ -51,5 +52,3 @@ jobs:
             quantojs-libphonenumber quantojs-libpostal quantojs-react quantojs-anything; do
             npm publish "$RUNNER_TEMP/packs/$name-$version.tgz" --provenance --access public
           done
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
