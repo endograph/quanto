@@ -1,6 +1,6 @@
 {
   "name": "@quantojs/music",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Music for quanto: parse \"A4\", \"B♭3 +15¢\", \"Fis4\", \"La4\" and \"440 Hz\" into pitches, and \"6/8\" or \"3+2+2/8\" into time signatures.",
   "license": "MIT",
   "author": "rt2zz",

@@ -1,6 +1,6 @@
 {
   "name": "@quantojs/react",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "React input for quanto: a text field that parses on commit, echoes its interpretation and stores { raw, value }.",
   "license": "MIT",
   "author": "rt2zz",
