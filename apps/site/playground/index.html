@@ -135,8 +135,9 @@
     .hero { border-bottom: 0; }
     .hero-inner { padding-bottom: 0; }
     footer { position: sticky; bottom: 0; z-index: 2; box-sizing: border-box; height: var(--foot); align-items: center; padding-block: 0; border-top: 1px solid var(--line); background: var(--paper); }
-    /* The negative margin lets it sink past the grid's foot, onto the footer, to the bottom of the window. */
-    .code { position: sticky; bottom: 0; z-index: 3; max-height: 50svh; margin: auto 0 calc(-1 * var(--foot)); overflow-y: auto; }
+    /* The negative margin lets it sink past the grid's foot, onto the footer, to the bottom of the window,
+       where it runs off the edge with no stroke along the bottom. */
+    .code { position: sticky; bottom: 0; z-index: 3; max-height: 50svh; margin: auto 0 calc(-1 * var(--foot)); overflow-y: auto; border-bottom: 0; }
     .inspect > :not(.code) { margin-bottom: 44px; }
   }
 
