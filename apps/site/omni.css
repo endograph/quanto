@@ -1,5 +1,5 @@
-/* The big field that reads anything (src/demo/omni.tsx), shared by the landing and demo pages, and the
-   example chips the demo's cards use too. */
+/* The big field that reads anything (src/demo/omni.tsx), shared by the landing page and the playground,
+   with its example chips. */
 
 .hero-field { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px 32px; align-items: center; }
 .hero-field.beside { grid-template-columns: repeat(2, minmax(0, 1fr)); }

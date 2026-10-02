@@ -1,0 +1,37 @@
+[
+  {"parse": "2.4 mSv", "value": {"value": 2.4, "unit": "mSv"}},
+  {"parse": "2.4mSv", "value": {"value": 2.4, "unit": "mSv"}},
+  {"parse": "2.4 msv", "value": {"value": 2.4, "unit": "mSv"}},
+  {"parse": "2.4 millisieverts", "value": {"value": 2.4, "unit": "mSv"}},
+  {"parse": "2,4 mSv", "ctx": {"locale": "de-DE"}, "value": {"value": 2.4, "unit": "mSv"}},
+  {"parse": "10 µSv", "value": {"value": 10, "unit": "uSv"}},
+  {"parse": "10 μSv", "value": {"value": 10, "unit": "uSv"}},
+  {"parse": "10 uSv", "value": {"value": 10, "unit": "uSv"}},
+  {"parse": "10 microsieverts", "value": {"value": 10, "unit": "uSv"}},
+  {"parse": "1 Sv", "value": {"value": 1, "unit": "Sv"}},
+  {"parse": "1 sievert", "value": {"value": 1, "unit": "Sv"}},
+  {"parse": "500 mrem", "value": {"value": 500, "unit": "mrem"}},
+  {"parse": "500 millirem", "value": {"value": 500, "unit": "mrem"}},
+  {"parse": "5 rem", "value": {"value": 5, "unit": "rem"}},
+  {"parse": "5 rems", "value": {"value": 5, "unit": "rem"}},
+
+  {"parse": "100 mrem", "options": {"canonicalUnit": "mSv"}, "value": {"value": 1, "unit": "mSv"}},
+  {"parse": "1 rem", "options": {"canonicalUnit": "mSv"}, "value": {"value": 10, "unit": "mSv"}},
+  {"parse": "1 Sv", "options": {"canonicalUnit": "rem"}, "value": {"value": 100, "unit": "rem"}},
+  {"parse": "2.4 mSv", "options": {"canonicalUnit": "uSv"}, "value": {"value": 2400, "unit": "uSv"}},
+
+  {"parse": "2 Gy", "issues": ["unknown_unit"]},
+  {"parse": "50 rad", "issues": ["unknown_unit"]},
+  {"parse": "2.4 mGy", "issues": ["unknown_unit"]},
+  {"parse": "2.4", "issues": ["missing_unit"]},
+  {"parse": "2.4", "options": {"defaultUnit": "mSv"}, "value": {"value": 2.4, "unit": "mSv"}},
+  {"parse": "lots", "issues": ["unparseable"]},
+  {"parse": "", "issues": ["empty"]},
+
+  {"format": {"value": 2.4, "unit": "mSv"}, "text": "2.4 mSv"},
+  {"format": {"value": 2.4, "unit": "mSv"}, "ctx": {"locale": "de-DE"}, "text": "2,4 mSv"},
+  {"format": {"value": 10, "unit": "uSv"}, "text": "10 µSv"},
+  {"format": {"value": 1, "unit": "Sv"}, "text": "1 Sv"},
+  {"format": {"value": 500, "unit": "mrem"}, "text": "500 mrem"},
+  {"format": {"value": 5, "unit": "rem"}, "text": "5 rem"}
+]

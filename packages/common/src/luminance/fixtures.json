@@ -1,0 +1,29 @@
+[
+  {"parse": "1000 nits", "value": {"value": 1000, "unit": "nit"}},
+  {"parse": "1000nits", "value": {"value": 1000, "unit": "nit"}},
+  {"parse": "1 nit", "value": {"value": 1, "unit": "nit"}},
+  {"parse": "1000 NITS", "value": {"value": 1000, "unit": "nit"}},
+  {"parse": "500 cd/m²", "value": {"value": 500, "unit": "nit"}},
+  {"parse": "500 cd/m2", "value": {"value": 500, "unit": "nit"}},
+  {"parse": "500 cd/m^2", "value": {"value": 500, "unit": "nit"}},
+  {"parse": "500 candela per square meter", "value": {"value": 500, "unit": "nit"}},
+  {"parse": "1.600 nits", "ctx": {"locale": "de-DE"}, "value": {"value": 1600, "unit": "nit"}},
+  {"parse": "14 fL", "value": {"value": 14, "unit": "fL"}},
+  {"parse": "14 fl", "value": {"value": 14, "unit": "fL"}},
+  {"parse": "14 foot-lamberts", "value": {"value": 14, "unit": "fL"}},
+  {"parse": "14 footlamberts", "value": {"value": 14, "unit": "fL"}},
+
+  {"parse": "1 fL", "options": {"canonicalUnit": "nit"}, "value": {"value": 3.4262590996353905, "unit": "nit"}},
+
+  {"parse": "1000 lm", "issues": ["unknown_unit"]},
+  {"parse": "1000 lx", "issues": ["unknown_unit"]},
+  {"parse": "500 cd", "issues": ["unknown_unit"]},
+  {"parse": "1000", "issues": ["missing_unit"]},
+  {"parse": "1000", "options": {"defaultUnit": "nit"}, "value": {"value": 1000, "unit": "nit"}},
+  {"parse": "lots", "issues": ["unparseable"]},
+  {"parse": "", "issues": ["empty"]},
+
+  {"format": {"value": 1000, "unit": "nit"}, "text": "1,000 nits"},
+  {"format": {"value": 1600, "unit": "nit"}, "ctx": {"locale": "de-DE"}, "text": "1.600 nits"},
+  {"format": {"value": 14, "unit": "fL"}, "text": "14 fL"}
+]

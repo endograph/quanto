@@ -56,12 +56,13 @@
   .step-act .i-done { display: none; }
   .step[data-copied] .i-copy { display: none; }
   .step[data-copied] .i-done { display: block; }
-  .step[data-copied] .step-act { color: var(--ink); }
+  .step[data-copied] .step-act, .step[data-copied]:hover .step-act { color: var(--success); }
+  .step[data-copied] .i-done { stroke-width: 2.4; }
   /* The count, fenced off from the label by a rule. */
   .step-stars { padding-left: 12px; border-left: 1px solid var(--line); }
   .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-  /* The field from the demo, as it comes. */
+  /* The big field, as it comes. */
   /* The field renders once the script has run, so its room is held from the start and the button
      below doesn't jump. Its height is fixed parts plus the field's font size: once for the field side
      by side with its reading, twice when the reading stacks under it. */
@@ -97,6 +98,9 @@
     transition: opacity 120ms;
   }
 
+  /* At the bottom of the screen when there's room; on a short screen, after the field. */
+  .more { margin-top: auto; }
+
   /* Pinned to the corner, so it takes no height from the page. */
   footer {
     position: fixed;
@@ -111,8 +115,12 @@
   @media (max-width: 820px) {
     .omni { min-height: calc(318px + 2.5 * var(--field-font)); }
   }
+  /* Where the centered button would run into the corner footer, it stays above it. */
+  @media (max-width: 720px) {
+    main { padding-bottom: 64px; }
+  }
   @media (max-width: 640px) {
-    main { padding-left: 18px; padding-right: 18px; }
+    main { padding-left: 18px; padding-right: 18px; padding-bottom: 24px; }
     .steps { gap: 10px; padding: 18px 12px 0; }
     .step { gap: 12px; padding: 8px 10px 8px 12px; }
     .step-stars { padding-left: 10px; }
@@ -157,7 +165,7 @@
 
   <div class="omni" id="omni"></div>
 
-  <a class="btn" href="demo/index.html">Open the demo <span aria-hidden="true">→</span></a>
+  <a class="btn more" href="playground/index.html">Playground &amp; docs <span aria-hidden="true">→</span></a>
 </main>
 <footer>
   <span><a href="https://www.npmjs.com/package/quanto/v/%version%" target="_blank" rel="noopener">v%version%</a> · <a href="codecs/index.html">Codecs</a> · <a href="https://github.com/endograph/quanto/blob/main/LICENSE" target="_blank" rel="noopener">MIT</a> · <a href="https://github.com/endograph/quanto" target="_blank" rel="noopener">GitHub</a></span>

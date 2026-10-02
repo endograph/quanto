@@ -1,0 +1,7 @@
+[
+  {"format": {"lat": 40.71277856826782, "lng": -74.00598764419556}, "options": {"geohash": true}, "text": "dr5regw3p"},
+  {"format": {"lat": 57.64911, "lng": 10.40744}, "options": {"geohash": true}, "text": "u4pruydqq"},
+  {"format": {"lat": 90, "lng": 180}, "options": {"geohash": true}, "text": "zzzzzzzzz"},
+  {"format": {"lat": -90, "lng": -180}, "options": {"geohash": true}, "text": "000000000"},
+  {"parse": "dr5regw3p", "options": {"geohash": true}, "value": {"lat": 40.71277856826782, "lng": -74.00598764419556}}
+]

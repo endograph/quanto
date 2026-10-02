@@ -4,7 +4,7 @@
 // `failFetch` for a chosen completion's value.
 import { expect, test } from 'vitest';
 import { defineExternalCodec, optional, parseFromCompletions, type CodecOptions, type Completion, type ExternalCodec, type QuantoValue } from 'quanto';
-import { length } from 'quanto/codecs';
+import { length } from '@quantojs/common';
 import fixtures from './fixtures.json';
 import { entries, initialExternalState, isOpen, reduceExternal, type ExternalFieldEnv, type ExternalFieldEvent, type ExternalTransition } from './index';
 import type { Display } from '../field';

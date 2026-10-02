@@ -1,0 +1,9 @@
+[
+  { "parse": "80-90 dBA", "value": { "start": { "value": 80, "unit": "dBA" }, "end": { "value": 90, "unit": "dBA" } } },
+  { "parse": "80 dB(A) to 90 dB(A)", "value": { "start": { "value": 80, "unit": "dBA" }, "end": { "value": 90, "unit": "dBA" } } },
+  { "parse": "60 dB-2 Pa", "value": { "start": { "value": 60, "unit": "dB" }, "end": { "value": 2, "unit": "Pa" } } },
+  { "parse": "80 dB-90 dBA", "issues": ["incompatible_unit"] },
+  { "parse": "80 dBA-90 dBC", "issues": ["incompatible_unit"] },
+  { "parse": "2 Pa-90 dBA", "issues": ["incompatible_unit"] },
+  { "format": { "start": { "value": 80, "unit": "dBA" }, "end": { "value": 90, "unit": "dBA" } }, "text": "80 dBA – 90 dBA" }
+]

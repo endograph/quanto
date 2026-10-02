@@ -1,0 +1,37 @@
+[
+  {"parse": "9.8 m/s²", "value": {"value": 9.8, "unit": "mps2"}},
+  {"parse": "9.8 m/s2", "value": {"value": 9.8, "unit": "mps2"}},
+  {"parse": "9.8 m/s^2", "value": {"value": 9.8, "unit": "mps2"}},
+  {"parse": "9.8 m/s/s", "value": {"value": 9.8, "unit": "mps2"}},
+  {"parse": "9.8m/s²", "value": {"value": 9.8, "unit": "mps2"}},
+  {"parse": "9.8 meters per second squared", "value": {"value": 9.8, "unit": "mps2"}},
+  {"parse": "9,8 m/s²", "ctx": {"locale": "de-DE"}, "value": {"value": 9.8, "unit": "mps2"}},
+  {"parse": "32 ft/s²", "value": {"value": 32, "unit": "ftps2"}},
+  {"parse": "32 ft/s^2", "value": {"value": 32, "unit": "ftps2"}},
+  {"parse": "32 feet per second squared", "value": {"value": 32, "unit": "ftps2"}},
+
+  {"parse": "3 g", "value": {"value": 3, "unit": "g"}},
+  {"parse": "3g", "value": {"value": 3, "unit": "g"}},
+  {"parse": "3 G", "value": {"value": 3, "unit": "g"}},
+  {"parse": "3 gs", "value": {"value": 3, "unit": "g"}},
+  {"parse": "3 g-force", "value": {"value": 3, "unit": "g"}},
+  {"parse": "3 gees", "value": {"value": 3, "unit": "g"}},
+  {"parse": "-1.5 g", "value": {"value": -1.5, "unit": "g"}},
+
+  {"parse": "1 g", "options": {"canonicalUnit": "mps2"}, "value": {"value": 9.80665, "unit": "mps2"}},
+  {"parse": "1 ft/s²", "options": {"canonicalUnit": "mps2"}, "value": {"value": 0.3048, "unit": "mps2"}},
+  {"parse": "9.80665 m/s²", "options": {"canonicalUnit": "g"}, "value": {"value": 1, "unit": "g"}},
+
+  {"parse": "9.8 m/s", "issues": ["unknown_unit"]},
+  {"parse": "3 kg", "issues": ["unknown_unit"]},
+  {"parse": "60 mph", "issues": ["unknown_unit"]},
+  {"parse": "3", "issues": ["missing_unit"]},
+  {"parse": "3", "options": {"defaultUnit": "g"}, "value": {"value": 3, "unit": "g"}},
+  {"parse": "lots", "issues": ["unparseable"]},
+  {"parse": "", "issues": ["empty"]},
+
+  {"format": {"value": 9.8, "unit": "mps2"}, "text": "9.8 m/s²"},
+  {"format": {"value": 9.8, "unit": "mps2"}, "ctx": {"locale": "de-DE"}, "text": "9,8 m/s²"},
+  {"format": {"value": 32, "unit": "ftps2"}, "text": "32 ft/s²"},
+  {"format": {"value": 3, "unit": "g"}, "text": "3 g"}
+]

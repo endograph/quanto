@@ -11,9 +11,16 @@
     "paths": {
       "quanto": ["../../packages/quanto/src/index.ts"],
       "quanto/*": ["../../packages/quanto/src/*/index.ts"],
+      "@quantojs/anything": ["../../packages/anything/src/index.ts"],
+      "@quantojs/anything/*": ["../../packages/anything/src/*/index.ts"],
+      "@quantojs/common": ["../../packages/common/src/index.ts"],
+      "@quantojs/common/*": ["../../packages/common/src/*/index.ts"],
       "@quantojs/datetime": ["../../packages/datetime/src/index.ts"],
       "@quantojs/datetime/*": ["../../packages/datetime/src/*/index.ts"],
+      "@quantojs/geo": ["../../packages/geo/src/index.ts"],
+      "@quantojs/libphonenumber": ["../../packages/libphonenumber/src/index.ts"],
       "@quantojs/music": ["../../packages/music/src/index.ts"],
+      "@quantojs/sizes": ["../../packages/sizes/src/index.ts"],
       "@quantojs/react": ["../../packages/react/src/index.ts"]
     }
   },

@@ -1,7 +1,7 @@
 {
   "name": "quanto",
   "version": "0.2.0",
-  "description": "Turn messy human text into well-typed values and back: lengths, weights, durations, money and custom types. Dates are in @quantojs/datetime.",
+  "description": "The quanto protocol: turn messy human text into well-typed values and back. Codec contracts, definition helpers, context, issues, composition and shared parsing primitives. The codecs are in @quantojs/common.",
   "license": "MIT",
   "author": "rt2zz",
   "homepage": "https://github.com/endograph/quanto#readme",
@@ -17,11 +17,9 @@
     "parse",
     "format",
     "input",
+    "codec",
     "units",
     "quantity",
-    "measurement",
-    "money",
-    "currency",
     "locale",
     "i18n",
     "standard-schema",
@@ -42,14 +40,6 @@
       "types": "./dist/quantity/index.d.ts",
       "import": "./dist/quantity/index.js"
     },
-    "./money": {
-      "types": "./dist/money/index.d.ts",
-      "import": "./dist/money/index.js"
-    },
-    "./codecs": {
-      "types": "./dist/codecs/index.d.ts",
-      "import": "./dist/codecs/index.js"
-    },
     "./formats": {
       "types": "./dist/formats/index.d.ts",
       "import": "./dist/formats/index.js"
@@ -66,5 +56,8 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "@quantojs/common": "workspace:*"
   }
 }

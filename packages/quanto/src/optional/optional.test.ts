@@ -1,6 +1,6 @@
 import { test } from 'vitest';
-import { length } from '../codecs/length';
-import type { QuantityOptions } from '../codecs/quantity';
+import { length } from '@quantojs/common';
+import type { QuantityOptions } from '../quantity/codec';
 import { runFixtures } from '../testing';
 import fixtures from './fixtures.length.json';
 import { optional } from './index';

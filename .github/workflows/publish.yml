@@ -47,6 +47,7 @@ jobs:
       - run: |
           version=$(node -p "require('./packages/quanto/package.json').version")
           npm publish "$RUNNER_TEMP/packs/quanto-$version.tgz" --provenance --access public
+          npm publish "$RUNNER_TEMP/packs/quantojs-common-$version.tgz" --provenance --access public
           npm publish "$RUNNER_TEMP/packs/quantojs-datetime-$version.tgz" --provenance --access public
           npm publish "$RUNNER_TEMP/packs/quantojs-react-$version.tgz" --provenance --access public
           npm publish "$RUNNER_TEMP/packs/quantojs-libpostal-$version.tgz" --provenance --access public

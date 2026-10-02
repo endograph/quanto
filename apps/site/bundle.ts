@@ -4,16 +4,44 @@
 import { resolve } from 'node:path';
 import type { BunPlugin } from 'bun';
 
-export const entrypoints = ['src/landing.tsx', 'src/playground.ts', 'src/demo.tsx', 'src/codecs.tsx'].map((p) => `${import.meta.dir}/${p}`);
+export const entrypoints = ['src/landing.tsx', 'src/playground.tsx', 'src/codecs.tsx'].map((p) => `${import.meta.dir}/${p}`);
 
 const packages = resolve(import.meta.dir, '../../packages');
 const sources: BunPlugin = {
   name: 'workspace-sources',
   setup(build) {
-    build.onResolve({ filter: /^(@quantojs\/datetime|@quantojs\/music|@quantojs\/react|quanto)(\/.*)?$/ }, ({ path }) => {
-      const [, name, sub] = path.match(/^(@quantojs\/datetime|@quantojs\/music|@quantojs\/react|quanto)(?:\/(.*))?$/)!;
+    build.onResolve({ filter: /^(@quantojs\/[a-z]+|quanto)(\/.*)?$/ }, ({ path }) => {
+      const [, name, sub] = path.match(/^(@quantojs\/[a-z]+|quanto)(?:\/(.*))?$/)!;
       const dir = name === 'quanto' ? 'quanto' : name.slice('@quantojs/'.length);
       return { path: `${packages}/${dir}/src/${sub ? `${sub}/index.ts` : 'index.ts'}` };
+    });
+  },
+};
+
+/**
+ * The source of every codec the playground can edit, by codec id: `codec-sources` is the whole map,
+ * loaded with the editor, and `codec-sources/ids` just the ids, for the page. A codec can be edited when
+ * its file is the whole codec: it imports only the core (`quanto`, `quanto/…`), or the other codecs of
+ * @quantojs/common (`../length`), which the editor provides. So for now, @quantojs/common's one-file
+ * codecs: the quantities, numbers, percent, proportion and ratio.
+ */
+const codecSources: BunPlugin = {
+  name: 'codec-sources',
+  setup(build) {
+    build.onResolve({ filter: /^codec-sources(\/ids)?$/ }, ({ path }) => ({ path, namespace: 'codec-sources' }));
+    build.onLoad({ filter: /.*/, namespace: 'codec-sources' }, async ({ path }) => {
+      const sources: Record<string, string> = {};
+      for await (const file of new Bun.Glob('*/index.ts').scan(`${packages}/common/src`)) {
+        const dir = file.slice(0, -'/index.ts'.length);
+        if (dir === 'formats') continue;
+        const text = await Bun.file(`${packages}/common/src/${file}`).text();
+        const imports = [...text.matchAll(/^(?:import|export)\b[^;]*?\bfrom '([^']+)'/gm)].map((m) => m[1]!);
+        if (imports.every((from) => /^quanto(\/|$)/.test(from) || /^\.\.\/[a-z-]+$/.test(from))) {
+          sources[dir.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase())] = text;
+        }
+      }
+      const value = path.endsWith('/ids') ? Object.keys(sources).sort() : sources;
+      return { contents: `export default ${JSON.stringify(value)};`, loader: 'js' };
     });
   },
 };
@@ -25,7 +53,10 @@ export async function bundle(minify: boolean): Promise<Map<string, Blob>> {
     format: 'esm',
     minify,
     sourcemap: minify ? 'none' : 'inline',
-    plugins: [sources],
+    plugins: [sources, codecSources],
+    // Shared code goes in chunks, and a dynamic import gets its own: the big field loads phone numbers
+    // (libphonenumber-js's metadata) after the page.
+    splitting: true,
     // React picks its build from NODE_ENV; the deployed site gets the production one.
     define: { 'process.env.NODE_ENV': JSON.stringify(minify ? 'production' : 'development') },
   });

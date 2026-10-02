@@ -1,0 +1,40 @@
+[
+  {"parse": "230 V", "value": {"value": 230, "unit": "V"}},
+  {"parse": "230V", "value": {"value": 230, "unit": "V"}},
+  {"parse": "230 v", "value": {"value": 230, "unit": "V"}},
+  {"parse": "230 volts", "value": {"value": 230, "unit": "V"}},
+  {"parse": "1 volt", "value": {"value": 1, "unit": "V"}},
+  {"parse": "3,3 V", "ctx": {"locale": "de-DE"}, "value": {"value": 3.3, "unit": "V"}},
+  {"parse": "500 mV", "value": {"value": 500, "unit": "mV"}},
+  {"parse": "500 millivolts", "value": {"value": 500, "unit": "mV"}},
+  {"parse": "11 kV", "value": {"value": 11, "unit": "kV"}},
+  {"parse": "11 KV", "value": {"value": 11, "unit": "kV"}},
+  {"parse": "11 kilovolts", "value": {"value": 11, "unit": "kV"}},
+  {"parse": "1.2 MV", "value": {"value": 1.2, "unit": "MV"}},
+  {"parse": "1.2 megavolts", "value": {"value": 1.2, "unit": "MV"}},
+  {"parse": "20 µV", "value": {"value": 20, "unit": "uV"}},
+  {"parse": "20 μV", "value": {"value": 20, "unit": "uV"}},
+  {"parse": "20 uV", "value": {"value": 20, "unit": "uV"}},
+  {"parse": "20 microvolts", "value": {"value": 20, "unit": "uV"}},
+
+  {"parse": "500 mv", "issues": ["unknown_unit"]},
+  {"parse": "500 MILLIVOLTS", "value": {"value": 500, "unit": "mV"}},
+
+  {"parse": "500 mV", "options": {"canonicalUnit": "V"}, "value": {"value": 0.5, "unit": "V"}},
+  {"parse": "11 kV", "options": {"canonicalUnit": "V"}, "value": {"value": 11000, "unit": "V"}},
+  {"parse": "1 V", "options": {"canonicalUnit": "mV"}, "value": {"value": 1000, "unit": "mV"}},
+
+  {"parse": "230 W", "issues": ["unknown_unit"]},
+  {"parse": "230 Hz", "issues": ["unknown_unit"]},
+  {"parse": "230", "issues": ["missing_unit"]},
+  {"parse": "230", "options": {"defaultUnit": "V"}, "value": {"value": 230, "unit": "V"}},
+  {"parse": "lots", "issues": ["unparseable"]},
+  {"parse": "", "issues": ["empty"]},
+
+  {"format": {"value": 230, "unit": "V"}, "text": "230 V"},
+  {"format": {"value": 3.3, "unit": "V"}, "ctx": {"locale": "de-DE"}, "text": "3,3 V"},
+  {"format": {"value": 500, "unit": "mV"}, "text": "500 mV"},
+  {"format": {"value": 11, "unit": "kV"}, "text": "11 kV"},
+  {"format": {"value": 1.2, "unit": "MV"}, "text": "1.2 MV"},
+  {"format": {"value": 20, "unit": "uV"}, "text": "20 µV"}
+]

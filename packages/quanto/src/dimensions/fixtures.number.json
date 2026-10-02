@@ -1,0 +1,19 @@
+[
+  {"parse": "1920x1080", "value": [1920, 1080]},
+  {"parse": "1920 × 1080", "value": [1920, 1080]},
+  {"parse": "1,920 x 1,080", "value": [1920, 1080]},
+  {"parse": "2x4", "value": [2, 4]},
+  {"parse": "2 by 4", "value": [2, 4]},
+  {"parse": "two by four", "value": [2, 4]},
+  {"parse": "4 x 4 x 4", "options": {"count": 3}, "value": [4, 4, 4]},
+  {"parse": "6.02×10^23 x 2", "value": [6.02e+23, 2]},
+  {"parse": "6.02×10²³ x 2", "value": [6.02e+23, 2]},
+
+  {"parse": "1920", "issues": ["wrong_count"]},
+  {"parse": "1920x1080x3", "issues": ["wrong_count"]},
+  {"parse": "1920 x px", "issues": ["unparseable"]},
+
+  {"format": [1920, 1080], "text": "1,920 × 1,080"},
+  {"format": [2, 4], "text": "2 × 4"},
+  {"format": [2.5, 4], "ctx": {"locale": "de-DE"}, "text": "2,5 × 4"}
+]

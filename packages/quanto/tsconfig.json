@@ -1,4 +1,14 @@
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // The core's tests use @quantojs/common's codecs (a dev dependency), which import quanto by name. In
+    // the repo both resolve to source.
+    "paths": {
+      "quanto": ["./src/index.ts"],
+      "quanto/*": ["./src/*/index.ts"],
+      "@quantojs/common": ["../common/src/index.ts"],
+      "@quantojs/common/*": ["../common/src/*/index.ts"]
+    }
+  },
   "include": ["src"]
 }

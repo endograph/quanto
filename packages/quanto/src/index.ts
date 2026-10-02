@@ -1,4 +1,6 @@
-// Core: defineCodec, the primitives, the wrappers, and the Codec/Issue/value types. See DESIGN.md.
+// The protocol: defineCodec and the other definition helpers, the shared parsing primitives, the
+// wrappers, and the Codec/Issue/value types. No codecs: those are in @quantojs/common and the other
+// @quantojs packages. See DESIGN.md.
 
 export { defineCodec, formatWithFallback } from './core/define-codec';
 export type { CheckProblem, CodecDefinition } from './core/define-codec';
@@ -30,16 +32,19 @@ export type {
 export type { StandardSchemaV1 } from './core/standard-schema';
 export { lookupRegional } from './locale';
 export type { Locale, MeasurementSystem } from './locale';
-export type { UnitDefinition, UnitTable } from './codecs/quantity';
+export { quantity } from './quantity/codec';
+export type { DefaultUnit, NumberSyntax, QuantityCodec, QuantityDefinition, QuantityOptions, ToBase, UnitDefinition, UnitTable } from './quantity/codec';
 
 export { normalize } from './primitives/normalize';
-export { formatNumber, readNumber } from './primitives/number';
-export type { FormatNumberOptions, LocaleCtx, NumberMatch, ReadNumberOptions } from './primitives/number';
+export { formatDecimalParts, formatNumber, readNumber, readNumberToken, readWordToken } from './primitives/number';
+export type { FormatNumberOptions, LocaleCtx, NumberMatch, NumberToken, ReadNumberOptions } from './primitives/number';
 
 export { optional } from './optional';
 export { approx } from './approx';
 export type { Approx } from './approx';
 export { merge } from './merge';
 export type { LeafValue, MergedCodec, Tagged } from './merge';
-export { defineRange, range } from './range';
+export { dimensions } from './dimensions';
+export type { DimensionCount, DimensionsOptions } from './dimensions';
+export { defineRange, numberSpan, range } from './range';
 export type { OpenRange, Range, RangeOptions, RangeProposal, RangeRules } from './range';

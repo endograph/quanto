@@ -1,0 +1,33 @@
+[
+  {"parse": "5000 mAh", "value": {"value": 5000, "unit": "mAh"}},
+  {"parse": "5000mAh", "value": {"value": 5000, "unit": "mAh"}},
+  {"parse": "5000 MAH", "value": {"value": 5000, "unit": "mAh"}},
+  {"parse": "5000 mA·h", "value": {"value": 5000, "unit": "mAh"}},
+  {"parse": "5000 milliamp hours", "value": {"value": 5000, "unit": "mAh"}},
+  {"parse": "5000 milliamp-hours", "value": {"value": 5000, "unit": "mAh"}},
+  {"parse": "5.000 mAh", "ctx": {"locale": "de-DE"}, "value": {"value": 5000, "unit": "mAh"}},
+  {"parse": "100 Ah", "value": {"value": 100, "unit": "Ah"}},
+  {"parse": "100 ah", "value": {"value": 100, "unit": "Ah"}},
+  {"parse": "100 amp hours", "value": {"value": 100, "unit": "Ah"}},
+  {"parse": "100 amp-hours", "value": {"value": 100, "unit": "Ah"}},
+  {"parse": "1 C", "value": {"value": 1, "unit": "C"}},
+  {"parse": "1 coulomb", "value": {"value": 1, "unit": "C"}},
+  {"parse": "3.5 coulombs", "value": {"value": 3.5, "unit": "C"}},
+
+  {"parse": "5000 mAh", "options": {"canonicalUnit": "Ah"}, "value": {"value": 5, "unit": "Ah"}},
+  {"parse": "1 Ah", "options": {"canonicalUnit": "C"}, "value": {"value": 3600, "unit": "C"}},
+  {"parse": "1 mAh", "options": {"canonicalUnit": "C"}, "value": {"value": 3.6, "unit": "C"}},
+
+  {"parse": "100 Wh", "issues": ["unknown_unit"]},
+  {"parse": "100 A", "issues": ["unknown_unit"]},
+  {"parse": "100 kWh", "issues": ["unknown_unit"]},
+  {"parse": "5000", "issues": ["missing_unit"]},
+  {"parse": "5000", "options": {"defaultUnit": "mAh"}, "value": {"value": 5000, "unit": "mAh"}},
+  {"parse": "lots", "issues": ["unparseable"]},
+  {"parse": "", "issues": ["empty"]},
+
+  {"format": {"value": 5000, "unit": "mAh"}, "text": "5,000 mAh"},
+  {"format": {"value": 100, "unit": "Ah"}, "text": "100 Ah"},
+  {"format": {"value": 3.5, "unit": "C"}, "text": "3.5 C"},
+  {"format": {"value": 2.5, "unit": "Ah"}, "ctx": {"locale": "de-DE"}, "text": "2,5 Ah"}
+]

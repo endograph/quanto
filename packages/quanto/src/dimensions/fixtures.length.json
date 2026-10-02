@@ -1,0 +1,52 @@
+[
+  {"parse": "24 × 36 in", "value": [{"value": 24, "unit": "in"}, {"value": 36, "unit": "in"}]},
+  {"parse": "24 x 36 in", "value": [{"value": 24, "unit": "in"}, {"value": 36, "unit": "in"}]},
+  {"parse": "24x36 in", "value": [{"value": 24, "unit": "in"}, {"value": 36, "unit": "in"}]},
+  {"parse": "24X36in", "value": [{"value": 24, "unit": "in"}, {"value": 36, "unit": "in"}]},
+  {"parse": "24 * 36 in", "value": [{"value": 24, "unit": "in"}, {"value": 36, "unit": "in"}]},
+  {"parse": "24 by 36 in", "value": [{"value": 24, "unit": "in"}, {"value": 36, "unit": "in"}]},
+  {"parse": "24 BY 36 in", "value": [{"value": 24, "unit": "in"}, {"value": 36, "unit": "in"}]},
+  {"parse": "24in x 36in", "value": [{"value": 24, "unit": "in"}, {"value": 36, "unit": "in"}]},
+  {"parse": "24 in × 36 in", "value": [{"value": 24, "unit": "in"}, {"value": 36, "unit": "in"}]},
+  {"parse": "24inx36in", "value": [{"value": 24, "unit": "in"}, {"value": 36, "unit": "in"}]},
+  {"parse": "24 inches by 36 inches", "value": [{"value": 24, "unit": "in"}, {"value": 36, "unit": "in"}]},
+
+  {"parse": "2 m × 50 cm", "value": [{"value": 2, "unit": "m"}, {"value": 50, "unit": "cm"}]},
+  {"parse": "5' × 8'", "value": [{"value": 5, "unit": "ft"}, {"value": 8, "unit": "ft"}]},
+  {"parse": "5'6\" × 8'", "value": [{"value": 66, "unit": "in"}, {"value": 8, "unit": "ft"}]},
+  {"parse": "2,5 × 1,2 m", "ctx": {"locale": "de-DE"}, "value": [{"value": 2.5, "unit": "m"}, {"value": 1.2, "unit": "m"}]},
+  {"parse": "1.5k x 2k ft", "value": [{"value": 1500, "unit": "ft"}, {"value": 2000, "unit": "ft"}]},
+
+  {"parse": "24 × 36 × 10 cm", "options": {"count": 3}, "value": [{"value": 24, "unit": "cm"}, {"value": 36, "unit": "cm"}, {"value": 10, "unit": "cm"}]},
+  {"parse": "24 x 36 x 10 cm", "options": {"count": {"min": 2}}, "value": [{"value": 24, "unit": "cm"}, {"value": 36, "unit": "cm"}, {"value": 10, "unit": "cm"}]},
+  {"parse": "24 × 36 cm", "options": {"count": {"min": 2}}, "value": [{"value": 24, "unit": "cm"}, {"value": 36, "unit": "cm"}]},
+  {"parse": "24 × 36 cm", "options": {"count": {"min": 2, "max": 3}}, "value": [{"value": 24, "unit": "cm"}, {"value": 36, "unit": "cm"}]},
+  {"parse": "24 cm", "options": {"count": {"min": 1}}, "value": [{"value": 24, "unit": "cm"}]},
+
+  {"parse": "24 × 36 × 10 cm", "issues": ["wrong_count"]},
+  {"parse": "24 cm", "issues": ["wrong_count"]},
+  {"parse": "24 × 36 cm", "options": {"count": 3}, "issues": ["wrong_count"]},
+  {"parse": "1 × 2 × 3 × 4 cm", "options": {"count": {"min": 2, "max": 3}}, "issues": ["wrong_count"]},
+  {"parse": "24 cm", "options": {"count": {"min": 2}}, "issues": ["wrong_count"]},
+
+  {"parse": "24 × 36", "issues": ["missing_unit"]},
+  {"parse": "24 × 36", "options": {"defaultUnit": "cm"}, "value": [{"value": 24, "unit": "cm"}, {"value": 36, "unit": "cm"}]},
+  {"parse": "24 × 36 in", "options": {"defaultUnit": "cm"}, "value": [{"value": 24, "unit": "in"}, {"value": 36, "unit": "in"}]},
+  {"parse": "24 in × 36", "issues": ["missing_unit"]},
+  {"parse": "24 × 36 in", "options": {"canonicalUnit": "cm"}, "value": [{"value": 60.96, "unit": "cm"}, {"value": 91.44, "unit": "cm"}]},
+
+  {"parse": "24 × 36 kg", "issues": ["unknown_unit"]},
+  {"parse": "24 kg × 36 in", "issues": ["unknown_unit"]},
+  {"parse": "24 × × 36 in", "issues": ["unparseable"]},
+  {"parse": "× 36 in", "issues": ["unparseable"]},
+  {"parse": "24 × in", "issues": ["unparseable"]},
+  {"parse": "24 ×", "issues": ["unparseable"]},
+  {"parse": "big", "issues": ["unparseable"]},
+  {"parse": "", "issues": ["empty"]},
+
+  {"format": [{"value": 24, "unit": "in"}, {"value": 36, "unit": "in"}], "text": "24 × 36 in"},
+  {"format": [{"value": 2, "unit": "m"}, {"value": 50, "unit": "cm"}], "text": "2 m × 50 cm"},
+  {"format": [{"value": 2.5, "unit": "m"}, {"value": 1.2, "unit": "m"}], "ctx": {"locale": "de-DE"}, "text": "2,5 × 1,2 m"},
+  {"format": [{"value": 5, "unit": "ft"}, {"value": 8, "unit": "ft"}], "text": "5 × 8 ft"},
+  {"format": [{"value": 24, "unit": "in"}, {"value": 36, "unit": "in"}, {"value": 10, "unit": "in"}], "options": {"count": 3}, "text": "24 × 36 × 10 in"}
+]

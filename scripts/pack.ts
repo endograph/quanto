@@ -9,7 +9,7 @@
 import { mkdirSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-const PACKAGES = ['packages/quanto', 'packages/datetime', 'packages/react', 'packages/libpostal', 'packages/music'];
+const PACKAGES = ['packages/quanto', 'packages/common', 'packages/datetime', 'packages/react', 'packages/libpostal', 'packages/music'];
 const out = resolve(process.argv[2] ?? 'packs');
 mkdirSync(out, { recursive: true });
 

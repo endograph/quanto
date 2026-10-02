@@ -1,7 +1,5 @@
 import { test } from 'vitest';
-import { duration } from '../codecs/duration';
-import { length } from '../codecs/length';
-import { text } from '../codecs/text';
+import { duration, length, text } from '@quantojs/common';
 import { city } from '../core/stub';
 import { roundTrip, runFixtures } from '../testing';
 import cityLengthFixtures from './fixtures.city-length.json';

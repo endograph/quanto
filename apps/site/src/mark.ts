@@ -2,7 +2,7 @@
 import { glyphs } from './glyphs';
 
 /** Presses the mark down and lets it up again, running `swap` while it's down. */
-export function press(mark: Element, swap?: () => void): void {
+function press(mark: Element, swap?: () => void): void {
   mark.classList.add('pressed');
   setTimeout(() => {
     swap?.();

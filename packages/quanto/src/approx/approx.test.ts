@@ -1,6 +1,6 @@
 import { test } from 'vitest';
-import { length, type LengthUnit } from '../codecs/length';
-import type { QuantityOptions } from '../codecs/quantity';
+import { length, type LengthUnit } from '@quantojs/common';
+import type { QuantityOptions } from '../quantity/codec';
 import { city } from '../core/stub';
 import { range } from '../range';
 import { runFixtures } from '../testing';

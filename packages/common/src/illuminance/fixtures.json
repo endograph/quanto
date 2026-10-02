@@ -1,0 +1,30 @@
+[
+  {"parse": "500 lx", "value": {"value": 500, "unit": "lx"}},
+  {"parse": "500lx", "value": {"value": 500, "unit": "lx"}},
+  {"parse": "500 lux", "value": {"value": 500, "unit": "lx"}},
+  {"parse": "500 LUX", "value": {"value": 500, "unit": "lx"}},
+  {"parse": "100 klx", "value": {"value": 100, "unit": "klx"}},
+  {"parse": "100 kilolux", "value": {"value": 100, "unit": "klx"}},
+  {"parse": "50 fc", "value": {"value": 50, "unit": "fc"}},
+  {"parse": "50 foot-candles", "value": {"value": 50, "unit": "fc"}},
+  {"parse": "50 footcandles", "value": {"value": 50, "unit": "fc"}},
+  {"parse": "50 foot candles", "value": {"value": 50, "unit": "fc"}},
+  {"parse": "50 ftcd", "value": {"value": 50, "unit": "fc"}},
+  {"parse": "2,5 lx", "ctx": {"locale": "de-DE"}, "value": {"value": 2.5, "unit": "lx"}},
+
+  {"parse": "1 fc", "options": {"canonicalUnit": "lx"}, "value": {"value": 10.763910416709722, "unit": "lx"}},
+  {"parse": "100 klx", "options": {"canonicalUnit": "lx"}, "value": {"value": 100000, "unit": "lx"}},
+
+  {"parse": "500 lm", "issues": ["unknown_unit"]},
+  {"parse": "500 nits", "issues": ["unknown_unit"]},
+  {"parse": "500 W", "issues": ["unknown_unit"]},
+  {"parse": "500", "issues": ["missing_unit"]},
+  {"parse": "500", "options": {"defaultUnit": "lx"}, "value": {"value": 500, "unit": "lx"}},
+  {"parse": "lots", "issues": ["unparseable"]},
+  {"parse": "", "issues": ["empty"]},
+
+  {"format": {"value": 500, "unit": "lx"}, "text": "500 lx"},
+  {"format": {"value": 2.5, "unit": "lx"}, "ctx": {"locale": "de-DE"}, "text": "2,5 lx"},
+  {"format": {"value": 50, "unit": "fc"}, "text": "50 fc"},
+  {"format": {"value": 100, "unit": "klx"}, "text": "100 klx"}
+]

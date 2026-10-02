@@ -1,4 +1,4 @@
-// The codecs page: every built-in codec, what it reads, what it stores, and for quantities, the unit
+// The codecs page: every first-party codec, what it reads, what it stores, and for quantities, the unit
 // table itself. Nothing here is written out by hand that the packages already know: the unit tables are
 // the codecs' own, the conversions come from `convert`, and every example is parsed and formatted live,
 // in the locale picked in the header.
@@ -6,15 +6,19 @@
 // imported under its own name.
 import { Fragment as Keyed, useEffect, useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { approx, merge, optional, range, type Codec, type Ctx, type UnitDefinition } from 'quanto';
-import * as q from 'quanto/codecs';
-import type { QuantityCodec } from 'quanto/codecs';
-import { feetInches, hoursMinutes, intlUnit, poundsOunces, stonesPounds } from 'quanto/formats';
-import { money, moneyRange } from 'quanto/money';
+import { approx, dimensions, merge, optional, range, type Codec, type Ctx, type QuantityCodec, type UnitDefinition } from 'quanto';
 import { convert } from 'quanto/quantity';
+import * as q from '@quantojs/common';
+import { feetInches, hoursMinutes, intlUnit, poundsOunces, stonesPounds } from '@quantojs/common/formats';
+import { money, moneyRange } from '@quantojs/common/money';
+import { odds } from '@quantojs/common/odds';
 import { date, dateRange, dateTime, localDateTime, time } from '@quantojs/datetime';
 import { de, es, fr, it, nl, pt } from '@quantojs/datetime/names';
+import { coordinates, degreesMinutesSeconds } from '@quantojs/geo';
+import { anything } from '@quantojs/anything';
+import { phoneNumber } from '@quantojs/libphonenumber';
 import { pitch, timeSignature } from '@quantojs/music';
+import { ringSize, shoeSize } from '@quantojs/sizes';
 import { locales, musicKeys } from './catalog';
 import { Code } from './demo/omni';
 import { cycleOnClick } from './mark';
@@ -57,8 +61,8 @@ interface Doc {
   readonly keys?: readonly string[];
 }
 
-type Group = 'Quantities' | 'Money' | 'Dates and times' | 'Music' | 'Addresses' | 'Text and numbers' | 'Wrappers';
-const groups: readonly Group[] = ['Quantities', 'Money', 'Dates and times', 'Music', 'Addresses', 'Text and numbers', 'Wrappers'];
+type Group = 'Quantities' | 'Money' | 'Dates and times' | 'Music' | 'Addresses' | 'Phone numbers' | 'Coordinates' | 'Sizes' | 'Text and numbers' | 'Wrappers';
+const groups: readonly Group[] = ['Quantities', 'Money', 'Dates and times', 'Music', 'Addresses', 'Phone numbers', 'Coordinates', 'Sizes', 'Text and numbers', 'Wrappers'];
 
 /** A quantity codec's entry: the codec with its defaults, and its table. */
 function quantity(
@@ -69,7 +73,7 @@ function quantity(
   extra: Partial<Pick<Doc, 'about' | 'options'>> = {},
 ): Doc {
   const codec = (q[name] as () => QuantityCodec<string>)();
-  return { id: name, group: 'Quantities', summary, from: 'quanto/codecs', name, call: `${name}()`, codec, examples, units: { codec, ...units }, play: name, ...extra };
+  return { id: name, group: 'Quantities', summary, from: '@quantojs/common', name, call: `${name}()`, codec, examples, units: { codec, ...units }, play: name, ...extra };
 }
 
 const names = [de, es, fr, it, nl, pt];
@@ -149,6 +153,22 @@ const docs: readonly Doc[] = [
       </>
     ),
   }),
+  quantity('compute', 'Training budgets, workloads', ['3.8e25 FLOP', '5 TFLOPs', '3640 PF-days', '989 TFLOP/s'], { ref: 'FLOP' }, {
+    about: (
+      <>
+        A count of floating-point operations. <code>FLOPs</code> and <code>FLOPS</code> both mean a count here; rates, with{' '}
+        <code>/s</code>, are <code>computeRate</code>. A <code>PF-day</code> is a petaflop/s for a day, 8.64×10¹⁹ FLOP.
+      </>
+    ),
+  }),
+  quantity('computeRate', 'GPUs, supercomputers', ['989 TFLOPS', '1.2 EFLOP/s', '3e14 flops', '989 TFLOP'], { ref: 'FLOPS' }, {
+    about: (
+      <>
+        Floating-point operations per second. <code>TFLOPS</code>, <code>TFLOP/s</code> and <code>TFLOPs</code> all mean a rate
+        here; a plain <code>TFLOP</code> is a count, and isn't accepted.
+      </>
+    ),
+  }),
   quantity('energy', 'Food energy, electricity, heat', ['2000 kcal', '3.5 kWh', '100 kJ', '1000 BTU'], { ref: 'kJ' }, {
     about: <><code>cal</code>, <code>Cal</code> and <code>calories</code> mean kilocalories, as on food labels.</>,
   }),
@@ -180,11 +200,69 @@ const docs: readonly Doc[] = [
       </>
     ),
   }),
+  quantity('torque', 'Bolts, engines, wrenches', ['250 N·m', '184 lb-ft', '184 ft-lb', '35 in-lb'], { ref: 'Nm' }, {
+    about: <>Pound-feet and foot-pounds are the same unit, written either way round.</>,
+  }),
+  quantity('force', 'Loads, thrust, grip', ['500 N', '2 kN', '100 lbf', '50 kgf'], { ref: 'N' }, {
+    about: <><code>mN</code> and <code>MN</code> differ only by case, so they match exactly as written.</>,
+  }),
+  quantity('acceleration', 'Vehicles, sensors, rides', ['9.8 m/s²', '3 g', '32 ft/s²'], { ref: 'mps2' }, {
+    about: <><code>g</code> is standard gravity, 9.80665 m/s².</>,
+  }),
+  quantity('flowRate', 'Pumps, plumbing, ventilation, IV drips', ['12 L/min', '2.5 gpm', '400 cfm', '5 m³/h', '125 mL/h'], { ref: 'Lps' }, {
+    about: <>Gallons are US gallons, as in <code>volume</code>.</>,
+  }),
+  quantity('density', 'Materials, liquids', ['1000 kg/m³', '7.85 g/cm³', '62.4 lb/ft³', '8.34 lb/gal'], { ref: 'kgpm3' }),
+  quantity('voltage', 'Batteries, mains, electronics', ['230 V', '3.3 V', '500 mV', '11 kV'], { ref: 'V' }, {
+    about: <><code>mV</code> and <code>MV</code> differ only by case, so they match exactly as written.</>,
+  }),
+  quantity('current', 'Circuits, chargers, breakers', ['16 A', '500 mA', '20 µA'], { ref: 'A' }),
+  quantity('resistance', 'Resistors, wiring', ['220 Ω', '4.7 kΩ', '10 kohm', '1 MΩ', '4.7k'], { ref: 'ohm' }, {
+    about: (
+      <>
+        <code>mΩ</code> and <code>MΩ</code> differ only by case, so they match exactly as written. A bare <code>4.7k</code> needs a{' '}
+        <code>defaultUnit</code>, as with any quantity.
+      </>
+    ),
+  }),
+  quantity('capacitance', 'Capacitors', ['100 µF', '100 uF', '10 nF', '22 pF'], { ref: 'F' }, {
+    about: <><code>uF</code> stands in for <code>µF</code>, as on parts lists.</>,
+  }),
+  quantity('charge', 'Battery capacity', ['5000 mAh', '100 Ah', '1 C'], { ref: 'C' }, {
+    about: <>Watt hours are energy, in <code>energy</code>.</>,
+  }),
+  quantity('luminousFlux', 'Bulbs, projectors, torches', ['800 lm', '3000 ANSI lumens', '2.5 klm'], { ref: 'lm' }, {
+    about: <>How much light a source puts out. Light on a surface is <code>illuminance</code>; a screen's brightness is <code>luminance</code>.</>,
+  }),
+  quantity('illuminance', 'Rooms, plants, photography', ['500 lx', '50 fc', '100 klx'], { ref: 'lx' }),
+  quantity('luminance', 'Screens, displays', ['1000 nits', '500 cd/m²', '14 fL'], { ref: 'nit' }),
+  quantity('proportion', 'Rates, spreads, concentrations', ['25 bps', '5‰', '12.5%', '420 ppm', '12.5'], { ref: 'percent' }, {
+    about: (
+      <>
+        Unlike <code>percent</code>, the unit is kept, so <code>25 bps</code> stays basis points and converts to 0.25%.{' '}
+        <code>ppt</code> is left out: it means parts per thousand and per trillion.
+      </>
+    ),
+  }),
+  quantity('soundLevel', 'Noise, hearing, audio', ['85 dB', '70 dBA', '100 dB(C)', '2 Pa', '80-90 dBA'], { ref: 'dB' }, {
+    about: (
+      <>
+        Weighted readings (<code>dBA</code>, <code>dBC</code>) are on their own scales: they don't convert to unweighted dB or to
+        each other, since the weighting depends on frequency. <code>convert</code> and <code>compare</code> across scales throw.
+      </>
+    ),
+  }),
+  quantity('radiationDose', 'Medical imaging, exposure', ['2.4 mSv', '10 µSv', '500 mrem'], { ref: 'Sv' }, {
+    about: <>The dose to a person. Absorbed dose, in grays, is a different quantity: <code>absorbedDose</code>.</>,
+  }),
+  quantity('absorbedDose', 'Radiotherapy', ['2 Gy', '180 cGy', '50 rad'], { ref: 'Gy' }, {
+    about: <>The dose to a person, in sieverts, is a different quantity: <code>radiationDose</code>.</>,
+  }),
   {
     id: 'money',
     group: 'Money',
     summary: 'Prices, budgets, salaries',
-    from: 'quanto/money',
+    from: '@quantojs/common/money',
     name: 'money',
     call: 'money()',
     codec: money(),
@@ -196,7 +274,7 @@ const docs: readonly Doc[] = [
         floating-point drift. Symbols, ISO codes and names are all read, along with magnitudes (<code>$1.2k</code>,{' '}
         <code>12 grand</code>, <code>$3mm</code>). An ambiguous symbol like <code>$</code> or <code>kr</code> goes to the{' '}
         <code>defaultCurrency</code>, then the locale's currency, then the most common one. Too many decimals for the currency is an
-        issue, not a rounding. Every active ISO 4217 code is known, with its minor digits; <code>quanto/money</code> also exports{' '}
+        issue, not a rounding. Every active ISO 4217 code is known, with its minor digits; <code>@quantojs/common/money</code> also exports{' '}
         <code>add</code>, <code>subtract</code>, <code>scale</code>, <code>allocate</code>, <code>compare</code> and <code>convert</code>.
       </>
     ),
@@ -206,10 +284,10 @@ const docs: readonly Doc[] = [
     id: 'moneyRange',
     group: 'Money',
     summary: 'Price ranges',
-    from: 'quanto/money',
+    from: '@quantojs/common/money',
     name: 'moneyRange',
     call: 'moneyRange(money())',
-    imports: { 'quanto/money': ['money'] },
+    imports: { '@quantojs/common/money': ['money'] },
     codec: moneyRange(money()),
     examples: ['$10-20', '10-20 EUR', '$10-20k', '$500-1k'],
     about: <>A side borrows the other's currency and, where that keeps the range in order, its magnitude suffix. With <code>open: true</code>, also one bound: <code>$500+</code>, <code>under $20</code>.</>,
@@ -361,10 +439,108 @@ const docs: readonly Doc[] = [
     ],
   },
   {
+    id: 'phoneNumber',
+    group: 'Phone numbers',
+    summary: 'Phone numbers, as E.164',
+    from: '@quantojs/libphonenumber',
+    name: 'phoneNumber',
+    call: 'phoneNumber()',
+    codec: phoneNumber(),
+    examples: ['(415) 555-2671', '+44 20 7946 0958', '0049 30 123456', 'tel:+1-415-555-2671', '+1 415 555 2671 ext. 123', '555-2671', '1-800-FLOWERS'],
+    play: 'phoneNumber',
+    about: (
+      <>
+        Stored as an E.164 string (<code>'+14155552671'</code>), with an extension as <code>;ext=123</code>. A number without a
+        country code is read in <code>defaultCountry</code>, else the locale's region, so the same digits can be different numbers in
+        different locales. Parsing requires a valid number per libphonenumber-js's metadata; a stored one need only be the right
+        length, so it stays readable after a metadata update.
+      </>
+    ),
+    options: [
+      ['defaultCountry', <>The ISO code for numbers written without a country code. Without it, the locale's region.</>],
+      ['style', <><code>'international'</code> (the default, <code>+1 415 555 2671</code>) or <code>'national'</code> (<code>(415) 555-2671</code>), for numbers that read back in the field's country.</>],
+    ],
+  },
+  {
+    id: 'coordinates',
+    group: 'Coordinates',
+    summary: 'Latitude and longitude, plus codes, geohashes',
+    from: '@quantojs/geo',
+    name: 'coordinates',
+    call: 'coordinates()',
+    codec: coordinates(),
+    examples: ['40.7128, -74.0060', '40.7128° N, 74.0060° W', `40°42'46" N 74°0'22" W`, "40°42.767' N 74°0.367' W", 'lat 40.7128, lng -74.006', '849VCWC8+R9', '-74.0060, 40.7128', '95, 40'],
+    play: 'coordinates',
+    about: (
+      <>
+        Stored as <code>{'{ lat, lng }'}</code> in decimal degrees. A bare pair is latitude first, as map apps copy it;{' '}
+        <code>order: 'lngLat'</code> reads GeoJSON's order. A pair that's out of range is never swapped silently: when the swapped
+        reading fits, it's offered as an alternative. Plus codes read as the center of their area. <code>@quantojs/geo</code> also
+        exports <code>toPlusCode</code>, <code>toGeohash</code>, <code>distance</code> and formatters for the other notations.
+      </>
+    ),
+    options: [
+      ['order', <><code>'latLng'</code> (the default) or <code>'lngLat'</code>, for bare pairs. Letters and labels make the order free.</>],
+      ['geohash', <>Also read geohashes (<code>dr5regw3p</code>), of 5 characters or more. Off by default: ordinary words can be geohashes.</>],
+    ],
+  },
+  {
+    id: 'ringSize',
+    group: 'Sizes',
+    summary: 'Ring sizes, US, UK, EU and diameter',
+    from: '@quantojs/sizes',
+    name: 'ringSize',
+    call: 'ringSize()',
+    codec: ringSize(),
+    examples: ['US 7', '7½ US', 'N½', 'UK N', 'EU 54', '17.3 mm diameter', '54 mm', '7'],
+    play: 'ringSize',
+    about: (
+      <>
+        A quantity over the ring's inner circumference, so <code>convert</code> and <code>compare</code> work; every system is
+        defined exactly. Letters are UK sizes. <code>54 mm</code> is the circumference, as ISO 8653 has it, with the diameter as an
+        alternative. <code>nearestSize</code> rounds a conversion to the target system's steps.
+      </>
+    ),
+  },
+  {
+    id: 'shoeSize',
+    group: 'Sizes',
+    summary: 'Adult shoe sizes, US, UK, EU and Mondopoint',
+    from: '@quantojs/sizes',
+    name: 'shoeSize',
+    call: 'shoeSize()',
+    codec: shoeSize(),
+    examples: ["men's 10", 'US W 8', 'UK 9', 'EU 44', '27 cm', '270 mm', 'US 10', '5C', '10'],
+    play: 'shoeSize',
+    about: (
+      <>
+        A quantity over the foot's length. A US size needs its fit, written or from the <code>fit</code> option; otherwise it's{' '}
+        <code>ambiguous</code>. Conversions follow the sizing formulas, not a retail chart, so US men's 10 is EU 42.6 where most charts
+        say 44. Kids' sizes and widths aren't read.
+      </>
+    ),
+    options: [
+      ['fit', <><code>'mens'</code> or <code>'womens'</code>: what a plain <code>US 10</code> means.</>],
+      ['defaultUnit', <>What a bare number means, one system or one per measurement system: <code>{"{ us: 'usMen', uk: 'uk', metric: 'eu' }"}</code>.</>],
+    ],
+  },
+  {
+    id: 'number',
+    group: 'Text and numbers',
+    summary: 'Counts, quantities, amounts',
+    from: '@quantojs/common',
+    name: 'number',
+    call: 'number()',
+    codec: q.number(),
+    examples: ['1,234.5', '1.2k', '3 million', 'twelve', '6.02×10^23', '12 kg'],
+    play: 'number',
+    about: <>A plain number with no unit. Integers and bounds are the <code>schema</code>'s job.</>,
+  },
+  {
     id: 'percent',
     group: 'Text and numbers',
     summary: 'Rates, shares, discounts',
-    from: 'quanto/codecs',
+    from: '@quantojs/common',
     name: 'percent',
     call: 'percent()',
     codec: q.percent(),
@@ -373,7 +549,44 @@ const docs: readonly Doc[] = [
     about: (
       <>
         The value is the percentage as a plain number (<code>12.5</code>, not <code>0.125</code>), and a bare number is a percentage.
-        Ratios, basis points, per mille and bare fractions aren't accepted.
+        Bare fractions aren't accepted. For basis points and per mille, use <code>proportion</code>; for ratios, <code>ratio</code>.
+      </>
+    ),
+  },
+  {
+    id: 'odds',
+    group: 'Text and numbers',
+    summary: 'Betting odds',
+    from: '@quantojs/common/odds',
+    name: 'odds',
+    call: 'odds()',
+    codec: odds(),
+    examples: ['5/1', '11/4', '2/1 on', 'evens', '3.75', '+275', '-110', '25%', '150'],
+    play: 'odds',
+    about: (
+      <>
+        Fractional, decimal and American odds, kept in the notation typed: <code>11/4</code> is{' '}
+        <code>{"{ kind: 'fractional', numerator: 11, denominator: 4 }"}</code>. A bare <code>150</code> could be +150 or 150.0, so it's{' '}
+        <code>ambiguous</code>, with both as alternatives. <code>@quantojs/common/odds</code> also exports <code>toDecimal</code>,{' '}
+        <code>impliedProbability</code>, <code>convert</code> and <code>compare</code>.
+      </>
+    ),
+    options: [['canonicalKind', <>Store every value in one notation, which also says what a bare <code>150</code> means.</>]],
+  },
+  {
+    id: 'ratio',
+    group: 'Text and numbers',
+    summary: 'Aspect ratios, odds, mixes',
+    from: '@quantojs/common',
+    name: 'ratio',
+    call: 'ratio()',
+    codec: q.ratio(),
+    examples: ['16:9', '2.39:1', '1:2:4', '3 in 10', '1 to 3', '3/4'],
+    play: 'ratio',
+    about: (
+      <>
+        Stored as written, as an array of terms: <code>16:9</code> is <code>[16, 9]</code>, not reduced and not divided out.
+        Colons take any number of terms; <code>to</code>, <code>in</code>, <code>out of</code> and <code>/</code> take two.
       </>
     ),
   },
@@ -381,7 +594,7 @@ const docs: readonly Doc[] = [
     id: 'text',
     group: 'Text and numbers',
     summary: 'Anything, trimmed',
-    from: 'quanto/codecs',
+    from: '@quantojs/common',
     name: 'text',
     call: 'text()',
     codec: q.text(),
@@ -395,7 +608,7 @@ const docs: readonly Doc[] = [
     from: 'quanto',
     name: 'optional',
     call: 'optional(length())',
-    imports: { 'quanto/codecs': ['length'] },
+    imports: { '@quantojs/common': ['length'] },
     codec: optional(q.length()),
     examples: ['', '5 ft'],
     about: <>Blank input parses to <code>null</code>, and <code>null</code> formats as <code>''</code>. Without it, every codec reports blank input as an <code>empty</code> issue.</>,
@@ -407,7 +620,7 @@ const docs: readonly Doc[] = [
     from: 'quanto',
     name: 'approx',
     call: 'approx(length())',
-    imports: { 'quanto/codecs': ['length'] },
+    imports: { '@quantojs/common': ['length'] },
     codec: approx(q.length()),
     examples: ['~5 ft', 'about 180 cm', '5 ft or so', '5-ish ft', '5 ft'],
     about: <>Wraps any codec, ranges included: <code>approx(range(length()))</code> reads <code>about 5-7 ft</code>.</>,
@@ -419,7 +632,7 @@ const docs: readonly Doc[] = [
     from: 'quanto',
     name: 'range',
     call: 'range(length(), { open: true })',
-    imports: { 'quanto/codecs': ['length'] },
+    imports: { '@quantojs/common': ['length'] },
     codec: range(q.length(), { open: true }),
     examples: ['5-7 ft', '150 to 180 cm', '5+ ft', 'under 7 ft'],
     about: (
@@ -431,13 +644,31 @@ const docs: readonly Doc[] = [
     options: [['open', <>Accept a single bound: <code>5+ ft</code>, <code>under 7 ft</code>.</>]],
   },
   {
+    id: 'dimensions',
+    group: 'Wrappers',
+    summary: 'Several values written together',
+    from: 'quanto',
+    name: 'dimensions',
+    call: 'dimensions(length(), { count: { min: 2, max: 3 } })',
+    imports: { '@quantojs/common': ['length'] },
+    codec: dimensions(q.length(), { count: { min: 2, max: 3 } }),
+    examples: ['24 × 36 in', '24x36in', '2 m × 50 cm', "5' by 8'", '24 x 36 x 10 cm', '24 cm', '24 in × 36'],
+    about: (
+      <>
+        Wraps any codec: <code>dimensions(number(), {'{ count: 2 }'})</code> reads <code>1920x1080</code>. A unit after the last
+        part applies to the bare numbers before it.
+      </>
+    ),
+    options: [['count', <>Required. A whole number, or <code>{'{ min, max }'}</code>, inclusive. Too many or too few parts is <code>wrong_count</code>.</>]],
+  },
+  {
     id: 'merge',
     group: 'Wrappers',
     summary: 'Any of several codecs',
     from: 'quanto',
     name: 'merge',
     call: 'merge([length(), mass(), duration()])',
-    imports: { 'quanto/codecs': ['length', 'mass', 'duration'] },
+    imports: { '@quantojs/common': ['length', 'mass', 'duration'] },
     codec: merge([q.length(), q.mass(), q.duration()]),
     examples: ['180 cm', '70 kg', '1m', '90 min'],
     play: 'any',
@@ -447,6 +678,30 @@ const docs: readonly Doc[] = [
         tagged with the codec that read it: <code>{'{ codec: "length", value: … }'}</code>.
       </>
     ),
+  },
+  {
+    id: 'anything',
+    group: 'Wrappers',
+    summary: 'Everything, in one codec',
+    from: '@quantojs/anything',
+    name: 'anything',
+    call: 'anything({ include: [phoneNumber()] })',
+    imports: { '@quantojs/anything/phone': ['phoneNumber'] },
+    codec: anything({ include: [phoneNumber()] }),
+    examples: ['next fri', '24×36in', 'about 6 ft', '$10-20k', '455hz', '(415) 555-2671', '40.7128, -74.006', '70', '70 bananas'],
+    play: 'any',
+    about: (
+      <>
+        A <code>merge</code> of every first-party codec, in <code>approx</code>, in an order that settles each conflict:{' '}
+        <code>24 × 36 in</code> is dimensions, <code>455hz</code> a pitch, <code>70</code> a number. Phone numbers are opt-in through{' '}
+        <code>include</code>, from <code>@quantojs/anything/phone</code>, since their metadata is about 80 kB; import it dynamically to
+        load it later. It's the field on this site's home page.
+      </>
+    ),
+    options: [
+      ['include', <>More codecs, read after the built-in ones and before the catch-alls (numbers, ratios, odds).</>],
+      ['names', <>Month and weekday names for dates, as for <code>date</code>.</>],
+    ],
   },
 ];
 
@@ -469,6 +724,7 @@ function equals(docs: UnitDocs, unit: string, def: UnitDefinition, locale: strin
   if (unit === docs.ref) return <span className="muted">reference</span>;
   const override = docs.equals?.[unit];
   if (override) return override;
+  if (def.scale !== docs.codec.units[docs.ref]!.scale) return <span className="muted">own scale ({def.scale ?? 'default'}), doesn't convert</span>;
   if (typeof def.toBase !== 'number') return '—';
   const refLabel = docs.refLabel ?? docs.codec.units[docs.ref]!.aliases[0]!;
   const value = convert(docs.codec, { value: 1, unit }, docs.ref).value;
@@ -661,7 +917,7 @@ function Formatters({ ctx }: { ctx: Ctx }) {
         <span className="summary">Other ways to print a quantity</span>
       </header>
       <pre className="snippet">
-        <span className="j-k">import</span> {'{ feetInches, poundsOunces, stonesPounds, hoursMinutes, intlUnit }'} <span className="j-k">from</span> <span className="j-s">'quanto/formats'</span>;
+        <span className="j-k">import</span> {'{ feetInches, poundsOunces, stonesPounds, hoursMinutes, intlUnit }'} <span className="j-k">from</span> <span className="j-s">'@quantojs/common/formats'</span>;
       </pre>
       <p className="about">
         Pass one as a codec's <code>format</code> option. The compound ones print what the codec reads back, so they round-trip;{' '}
@@ -808,6 +1064,18 @@ function Page({ locale }: { locale: string }) {
             {g === 'Addresses' && (
               <p className="note">
                 From <code>@quantojs/libpostal</code>, an external codec: it runs on a server, beside libpostal.
+              </p>
+            )}
+            {g === 'Phone numbers' && (
+              <p className="note">
+                From <code>@quantojs/libphonenumber</code>, built on libphonenumber-js. Which numbers are valid follows its metadata, which
+                changes between releases.
+              </p>
+            )}
+            {(g === 'Coordinates' || g === 'Sizes') && (
+              <p className="note">
+                From <code>{g === 'Coordinates' ? '@quantojs/geo' : '@quantojs/sizes'}</code>, which is still evolving: its parse results may
+                change between releases.
               </p>
             )}
             {g === 'Music' && (

@@ -1,16 +1,8 @@
-// Ready-made formatters, for a codec's `format` option. See DESIGN.md, Formatting.
-//
-// - Compound formatters (`feetInches`, …) use bundled data only: deterministic, and they round-trip.
-// - `intlUnit` uses Intl for richer, localized output. It's display-only: its output varies
-//   between ICU versions and isn't guaranteed to parse back, so use it with `display="raw"` and never
-//   set `raw` from it. Money and date formatters, including their Intl ones, are in quanto/money and
-//   @quantojs/datetime.
+// Formatter helpers, for a codec's `format` option. See DESIGN.md, Formatting.
+// Ready-made formatters (`feetInches`, `intlUnit`, …) are in @quantojs/common/formats.
 
-import { durationUnits } from '../codecs/duration';
-import { lengthUnits } from '../codecs/length';
-import { massUnits } from '../codecs/mass';
-import type { UnitTable } from '../codecs/quantity';
-import { convertValue, sumLinear } from '../codecs/quantity/convert';
+import type { UnitTable } from '../quantity/codec';
+import { convertValue, factorOf, isLinear, sumLinear } from '../quantity/convert';
 import type { Quantity, ResolvedCtx } from '../core/types';
 import { formatNumber } from '../primitives/number';
 
@@ -19,24 +11,39 @@ export type Formatter<T> = (value: T, ctx: ResolvedCtx) => string;
 
 // Compound formatters ---------------------------------------------------------------------------
 
-interface Part {
+/** One part of a compound formatter: a linear unit of the table, and how to write a count of it. */
+export interface CompoundPart {
   readonly unit: string;
   readonly text: (n: string) => string;
 }
 
+/** How a compound formatter joins its parts, and whether it keeps zero parts after the first. */
+export interface CompoundOptions {
+  /** Between parts. Default `' '`. */
+  readonly separator?: string;
+  /** Keep zero parts after the first (`6'0"`). Default true; false writes a whole amount alone (`2h`). */
+  readonly trailingZeros?: boolean;
+}
+
 /**
- * Splits a quantity into whole parts, largest first (`[ft, in]`), rounding the smallest part to a
- * whole number and carrying into the larger ones. Leading zero parts are left out. Later zero parts
- * are kept (`6'0"`) unless `trailingZeros` is false, for notations that write a whole amount alone (`2h`).
+ * A formatter that splits a quantity into whole parts, largest first (`[ft, in]`), rounding the smallest
+ * part to a whole number and carrying into the larger ones. Leading zero parts are left out. Later zero
+ * parts are kept (`6'0"`) unless `trailingZeros` is false, for notations that write a whole amount alone
+ * (`2h`). `name` is for error messages. Every part's unit must be a linear unit of `units`.
  */
-function compound(
+export function compoundFormatter(
   name: string,
   units: UnitTable,
-  parts: readonly Part[],
-  { separator = ' ', trailingZeros = true }: { readonly separator?: string; readonly trailingZeros?: boolean } = {},
+  parts: readonly CompoundPart[],
+  { separator = ' ', trailingZeros = true }: CompoundOptions = {},
 ): Formatter<Quantity<string>> {
+  if (parts.length === 0) throw new Error(`quanto: ${name} needs at least one part.`);
+  for (const p of parts) {
+    const def = Object.hasOwn(units, p.unit) ? units[p.unit] : undefined;
+    if (!def || !isLinear(def.toBase)) throw new Error(`quanto: ${name}'s part "${p.unit}" must be a linear unit of its table.`);
+  }
   const smallest = parts[parts.length - 1]!;
-  const factor = (unit: string): number => units[unit]!.toBase as number;
+  const factor = (unit: string): number => factorOf(units[unit]!.toBase);
   // How many of the smallest part make one of each part: [12, 1] for feet and inches.
   const sizes = parts.map((p) => sumLinear([{ value: 1, factor: factor(p.unit) }], factor(smallest.unit)));
 
@@ -55,78 +62,5 @@ function compound(
     const shown = counts.map((_, i) => i).filter((i) => i >= from && (trailingZeros || i === from || counts[i] !== 0));
     const text = shown.map((i) => parts[i]!.text(formatNumber(counts[i]!, ctx, { maxFractionDigits: 0 }))).join(separator);
     return value.value < 0 && total !== 0 ? `-${text}` : text;
-  };
-}
-
-/** Lengths as feet and whole inches: `5'11"`, `6'0"`, `11"`. For `length()`. */
-export const feetInches: Formatter<Quantity<string>> = compound(
-  'feetInches',
-  lengthUnits,
-  [
-    { unit: 'ft', text: (n) => `${n}'` },
-    { unit: 'in', text: (n) => `${n}"` },
-  ],
-  { separator: '' },
-);
-
-/** Masses as pounds and whole ounces: `1 lb 4 oz`, `12 oz`. For `mass()`. */
-export const poundsOunces: Formatter<Quantity<string>> = compound('poundsOunces', massUnits, [
-  { unit: 'lb', text: (n) => `${n} lb` },
-  { unit: 'oz', text: (n) => `${n} oz` },
-]);
-
-/** Masses as stones and whole pounds, as UK body weight is written: `11 st 4 lb`. For `mass()`. */
-export const stonesPounds: Formatter<Quantity<string>> = compound('stonesPounds', massUnits, [
-  { unit: 'st', text: (n) => `${n} st` },
-  { unit: 'lb', text: (n) => `${n} lb` },
-]);
-
-/** Durations as hours and whole minutes, written compactly: `2h 30min`, `2h`, `45min`. Days show as hours. For `duration()`. */
-export const hoursMinutes: Formatter<Quantity<string>> = compound(
-  'hoursMinutes',
-  durationUnits,
-  [
-    { unit: 'h', text: (n) => `${n}h` },
-    { unit: 'min', text: (n) => `${n}min` },
-  ],
-  { trailingZeros: false },
-);
-
-// Intl formatters (display-only) ---------------------------------------------------------------------
-
-const cache = new Map<string, Intl.NumberFormat | Intl.DateTimeFormat>();
-const cached = <F extends Intl.NumberFormat | Intl.DateTimeFormat>(key: string, make: () => F): F => {
-  let f = cache.get(key) as F | undefined;
-  if (!f) {
-    f = make();
-    cache.set(key, f);
-  }
-  return f;
-};
-
-/** Built-in unit IDs that have an Intl unit. Others fall back to the number and the unit ID. */
-const INTL_UNITS: Readonly<Record<string, string>> = {
-  mm: 'millimeter', cm: 'centimeter', m: 'meter', km: 'kilometer', in: 'inch', ft: 'foot', yd: 'yard', mi: 'mile',
-  mg: 'milligram', g: 'gram', kg: 'kilogram', oz: 'ounce', lb: 'pound', st: 'stone',
-  ms: 'millisecond', s: 'second', min: 'minute', h: 'hour', d: 'day', wk: 'week',
-  C: 'celsius', F: 'fahrenheit', ml: 'milliliter', l: 'liter', floz: 'fluid-ounce', gal: 'gallon',
-  ha: 'hectare', ac: 'acre', kmh: 'kilometer-per-hour', mph: 'mile-per-hour', mps: 'meter-per-second',
-};
-
-/**
- * Quantities with Intl's localized unit names: `5 ft`, `5 feet`, `5 Fuß`. Display-only. Units without an
- * Intl unit print the number and the unit ID.
- */
-export function intlUnit(options?: { readonly unitDisplay?: 'short' | 'long' | 'narrow'; readonly maximumFractionDigits?: number }): Formatter<Quantity<string>> {
-  const unitDisplay = options?.unitDisplay ?? 'short';
-  const maximumFractionDigits = options?.maximumFractionDigits ?? 3;
-  return (value, ctx) => {
-    const tag = ctx.locale.tag;
-    const unit = INTL_UNITS[value.unit];
-    if (!unit) {
-      return `${cached(`n|${tag}|${maximumFractionDigits}`, () => new Intl.NumberFormat(tag, { maximumFractionDigits })).format(value.value)} ${value.unit}`;
-    }
-    const f = cached(`u|${tag}|${unit}|${unitDisplay}|${maximumFractionDigits}`, () => new Intl.NumberFormat(tag, { style: 'unit', unit, unitDisplay, maximumFractionDigits }));
-    return f.format(value.value);
   };
 }

@@ -1,6 +1,6 @@
 # Authoring quanto codecs
 
-A codec turns text into a typed value (`parse`) and a value back into text (`format`). Built-in and custom codecs are written the same way, with `defineCodec`, and held to the same fixtures.
+A codec turns text into a typed value (`parse`) and a value back into text (`format`). `quanto` is the protocol: it ships no codecs, only the contract, the helpers and the primitives for writing them. The first-party codecs (`@quantojs/common`, `@quantojs/datetime`, …) are written exactly as yours are, with `defineCodec`, and held to the same fixtures. They're a bootstrap: use one, copy it and change it, or write your own.
 
 ## The order of work
 
@@ -18,7 +18,7 @@ src/codecs/<name>/
 
 ## Defining a codec
 
-A minimal percentage codec (`quanto/codecs` ships a fuller `percent`):
+A minimal percentage codec (`@quantojs/common` ships a fuller `percent`):
 
 ```ts
 import { defineCodec, readNumber, formatNumber, type CodecOptions } from 'quanto';
@@ -80,10 +80,11 @@ export const recipe = (options: Options) =>
 
 ## Quantity codecs
 
-For a number with a unit, don't write a parser: define a unit table and call `quantity()` (or extend a built-in table with an object spread).
+For a number with a unit, don't write a parser: define a unit table and call `quantity()`, from `quanto` (or extend one of `@quantojs/common`'s tables with an object spread).
 
 ```ts
-import { quantity, lengthUnits } from 'quanto/codecs';
+import { quantity } from 'quanto';
+import { lengthUnits } from '@quantojs/common';
 
 export const horseHeight = quantity({
   id: 'horseHeight',
@@ -97,7 +98,7 @@ export const horseHeight = quantity({
 - **The first alias is what `format` prints.** Aliases match case-insensitively, except those that differ only by case from another unit's alias (`mW` and `MW`), which match exactly as written. Adding such a unit can change what existing input means: next to megabit `Mb`, typing `mb` no longer matches megabyte `MB` unless you list `mb` as an alias of `MB`.
 - **`subunit`** makes a trailing bare number work: `ft: { …, subunit: 'in' }` reads `5'11` as 5 ft 11 in.
 - **`markers`** are words that can follow a number without naming a unit, so it reads as a bare number and takes the default unit: `quantity({ …, markers: ['°', 'degrees'] })` makes `20°` work in `temperature`. Aliases take precedence. A **`markerUnit`** (one unit, or `{ us, uk, metric }`) is what a marked number means when there's no default unit, so `451°` reads as °F in the US while a bare `451` still asks for a unit.
-- **`number`** gives a quantity its own number syntax when people don't write plain numbers: `quantity({ …, number: { read, format } })`. The built-in `pace` uses it to read `5:30` as 330 seconds. Everything else (aliases, default and canonical units, issues, conversion) still comes from `quantity()`.
+- **`number`** gives a quantity its own number syntax when people don't write plain numbers: `quantity({ …, number: { read, format } })`. `@quantojs/common`'s `pace` uses it to read `5:30` as 330 seconds. Everything else (aliases, default and canonical units, issues, conversion) still comes from `quantity()`.
 
 ## Ranges
 
@@ -114,7 +115,7 @@ export const percentRange = (codec = percent()) =>
   });
 ```
 
-An optional `format(start, end, ctx)` rule can print a closed range shorter than the default `start – end` (dates print `Oct 3–5, 2026`); return `undefined` to keep the default, and make sure the text reads back through `propose`. With no rules, both sides must be written in full. Pass `{ open: true }` as the third argument to also accept one bound (`10%+`, `under 20%`), as an `OpenRange`. `moneyRange` (`quanto/money`) and `dateRange` (`@quantojs/datetime`) are written the same way.
+An optional `format(start, end, ctx)` rule can print a closed range shorter than the default `start – end` (dates print `Oct 3–5, 2026`); return `undefined` to keep the default, and make sure the text reads back through `propose`. With no rules, both sides must be written in full. Pass `{ open: true }` as the third argument to also accept one bound (`10%+`, `under 20%`), as an `OpenRange`. `moneyRange` (`@quantojs/common/money`) and `dateRange` (`@quantojs/datetime`) are written the same way.
 
 ## Context and primitives
 
@@ -129,6 +130,8 @@ Use the exported primitives rather than writing your own lexing:
 - **`readNumber(text, ctx, { from?, suffixes? })`**: reads one locale-aware number and returns `{ value, end }` or `undefined`. It also reads a product of powers (`10^3`, `2*5`) and the constants `π`, `φ` and `e` (`π/2`, `2π`), unless `suffixes` is set, and numbers in words through `ctx.grammars` and the built-in English grammar (`twenty-five`, `three quarters`). Use it rather than lexing digits yourself, and your codec reads dictated numbers too.
 - **Grammars** (`Grammar`, `NumberGrammar`) teach quanto another language. A number grammar's `read(text, from)` returns the number as plain digit text (`"1500.5"`, `"2/3"`, `"2 3/4"`) and the index past the words, or undefined, including when the words aren't one well-formed number. Apps pass grammars in `ctx.grammars`.
 - **`formatNumber(n, ctx, { maxFractionDigits? })`**: formats a number so `readNumber` reads it back.
+- **`readNumberToken`, `readWordToken` and `formatDecimalParts`**: the same reading and printing, keeping digits as text, for values that must stay exact (money).
+- **`compoundFormatter(name, units, parts)`**, from `quanto/formats`: a formatter that splits a quantity into whole parts (`5'11"`, `2h 30min`).
 
 Don't use `Intl` in `parse` or default `format`: its output varies between runtimes.
 
@@ -140,9 +143,11 @@ Don't use `Intl` in `parse` or default `format`: its output varies between runti
 | `unparseable` | The text can't be understood. |
 | `missing_unit` | A bare number, and the codec has no default unit. |
 | `unknown_unit` | A unit was written but isn't in the codec's table. |
+| `incompatible_unit` | A unit on another scale than the one required, so it can't be converted (`85 dB` where the field stores dBA). |
 | `missing_currency` | A bare number, and the codec has no default currency. |
 | `unknown_currency` | A currency was written but isn't known. |
 | `excess_precision` | More decimals than the value allows (`$3.459`). |
+| `wrong_count` | More or fewer parts than allowed (`24 × 36 × 10` where two are). |
 | `ambiguous` | The text reads several ways and the codec won't choose. Return the readings as `alternatives` (or, external codecs, `completions`). |
 | `invalid` | Produced by `defineCodec` from the user's `schema`; you never return it. |
 

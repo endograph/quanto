@@ -11,6 +11,7 @@
   <a href="DESIGN.md">Design</a> ·
   <a href="packages/quanto/README.md">Usage</a> ·
   <a href="packages/quanto/AUTHORING.md">Writing a codec</a> ·
+  <a href="packages/common/README.md">Codecs</a> ·
   <a href="packages/datetime/README.md">Dates</a>
 </p>
 
@@ -21,7 +22,7 @@ A flexible input parser and formatter.
 People type `5'11"`, `180cm` and `1,8 m` and mean the same height. quanto turns that into a typed value you can store, compare and format back.
 
 ```ts
-import { length } from 'quanto/codecs';
+import { length } from '@quantojs/common';
 
 length().parse(`5'11"`);  // { ok: true, value: { value: 71, unit: 'in' } }
 length().parse('1,8 m');  // { ok: true, value: { value: 1.8, unit: 'm' } }
@@ -31,9 +32,9 @@ length().parse('70 kg');  // { ok: false, issues: [{ code: 'unknown_unit', … }
 - **Forgiving.** Locale-aware numbers, compound input like `2h30m`, smart quotes, `$1.2k`, `next fri`.
 - **Plain data.** Values are JSON. Validate them on the server with any Standard Schema library, no re-parsing.
 - **Round-trips.** Whatever `format` prints, `parse` reads back.
-- **Yours to extend.** Custom codecs use the same API as the built-ins, and a fixtures file is the spec.
+- **Yours to extend.** `quanto` is the protocol; the codecs are a bootstrap. Yours use the same API as the first-party ones, and a fixtures file is the spec.
 
-Built in: length, mass, duration, temperature, volume, area, speed, data size and rate, energy, power, pressure, angle, frequency, fuel economy, pace and percent, all from `quanto/codecs`, and money from `quanto/money`. [`@quantojs/datetime`](packages/datetime/README.md) adds dates, times and ranges like `Oct 3-5`. Not sure which one you'll get? `merge` them and take the first that parses.
+[`@quantojs/common`](packages/common/README.md) has length, mass, duration, temperature, volume, area, speed, data size and rate, compute (FLOPs and FLOPS), energy, power, pressure, angle, frequency, fuel economy, pace, torque, force, acceleration, flow rate, density, electrical (voltage, current, resistance, capacitance, charge), light (lumens, lux, nits), radiation dose, sound level, plain numbers, percent, proportions (‰, basis points, ppm) and ratios, with money in `@quantojs/common/money` and betting odds in `@quantojs/common/odds`. [`@quantojs/datetime`](packages/datetime/README.md) adds dates, times and ranges like `Oct 3-5`, and separate packages add [phone numbers](packages/libphonenumber/README.md), [coordinates](packages/geo/README.md) (plus codes and geohashes too), [ring and shoe sizes](packages/sizes/README.md), [music](packages/music/README.md) and [addresses](packages/libpostal/README.md). Not sure which one you'll get? `merge` them and take the first that parses, or take [`@quantojs/anything`](packages/anything/README.md), which reads all of it.
 
 Pre-release, not on npm yet.
 
@@ -47,4 +48,4 @@ bun run test
 bun run site        # the website and playground, on localhost:4173
 ```
 
-It's a bun workspace: the core lives in `packages/quanto`, dates in `packages/datetime`, and the website in `apps/site`. Tests and the site resolve the packages to source, so nothing needs building first.
+It's a bun workspace: the core (the protocol) lives in `packages/quanto`, the common codecs in `packages/common`, dates in `packages/datetime`, and the website in `apps/site`. Tests and the site resolve the packages to source, so nothing needs building first.

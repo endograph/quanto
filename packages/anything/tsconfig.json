@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // In the repo, quanto and the other packages resolve to their source, so nothing needs building first.
+    // Published, they're the dependencies' dist.
+    "paths": {
+      "quanto": ["../quanto/src/index.ts"],
+      "quanto/*": ["../quanto/src/*/index.ts"],
+      "@quantojs/common": ["../common/src/index.ts"],
+      "@quantojs/common/*": ["../common/src/*/index.ts"],
+      "@quantojs/datetime": ["../datetime/src/index.ts"],
+      "@quantojs/geo": ["../geo/src/index.ts"],
+      "@quantojs/libphonenumber": ["../libphonenumber/src/index.ts"],
+      "@quantojs/music": ["../music/src/index.ts"],
+      "@quantojs/sizes": ["../sizes/src/index.ts"]
+    }
+  },
+  "include": ["src"]
+}

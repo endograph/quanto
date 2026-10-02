@@ -3,10 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Try quanto's codecs: type something the way a person would and see the typed value.">
+<meta name="description" content="Try quanto's codecs: type something the way a person would and see the typed value. Edit a codec and try your copy.">
 <title>playground · quanto</title>
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="../quanto.css">
+<link rel="stylesheet" href="../omni.css">
 <style>
   header {
     display: flex;
@@ -28,7 +29,7 @@
   .views a:hover { color: var(--ink); }
   .views a[aria-current='page'] { color: var(--ink); text-decoration: underline; text-underline-offset: 6px; text-decoration-thickness: 2px; }
   .ctx { display: flex; align-items: center; gap: 10px; font: 13px/1 var(--mono); color: var(--muted); }
-  .ctx select {
+  .ctx select, .more {
     padding: 6px 26px 6px 10px;
     border: 1px solid var(--line);
     border-radius: 0;
@@ -38,14 +39,17 @@
     cursor: pointer;
   }
 
-  main { width: min(1080px, 100%); margin: 0 auto; padding: 36px 28px 64px; flex: 1; }
+  .hero { --gap: 28px; border-bottom: 1px solid var(--line); }
+  .hero-inner { width: min(1080px, 100%); margin: 0 auto; padding: 36px 28px 64px; }
 
-  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 22px; }
+  /* The codec picker, and the button that opens the picked codec in the editor. */
+  .picker-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; }
   .tab {
     --c: 4px;
     position: relative;
     isolation: isolate;
-    padding: 8px 14px;
+    padding: 8px 12px;
     border: 0;
     background: none;
     font: 14px/1 var(--mono);
@@ -55,37 +59,40 @@
   .tab:hover { color: var(--ink); }
   .tab[aria-selected='true'] { color: var(--paper); filter: drop-shadow(3px 3px 0 var(--shade)); }
   .tab[aria-selected='true']::before { content: ''; position: absolute; inset: 0; z-index: -1; background: var(--ink); }
-  .more {
-    padding: 8px 26px 8px 12px;
-    border: 1px dashed var(--line);
-    border-radius: 0;
-    background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 6'%3E%3Cpath fill='%23969696' d='M0 0h8L4 6z'/%3E%3C/svg%3E") no-repeat right 9px center / 8px 6px;
-    appearance: none;
-    font: 14px/1 var(--mono);
-    color: var(--muted);
-    cursor: pointer;
-  }
+  /* A copy edited here: dashed until it's picked. */
+  .tab.edited { outline: 1px dashed var(--shade); outline-offset: -1px; }
+  .tab.edited[aria-selected='true'] { outline: 0; }
+  /* As wide as the codec it shows, not the longest one it lists, so the row fits beside the buttons. */
+  .more { field-sizing: content; padding: 8px 26px 8px 12px; border-style: dashed; background-color: transparent; font: 14px/1 var(--mono); color: var(--muted); }
   .more:hover { color: var(--ink); border-color: var(--shade); }
   .more.active { color: var(--ink); border-style: solid; border-color: var(--ink); }
+  .actions { display: flex; flex: none; gap: 8px; }
+  .edit { flex: none; padding: 8px 12px; border: 1px solid var(--ink); background: var(--well); font: 13px/1 var(--mono); cursor: pointer; }
+  .edit:hover:not(:disabled) { box-shadow: 3px 3px 0 var(--shade); transform: translate(-1px, -1px); }
 
-  #input { padding: 14px 18px; font-size: clamp(22px, 3.4vw, 30px); line-height: 1.25; }
+  /* The switches for how the field behaves. */
+  .config { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 28px; margin: 0 0 var(--gap); font: 13px/1.4 var(--mono); }
+  .switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+  .switch input { position: absolute; opacity: 0; pointer-events: none; }
+  .switch .track { position: relative; width: 34px; height: 20px; border-radius: 10px; background: var(--field-border); transition: background 120ms; }
+  .switch .track::after { content: ''; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--well); transition: transform 120ms; }
+  .switch input:checked + .track { background: var(--ink); }
+  .switch input:checked + .track::after { transform: translateX(14px); }
+  .switch input:focus-visible + .track { box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 18%, transparent); }
+  .switch input:disabled ~ * { opacity: 0.45; cursor: not-allowed; }
+  .switch small { color: var(--muted); }
 
-  .chips { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 6px; margin-top: 18px; font: 13px/1.5 var(--mono); }
-  .chips .overline { margin-right: 6px; }
-  .chip { padding: 3px 8px; border: 1px dashed transparent; background: none; cursor: pointer; }
-  .chip:hover { border-color: var(--shade); }
-  .chip.bad { color: var(--muted); }
-
-  .panes { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 0; margin-top: 44px; border-top: 1px solid var(--ink); }
+  /* The inspector: the parse result beside what the value formats to, then the code. */
+  .inspect { --string: #1a7f37; --number: #0550ae; --boolean: #8250df; }
+  @media (prefers-color-scheme: dark) {
+    .inspect { --string: #7ee787; --number: #79c0ff; --boolean: #d2a8ff; }
+  }
+  .panes { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); margin-top: 44px; border-top: 1px solid var(--ink); }
   .pane { padding: 22px 0 0; min-width: 0; }
   .pane + .pane { padding-left: 32px; margin-left: 32px; border-left: 1px solid var(--line); }
   .pane .overline { margin-bottom: 14px; }
-  .pane .overline code { text-transform: none; letter-spacing: 0; }
-
-  pre { margin: 0; font: 14px/1.75 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
-  .j-p { color: var(--shade); }
-  .j-k { color: var(--muted); }
-  .j-n { font-weight: 600; }
+  .inspect .overline code { text-transform: none; letter-spacing: 0; }
+  .inspect pre { margin: 0; font: 14px/1.75 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 
   .formatted { margin: 0; font: 600 clamp(28px, 4vw, 38px)/1.2 var(--mono); letter-spacing: -0.02em; overflow-wrap: anywhere; }
   .roundtrip { margin: 10px 0 0; font: 12px/1.5 var(--mono); color: var(--muted); }
@@ -95,10 +102,10 @@
   .issue p { margin: 6px 0 0; font-size: 14px; color: var(--muted); }
   .issue .from { margin-left: 8px; font: 12px var(--mono); color: var(--muted); }
 
-  dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; margin: 26px 0 0; font: 13px/1.5 var(--mono); }
-  dl + .overline { margin-top: 26px; }
-  dt { color: var(--muted); }
-  dd { margin: 0; }
+  .inspect dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 18px; margin: 26px 0 0; font: 13px/1.5 var(--mono); }
+  .inspect dl + .overline { margin-top: 26px; }
+  .inspect dt { color: var(--muted); }
+  .inspect dd { margin: 0; overflow-wrap: anywhere; }
   .alts { margin-top: 26px; }
   .alts p:not(.overline) { margin: 8px 0 0; font-size: 14px; color: var(--muted); }
 
@@ -106,64 +113,64 @@
   .code .overline { margin-bottom: 12px; }
   .code pre { font-size: 13px; }
 
+  /* The codec editor, a modal over the page. */
+  dialog.editor {
+    width: min(960px, calc(100vw - 32px));
+    height: min(860px, calc(100svh - 32px));
+    padding: 0;
+    border: 1px solid var(--ink);
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow: 8px 8px 0 var(--shade);
+  }
+  dialog.editor[open] { display: flex; flex-direction: column; }
+  dialog.editor::backdrop { background: color-mix(in srgb, var(--paper) 70%, transparent); backdrop-filter: blur(2px); }
+  .editor > header { display: block; padding: 20px 24px 16px; border: 0; }
+  .editor h2 { margin: 0 0 6px; font: 700 22px/1.2 var(--sans); letter-spacing: -0.04em; }
+  .editor header p { margin: 0; color: var(--muted); font-size: 14px; }
+  .editor-host { flex: 1; min-height: 0; border-block: 1px solid var(--line); background: var(--well); }
+  .editor-host .cm-editor { height: 100%; font-size: 13px; }
+  .editor-host .cm-editor.cm-focused { outline: 0; }
+  .editor-host .cm-scroller { font-family: var(--mono); line-height: 1.6; }
+  .editor-host .cm-gutters { background: var(--well); border-right: 1px solid var(--line); color: var(--shade); }
+  .editor-host .cm-activeLine, .editor-host .cm-activeLineGutter { background: color-mix(in srgb, var(--ink) 4%, transparent); }
+  .editor-host .cm-cursor { border-left-color: var(--ink); }
+  .editor-host .cm-selectionBackground, .editor-host .cm-focused .cm-selectionBackground { background: color-mix(in srgb, var(--ink) 16%, transparent) !important; }
+  .editor-host .cm-tooltip { background: var(--paper); border: 1px solid var(--line); }
+  /* Tokens, from @lezer/highlight's class highlighter. */
+  .editor-host { --kw: #8250df; --str: #1a7f37; --num: #0550ae; --fn: #953800; }
+  @media (prefers-color-scheme: dark) {
+    .editor-host { --kw: #d2a8ff; --str: #7ee787; --num: #79c0ff; --fn: #ffa657; }
+  }
+  .tok-keyword, .tok-operatorKeyword, .tok-modifier { color: var(--kw); }
+  .tok-string, .tok-string2 { color: var(--str); }
+  .tok-number, .tok-bool, .tok-atom { color: var(--num); }
+  .tok-comment { color: var(--muted); font-style: italic; }
+  .tok-typeName, .tok-className { color: var(--fn); }
+  .tok-propertyName { color: var(--ink); }
+  .tok-variableName.tok-definition { font-weight: 600; }
+  .editor > footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 24px 18px; color: var(--ink); }
+  .editor-error { flex: 1; min-width: 0; margin: 0; color: var(--danger); font: 13px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .editor-actions { display: flex; flex: none; align-items: center; gap: 10px; }
+  .editor-actions .btn kbd { padding: 0 4px; border: 1px solid var(--shade); font: 11px/1.4 var(--mono); }
+
   footer { display: flex; justify-content: space-between; gap: 16px; padding: 20px 28px; color: var(--muted); font: 12px/1.5 var(--mono); }
   kbd { padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px; font: 11px var(--mono); }
 
-  @media (max-width: 760px) {
-    header, main, footer { padding-left: 18px; padding-right: 18px; }
+  @media (max-width: 820px) {
+    header, footer, .hero-inner { padding-left: 18px; padding-right: 18px; }
+    .picker-row { flex-direction: column; }
     .panes { grid-template-columns: 1fr; }
     .pane + .pane { padding-left: 0; margin-left: 0; border-left: 0; margin-top: 28px; border-top: 1px solid var(--line); }
     .ctx .label { display: none; }
     footer .keys { display: none; }
+    .editor > footer { flex-direction: column; align-items: stretch; }
+    .editor-actions { flex-wrap: wrap; }
   }
 </style>
 </head>
 <body>
-<header>
-  <div class="brand">
-    <button class="mark-button" id="mark-button" type="button" aria-label="quanto mark. Click to change the glyph.">
-      <svg class="mark" id="mark" viewBox="10 4 44 58" aria-hidden="true">
-        <path class="shade" d="M30 6h6l2 2v6l-2 2h-6l-2-2V8zM30 22h6l2 2v10l-2 2H24l-2 2v6l2 2h14l2-2v-6l2-2h6l2 2v14l-4 4H16l-4-4V30l4-4h12v-2z"/>
-        <path class="face" d="M30 6h6l2 2v6l-2 2h-6l-2-2V8zM30 22h6l2 2v10l-2 2H24l-2 2v6l2 2h14l2-2v-6l2-2h6l2 2v14l-4 4H16l-4-4V30l4-4h12v-2z"/>
-      </svg>
-    </button>
-    <a href="../index.html">quanto</a>
-  </div>
-  <nav class="views" aria-label="Playground">
-    <a href="../demo/index.html">demo</a>
-    <a href="./index.html" aria-current="page">playground</a>
-    <a href="../codecs/index.html">codecs</a>
-  </nav>
-  <label class="ctx"><span class="label">ctx.locale</span>
-    <select id="locale"></select>
-  </label>
-</header>
-
-<main>
-  <div class="tabs" role="tablist" id="tabs" aria-label="Codec"></div>
-
-  <input id="input" class="text-field" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Text to parse" placeholder="enter a quantity">
-  <div class="chips" id="chips"></div>
-
-  <div class="panes" aria-live="polite">
-    <section class="pane">
-      <p class="overline"><code id="parse-call">parse(text, ctx)</code></p>
-      <pre id="result"></pre>
-    </section>
-    <section class="pane" id="right"></section>
-  </div>
-
-  <div class="code">
-    <p class="overline">in your app</p>
-    <pre id="code"></pre>
-  </div>
-</main>
-
-<footer>
-  <span>Every result on this page comes from the real packages. Pre-release.</span>
-  <span class="keys"><kbd>/</kbd> focus · <kbd>[</kbd> <kbd>]</kbd> switch codec</span>
-</footer>
-
+<div id="root"></div>
 <script type="module" src="../playground.js"></script>
 </body>
 </html>

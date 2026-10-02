@@ -1,0 +1,37 @@
+[
+  {"parse": "16 A", "value": {"value": 16, "unit": "A"}},
+  {"parse": "16A", "value": {"value": 16, "unit": "A"}},
+  {"parse": "16 a", "value": {"value": 16, "unit": "A"}},
+  {"parse": "16 amps", "value": {"value": 16, "unit": "A"}},
+  {"parse": "1 amp", "value": {"value": 1, "unit": "A"}},
+  {"parse": "16 amperes", "value": {"value": 16, "unit": "A"}},
+  {"parse": "1,5 A", "ctx": {"locale": "de-DE"}, "value": {"value": 1.5, "unit": "A"}},
+  {"parse": "500 mA", "value": {"value": 500, "unit": "mA"}},
+  {"parse": "500 ma", "value": {"value": 500, "unit": "mA"}},
+  {"parse": "500 MA", "value": {"value": 500, "unit": "mA"}},
+  {"parse": "500 milliamps", "value": {"value": 500, "unit": "mA"}},
+  {"parse": "20 µA", "value": {"value": 20, "unit": "uA"}},
+  {"parse": "20 μA", "value": {"value": 20, "unit": "uA"}},
+  {"parse": "20 uA", "value": {"value": 20, "unit": "uA"}},
+  {"parse": "20 microamps", "value": {"value": 20, "unit": "uA"}},
+  {"parse": "5 kA", "value": {"value": 5, "unit": "kA"}},
+  {"parse": "5 kiloamps", "value": {"value": 5, "unit": "kA"}},
+
+  {"parse": "500 mA", "options": {"canonicalUnit": "A"}, "value": {"value": 0.5, "unit": "A"}},
+  {"parse": "2 A", "options": {"canonicalUnit": "mA"}, "value": {"value": 2000, "unit": "mA"}},
+  {"parse": "1 kA", "options": {"canonicalUnit": "A"}, "value": {"value": 1000, "unit": "A"}},
+
+  {"parse": "16 Ah", "issues": ["unknown_unit"]},
+  {"parse": "16 V", "issues": ["unknown_unit"]},
+  {"parse": "16 W", "issues": ["unknown_unit"]},
+  {"parse": "16", "issues": ["missing_unit"]},
+  {"parse": "16", "options": {"defaultUnit": "A"}, "value": {"value": 16, "unit": "A"}},
+  {"parse": "lots", "issues": ["unparseable"]},
+  {"parse": "", "issues": ["empty"]},
+
+  {"format": {"value": 16, "unit": "A"}, "text": "16 A"},
+  {"format": {"value": 1.5, "unit": "A"}, "ctx": {"locale": "de-DE"}, "text": "1,5 A"},
+  {"format": {"value": 500, "unit": "mA"}, "text": "500 mA"},
+  {"format": {"value": 20, "unit": "uA"}, "text": "20 µA"},
+  {"format": {"value": 5, "unit": "kA"}, "text": "5 kA"}
+]

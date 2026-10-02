@@ -1,8 +1,8 @@
 // Runs the field's scripted fixtures: events in, the text, commits, issues and echo out.
 import { expect, test } from 'vitest';
 import { defineCodec, merge, optional, type Codec, type QuantoValue } from 'quanto';
-import { duration, length } from 'quanto/codecs';
-import { feetInches } from 'quanto/formats';
+import { duration, length } from '@quantojs/common';
+import { feetInches } from '@quantojs/common/formats';
 import fixtures from './fixtures.json';
 import { alternatives, echo, initialState, reduce, type Display, type FieldEnv, type FieldEvent } from './index';
 

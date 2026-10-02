@@ -1,0 +1,67 @@
+{
+  "name": "@quantojs/common",
+  "version": "0.2.0",
+  "description": "The common codecs for quanto: lengths, weights, durations, temperatures and thirty more quantities, numbers, percents, money, odds and text, with ready-made formatters.",
+  "license": "MIT",
+  "author": "rt2zz",
+  "homepage": "https://github.com/endograph/quanto/tree/main/packages/common#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/endograph/quanto.git",
+    "directory": "packages/common"
+  },
+  "bugs": {
+    "url": "https://github.com/endograph/quanto/issues"
+  },
+  "keywords": [
+    "quanto",
+    "parse",
+    "format",
+    "units",
+    "quantity",
+    "measurement",
+    "money",
+    "currency",
+    "odds",
+    "locale",
+    "i18n",
+    "forms"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./money": {
+      "types": "./dist/money/index.d.ts",
+      "import": "./dist/money/index.js"
+    },
+    "./odds": {
+      "types": "./dist/odds/index.d.ts",
+      "import": "./dist/odds/index.js"
+    },
+    "./formats": {
+      "types": "./dist/formats/index.d.ts",
+      "import": "./dist/formats/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "quanto": "workspace:^"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "quanto": "workspace:*"
+  }
+}

@@ -4,10 +4,12 @@
     "lib": ["ES2022", "DOM"],
     "jsx": "react-jsx",
     // In the repo, quanto resolves to the core's source, so nothing needs building first. Published, it's
-    // the quanto peer dependency's dist.
+    // the quanto peer dependency's dist. @quantojs/common is for the tests only.
     "paths": {
       "quanto": ["../quanto/src/index.ts"],
-      "quanto/*": ["../quanto/src/*/index.ts"]
+      "quanto/*": ["../quanto/src/*/index.ts"],
+      "@quantojs/common": ["../common/src/index.ts"],
+      "@quantojs/common/*": ["../common/src/*/index.ts"]
     }
   },
   "include": ["src"]

@@ -5,7 +5,7 @@ name: Pages
 on:
   push:
     branches: [main]
-    paths: ['apps/site/**', 'packages/quanto/src/**', 'packages/datetime/src/**', 'bun.lock', '.github/workflows/pages.yml']
+    paths: ['apps/site/**', 'packages/quanto/src/**', 'packages/common/src/**', 'packages/datetime/src/**', 'bun.lock', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:

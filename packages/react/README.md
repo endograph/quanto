@@ -4,7 +4,7 @@ A React input for [quanto](https://github.com/endograph/quanto#readme). People t
 
 ```tsx
 import { QuantoInput, QuantoProvider } from '@quantojs/react';
-import { length } from 'quanto/codecs';
+import { length } from '@quantojs/common';
 
 <QuantoProvider ctx={{ locale: 'en-US' }}>
   <QuantoInput

@@ -1,0 +1,7 @@
+[
+  {"parse": "(415) 555-2671", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "phoneNumber", "value": "+14155552671"}, "approximate": false}},
+  {"parse": "+44 20 7946 0958", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "phoneNumber", "value": "+442079460958"}, "approximate": false}},
+  {"parse": "4155552671", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "phoneNumber", "value": "+14155552671"}, "approximate": false}, "alternatives": [{"value": {"codec": "number", "value": 4155552671}, "approximate": false}, {"value": {"codec": "odds", "value": {"kind": "american", "value": 4155552671}}, "approximate": false}, {"value": {"codec": "odds", "value": {"kind": "decimal", "value": 4155552671}}, "approximate": false}]},
+  {"parse": "70", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "number", "value": 70}, "approximate": false}, "alternatives": [{"value": {"codec": "odds", "value": {"kind": "decimal", "value": 70}}, "approximate": false}]},
+  {"parse": "180 cm", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "length", "value": {"value": 180, "unit": "cm"}}, "approximate": false}, "alternatives": [{"value": {"codec": "shoeSize", "value": {"value": 180, "unit": "cm"}}, "approximate": false}]}
+]

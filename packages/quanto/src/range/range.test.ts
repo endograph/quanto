@@ -1,13 +1,15 @@
 import { expect, test } from 'vitest';
-import { length, type LengthUnit } from '../codecs/length';
-import type { QuantityOptions } from '../codecs/quantity';
+import { length, soundLevel, type LengthUnit } from '@quantojs/common';
+import type { QuantityOptions } from '../quantity/codec';
 import { roundTrip, runFixtures } from '../testing';
 import lengthFixtures from './fixtures.length.json';
 import openFixtures from './fixtures.length-open.json';
+import soundFixtures from './fixtures.sound-level.json';
 import { defineRange, range } from './index';
 
 runFixtures((options?: QuantityOptions<LengthUnit>) => range(length(options)), lengthFixtures, { test });
 runFixtures((options?: QuantityOptions<LengthUnit>) => range(length(options), { open: true }), openFixtures, { test });
+runFixtures(() => range(soundLevel()), soundFixtures, { test });
 
 for (const locale of ['en-US', 'de-DE', 'fr-FR']) {
   roundTrip(range(length()), [{ start: { value: 5, unit: 'ft' }, end: { value: 7, unit: 'ft' } }, { start: { value: -5, unit: 'm' }, end: { value: -2, unit: 'm' } }], { test, ctx: { locale } });

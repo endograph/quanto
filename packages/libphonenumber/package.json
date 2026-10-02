@@ -1,0 +1,55 @@
+{
+  "name": "@quantojs/libphonenumber",
+  "version": "0.2.0",
+  "description": "Phone numbers for quanto, built on libphonenumber-js: parse \"(415) 555-2671\", \"+44 20 7946 0958\" and \"tel:\" URIs into E.164, validated against Google's numbering metadata.",
+  "license": "MIT",
+  "author": "rt2zz",
+  "homepage": "https://github.com/endograph/quanto/tree/main/packages/libphonenumber#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/endograph/quanto.git",
+    "directory": "packages/libphonenumber"
+  },
+  "bugs": {
+    "url": "https://github.com/endograph/quanto/issues"
+  },
+  "keywords": [
+    "quanto",
+    "phone",
+    "phone-number",
+    "telephone",
+    "e164",
+    "libphonenumber",
+    "parse",
+    "locale",
+    "forms"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "libphonenumber-js": "^1.13.14"
+  },
+  "peerDependencies": {
+    "quanto": "workspace:^"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "quanto": "workspace:*"
+  }
+}

@@ -1,0 +1,42 @@
+[
+  {"parse": "220 Ω", "value": {"value": 220, "unit": "ohm"}},
+  {"parse": "220Ω", "value": {"value": 220, "unit": "ohm"}},
+  {"parse": "220 Ω", "value": {"value": 220, "unit": "ohm"}},
+  {"parse": "220 ohm", "value": {"value": 220, "unit": "ohm"}},
+  {"parse": "220 ohms", "value": {"value": 220, "unit": "ohm"}},
+  {"parse": "220 OHMS", "value": {"value": 220, "unit": "ohm"}},
+  {"parse": "4.7 kΩ", "value": {"value": 4.7, "unit": "kohm"}},
+  {"parse": "4,7 kΩ", "ctx": {"locale": "de-DE"}, "value": {"value": 4.7, "unit": "kohm"}},
+  {"parse": "10 kohm", "value": {"value": 10, "unit": "kohm"}},
+  {"parse": "10 kohms", "value": {"value": 10, "unit": "kohm"}},
+  {"parse": "10 kiloohms", "value": {"value": 10, "unit": "kohm"}},
+  {"parse": "10 kilohms", "value": {"value": 10, "unit": "kohm"}},
+  {"parse": "1 MΩ", "value": {"value": 1, "unit": "Mohm"}},
+  {"parse": "1 Mohm", "value": {"value": 1, "unit": "Mohm"}},
+  {"parse": "1 megohm", "value": {"value": 1, "unit": "Mohm"}},
+  {"parse": "1 megaohms", "value": {"value": 1, "unit": "Mohm"}},
+  {"parse": "50 mΩ", "value": {"value": 50, "unit": "mohm"}},
+  {"parse": "50 mohm", "value": {"value": 50, "unit": "mohm"}},
+  {"parse": "50 milliohms", "value": {"value": 50, "unit": "mohm"}},
+
+  {"parse": "4.7k", "options": {"defaultUnit": "ohm"}, "value": {"value": 4700, "unit": "ohm"}},
+  {"parse": "4.7k", "issues": ["missing_unit"]},
+  {"parse": "1 MOHM", "issues": ["unknown_unit"]},
+
+  {"parse": "4.7 kΩ", "options": {"canonicalUnit": "ohm"}, "value": {"value": 4700, "unit": "ohm"}},
+  {"parse": "1 MΩ", "options": {"canonicalUnit": "kohm"}, "value": {"value": 1000, "unit": "kohm"}},
+  {"parse": "50 mΩ", "options": {"canonicalUnit": "ohm"}, "value": {"value": 0.05, "unit": "ohm"}},
+
+  {"parse": "220 V", "issues": ["unknown_unit"]},
+  {"parse": "220 A", "issues": ["unknown_unit"]},
+  {"parse": "220", "issues": ["missing_unit"]},
+  {"parse": "220", "options": {"defaultUnit": "ohm"}, "value": {"value": 220, "unit": "ohm"}},
+  {"parse": "lots", "issues": ["unparseable"]},
+  {"parse": "", "issues": ["empty"]},
+
+  {"format": {"value": 220, "unit": "ohm"}, "text": "220 Ω"},
+  {"format": {"value": 4.7, "unit": "kohm"}, "text": "4.7 kΩ"},
+  {"format": {"value": 4.7, "unit": "kohm"}, "ctx": {"locale": "de-DE"}, "text": "4,7 kΩ"},
+  {"format": {"value": 1, "unit": "Mohm"}, "text": "1 MΩ"},
+  {"format": {"value": 50, "unit": "mohm"}, "text": "50 mΩ"}
+]

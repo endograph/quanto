@@ -1,0 +1,51 @@
+{
+  "name": "@quantojs/sizes",
+  "version": "0.2.0",
+  "description": "Ring and shoe sizes for quanto: parse \"US 7\", \"N½\", \"EU 54\", \"men's 10\", \"UK 9\" and \"27 cm\" into sizes that convert between systems.",
+  "license": "MIT",
+  "author": "rt2zz",
+  "homepage": "https://github.com/endograph/quanto/tree/main/packages/sizes#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/endograph/quanto.git",
+    "directory": "packages/sizes"
+  },
+  "bugs": {
+    "url": "https://github.com/endograph/quanto/issues"
+  },
+  "keywords": [
+    "quanto",
+    "ring-size",
+    "shoe-size",
+    "size-conversion",
+    "mondopoint",
+    "parse",
+    "locale",
+    "forms"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "quanto": "workspace:^"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "quanto": "workspace:*"
+  }
+}

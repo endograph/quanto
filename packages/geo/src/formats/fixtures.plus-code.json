@@ -1,0 +1,12 @@
+[
+  {"format": {"lat": 37.4220625, "lng": -122.0840625}, "text": "849VCWC8+R9"},
+  {"format": {"lat": 40.7128, "lng": -74.006}, "text": "87G7PX7V+4J"},
+  {"format": {"lat": 20.3700625, "lng": 2.7821875}, "text": "7FG49QCJ+2V"},
+  {"format": {"lat": 47.0000625, "lng": 8.0000625}, "text": "8FVC2222+22"},
+  {"format": {"lat": -41.2730625, "lng": 174.7859375}, "text": "4VCPPQGP+Q9"},
+  {"format": {"lat": -89.9999375, "lng": -179.9999375}, "text": "22222222+22"},
+  {"format": {"lat": 90, "lng": 1}, "text": "CFX3X2X2+X2"},
+  {"format": {"lat": 0, "lng": 180}, "text": "62G22222+22"},
+  {"format": {"lat": 40.7128, "lng": -74.006}, "ctx": {"locale": "de-DE"}, "text": "87G7PX7V+4J"},
+  {"parse": "87G7PX7V+4J", "value": {"lat": 40.7128125, "lng": -74.0059375}}
+]

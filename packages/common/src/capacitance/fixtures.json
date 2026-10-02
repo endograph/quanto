@@ -1,0 +1,36 @@
+[
+  {"parse": "100 µF", "value": {"value": 100, "unit": "uF"}},
+  {"parse": "100µF", "value": {"value": 100, "unit": "uF"}},
+  {"parse": "100 μF", "value": {"value": 100, "unit": "uF"}},
+  {"parse": "100 uF", "value": {"value": 100, "unit": "uF"}},
+  {"parse": "100 UF", "value": {"value": 100, "unit": "uF"}},
+  {"parse": "100 microfarads", "value": {"value": 100, "unit": "uF"}},
+  {"parse": "10 nF", "value": {"value": 10, "unit": "nF"}},
+  {"parse": "10 nanofarads", "value": {"value": 10, "unit": "nF"}},
+  {"parse": "22 pF", "value": {"value": 22, "unit": "pF"}},
+  {"parse": "22 pf", "value": {"value": 22, "unit": "pF"}},
+  {"parse": "22 picofarads", "value": {"value": 22, "unit": "pF"}},
+  {"parse": "4,7 µF", "ctx": {"locale": "de-DE"}, "value": {"value": 4.7, "unit": "uF"}},
+  {"parse": "1 mF", "value": {"value": 1, "unit": "mF"}},
+  {"parse": "1 millifarad", "value": {"value": 1, "unit": "mF"}},
+  {"parse": "1 F", "value": {"value": 1, "unit": "F"}},
+  {"parse": "2.5 farads", "value": {"value": 2.5, "unit": "F"}},
+
+  {"parse": "100 nF", "options": {"canonicalUnit": "uF"}, "value": {"value": 0.1, "unit": "uF"}},
+  {"parse": "1 µF", "options": {"canonicalUnit": "pF"}, "value": {"value": 1000000, "unit": "pF"}},
+  {"parse": "1 mF", "options": {"canonicalUnit": "uF"}, "value": {"value": 1000, "unit": "uF"}},
+
+  {"parse": "100 µH", "issues": ["unknown_unit"]},
+  {"parse": "100 V", "issues": ["unknown_unit"]},
+  {"parse": "100", "issues": ["missing_unit"]},
+  {"parse": "100", "options": {"defaultUnit": "uF"}, "value": {"value": 100, "unit": "uF"}},
+  {"parse": "lots", "issues": ["unparseable"]},
+  {"parse": "", "issues": ["empty"]},
+
+  {"format": {"value": 100, "unit": "uF"}, "text": "100 µF"},
+  {"format": {"value": 4.7, "unit": "uF"}, "ctx": {"locale": "de-DE"}, "text": "4,7 µF"},
+  {"format": {"value": 10, "unit": "nF"}, "text": "10 nF"},
+  {"format": {"value": 22, "unit": "pF"}, "text": "22 pF"},
+  {"format": {"value": 1, "unit": "mF"}, "text": "1 mF"},
+  {"format": {"value": 2.5, "unit": "F"}, "text": "2.5 F"}
+]

@@ -1,0 +1,64 @@
+{
+  "name": "@quantojs/anything",
+  "version": "0.2.0",
+  "description": "One quanto codec that reads anything: dates, money, every quantity, dimensions, coordinates, sizes, pitches, numbers, ratios and odds, with ranges and approximate values, in a curated order.",
+  "license": "MIT",
+  "author": "rt2zz",
+  "homepage": "https://github.com/endograph/quanto/tree/main/packages/anything#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/endograph/quanto.git",
+    "directory": "packages/anything"
+  },
+  "bugs": {
+    "url": "https://github.com/endograph/quanto/issues"
+  },
+  "keywords": [
+    "quanto",
+    "parse",
+    "format",
+    "input",
+    "units",
+    "dates",
+    "money",
+    "search",
+    "forms"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./phone": {
+      "types": "./dist/phone/index.d.ts",
+      "import": "./dist/phone/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@quantojs/common": "workspace:^",
+    "@quantojs/datetime": "workspace:^",
+    "@quantojs/geo": "workspace:^",
+    "@quantojs/libphonenumber": "workspace:^",
+    "@quantojs/music": "workspace:^",
+    "@quantojs/sizes": "workspace:^"
+  },
+  "peerDependencies": {
+    "quanto": "workspace:^"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "quanto": "workspace:*"
+  }
+}

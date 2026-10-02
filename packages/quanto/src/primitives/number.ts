@@ -92,12 +92,15 @@ function validGrouping(groups: readonly string[]): boolean {
   return [3, 2].some((size) => middle.every((len) => len === size) && first.length >= 1 && first.length <= (middle.length > 0 ? size : 3));
 }
 
-/** Internal lossless reading shared by numeric codecs and money; no floating-point conversion. */
+/** A number as read by `readNumberToken`: its digits kept as text, with no floating-point conversion, for codecs that must stay exact (money). */
 export type NumberToken =
   | { readonly kind: 'decimal'; readonly negative: boolean; readonly int: string; readonly frac: string; readonly exponent: number; readonly end: number }
   | { readonly kind: 'fraction'; readonly negative: boolean; readonly whole?: string; readonly numerator: string; readonly denominator: string; readonly end: number };
 
-/** Internal lexer: retains decimal digits and fractions for exact money parsing. */
+/**
+ * Reads a number in digits at `options.from` (after spaces), like `readNumber`, but keeps its digits and
+ * fraction as text, for exact parsing. `apostropheGroups` reads `1'000` in every locale, where it can't be feet.
+ */
 export function readNumberToken(text: string, ctx: LocaleCtx, options?: ReadNumberOptions, apostropheGroups = false): NumberToken | undefined {
   const locale = ctx.locale;
   // Space grouping (`1 000`) reads in every locale; apostrophe grouping (`1'000`) only where it can't be feet.

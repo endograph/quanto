@@ -47,6 +47,7 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "@quantojs/common": "workspace:*",
     "@types/react": "^19",
     "quanto": "workspace:*",
     "react": "^19",

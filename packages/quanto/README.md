@@ -2,7 +2,9 @@
 
 Turn messy human text into well-typed values and back: `5'11"`, `180cm` and `1,8 m` all parse into the same typed length, which can be converted, compared and formatted. The same idea covers weights, durations, temperatures, percentages and custom types.
 
-Pre-release. The design and its open questions are in the repository's [`DESIGN.md`](https://github.com/endograph/quanto/blob/main/DESIGN.md). Money is in `quanto/money`, and dates and times in [`@quantojs/datetime`](https://github.com/endograph/quanto/blob/main/packages/datetime/README.md).
+`quanto` is the protocol: codec contracts, definition helpers, context, issues, composition and shared parsing primitives. It has no codecs. Install the codecs you need alongside it: the common ones (quantities, numbers, money, odds, text) are in [`@quantojs/common`](https://github.com/endograph/quanto/blob/main/packages/common/README.md).
+
+Pre-release. The design and its open questions are in the repository's [`DESIGN.md`](https://github.com/endograph/quanto/blob/main/DESIGN.md). Money is in `@quantojs/common/money`, betting odds in `@quantojs/common/odds`, and dates and times in [`@quantojs/datetime`](https://github.com/endograph/quanto/blob/main/packages/datetime/README.md).
 
 ## Using quanto
 
@@ -11,7 +13,7 @@ Read this before using quanto in an app. To write a codec, read [AUTHORING.md](h
 ### Parse, then check `ok`
 
 ```ts
-import { length } from 'quanto/codecs';
+import { length } from '@quantojs/common';
 
 const height = length({ defaultUnit: 'in' });
 const result = height.parse(text, { locale: 'en-GB' });
@@ -39,7 +41,7 @@ if (result.ok) save({ raw: text, value: result.value });
 
 ### Optional extras
 
-- **`result.context`** (`{ locale, now? }`): what the parse was based on. Store it separately, only if you need to replay a parse later (audits, debugging, migrations): `codec.parse(raw, context)` reproduces the value on the same versions of quanto and the package that owns the codec (`@quantojs/datetime` for dates).
+- **`result.context`** (`{ locale, now? }`): what the parse was based on. Store it separately, only if you need to replay a parse later (audits, debugging, migrations): `codec.parse(raw, context)` reproduces the value on the same versions of quanto and the package that owns the codec (`@quantojs/common` for lengths, `@quantojs/datetime` for dates).
 - **`{ raw, issues }`**: a field that didn't parse. Usually you block the submit instead of storing it. Keep it only for drafts, where the user's bad text must survive.
 
 ### External codecs

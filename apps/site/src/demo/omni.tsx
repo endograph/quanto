@@ -1,36 +1,35 @@
 // The big field that reads anything: it types its own examples until someone takes it over, offers
-// them as chips, and shows what it makes of the text. The demo page puts its switches above it; the
-// landing page shows it as it comes.
+// them as chips, and shows what it makes of the text. The landing page shows it as it comes; the
+// playground gives it the codec picked there, and its own inspector in place of the status.
 import { Fragment, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
-import { approx, defineRange, merge, range, type Codec, type Issue, type Quantity, type ResolvedCtx } from 'quanto';
-import { angle, dataSize, duration, length, mass, power, speed, temperature, type LengthUnit } from 'quanto/codecs';
+import { formatNumber, type Codec, type Issue, type Quantity, type ResolvedCtx } from 'quanto';
 import { convert } from 'quanto/quantity';
-import { feetInches, hoursMinutes } from 'quanto/formats';
-import { money, moneyRange } from 'quanto/money';
-import { date, dateRange, dateTime, time } from '@quantojs/datetime';
+import { length, type LengthUnit } from '@quantojs/common';
+import { feetInches, hoursMinutes } from '@quantojs/common/formats';
+import { anything, type AnythingValue } from '@quantojs/anything';
+import type { Coordinates } from '@quantojs/geo';
 import { pitch, type PitchUnit } from '@quantojs/music';
 import { de, es, fr, it, nl, pt } from '@quantojs/datetime/names';
 import { useQuanto, useQuantoCtx, type Display, type QuantoField } from '@quantojs/react';
-import { musicKeys } from '../catalog';
+import { musicKeys } from '../choices';
 import { DatePicker } from './pickers';
 import { setText, still, stop, type, wait } from './typist';
 
-export const names = [de, es, fr, it, nl, pt];
+const names = [de, es, fr, it, nl, pt];
 
 
 /**
  * Example chips for the field with the given id. A chip fills the field and focuses it, and leaves the
  * commit to the person: nothing is stored until they press Enter or leave. Ones that produce an issue
- * are dimmed: a sync codec says which, and for an external one (parsing would call its service) `bad`
- * lists them.
+ * are dimmed.
  */
-export function Try(props: { field: string; codec?: Codec<any>; bad?: readonly string[]; texts: readonly string[]; onRun?: () => void }) {
-  const { field, codec, bad = [], texts, onRun } = props;
+function Try(props: { field: string; codec: Codec<any>; texts: readonly string[]; onRun: () => void }) {
+  const { field, codec, texts, onRun } = props;
   const ctx = useQuantoCtx();
   const run = (text: string) => {
     const input = document.getElementById(field);
     if (!(input instanceof HTMLInputElement)) return;
-    onRun?.();
+    onRun();
     stop(input);
     input.focus();
     setText(input, text);
@@ -40,7 +39,7 @@ export function Try(props: { field: string; codec?: Codec<any>; bad?: readonly s
     <span className="chips">
       <span className="overline">try</span>
       {texts.map((text) => {
-        const ok = codec ? codec.parse(text, ctx).ok : !bad.includes(text);
+        const ok = codec.parse(text, ctx).ok;
         return (
           <button type="button" key={text} className={ok ? 'chip' : 'chip bad'} title={ok ? undefined : 'produces an issue'} onClick={() => run(text)}>
             {text}
@@ -51,11 +50,8 @@ export function Try(props: { field: string; codec?: Codec<any>; bad?: readonly s
   );
 }
 
-// Single values, a range of most, and all of it optionally approximate. Wrappers compose from the
-// outside in: approx reads the marker, merge picks the reading, and each range completes its own two
-// sides. Money goes after length because it reads `ft` as the forint. Speed, power, data size and
-// angle are there for the fun of `88 mph`, `1.21 GW`, `1.5 GB` and `π rad`, and pitch for `A4 +15¢`.
-// Time signatures stay out: `6/8` is a date.
+// The field reads with `@quantojs/anything`, whose order settles every conflict (`24 × 36 in` is
+// dimensions, `455hz` a pitch, `70` a number), with a few formats of the site's own.
 const plainLength = length();
 /**
  * The built-in length format, with two twists for the demo: feet and inches read as 5'11", and Planck
@@ -70,10 +66,10 @@ const lengthFormat = (value: Quantity<LengthUnit>, ctx: ResolvedCtx): string => 
 };
 const plainPitch = pitch();
 /**
- * Pitch, the other way round. A note shows as its frequency (`A#`, octave 4 when none is written, is
- * 466.16 Hz). A frequency shows as just its nearest note, spelled for the key picked beside the field
- * (`ctx.music.key`), with no octave and its cents only as the way they lean (`440 Hz` is A, `455 Hz` is
- * A♯-, or B♭- in F major), so that text doesn't read back on its own.
+ * Pitch, the other way round. A note shows as its frequency (`A#4` is 466.16 Hz). A frequency shows as
+ * just its nearest note, spelled for the key picked beside the field (`ctx.music.key`), with no octave
+ * and its cents only as the way they lean (`440 Hz` is A, `455 Hz` is A♯-, or B♭- in F major), so that
+ * text doesn't read back on its own.
  */
 const pitchFormat = (value: Quantity<PitchUnit>, ctx: ResolvedCtx): string => {
   const plain = { locale: ctx.locale.tag, music: ctx.music };
@@ -83,36 +79,6 @@ const pitchFormat = (value: Quantity<PitchUnit>, ctx: ResolvedCtx): string => {
     .replace(/-?\d+(?=\s|$)/, '')
     .replace(/ ([+-])[\d.,]+¢$/, '$1');
 };
-const singles = {
-  date: date({ names }),
-  time: time(),
-  dateTime: dateTime({ names }),
-  length: length({ format: lengthFormat }),
-  mass: mass(),
-  duration: duration({ format: hoursMinutes }),
-  temperature: temperature(),
-  money: money(),
-  speed: speed(),
-  power: power(),
-  dataSize: dataSize(),
-  angle: angle(),
-  pitch: pitch({ format: pitchFormat, defaultOctave: 4 }),
-};
-const merged = approx(
-  merge([
-    ...Object.values(singles),
-    dateRange(singles.date),
-    dateRange(singles.time),
-    dateRange(singles.dateTime),
-    range(singles.length),
-    range(singles.mass),
-    range(singles.duration),
-    range(singles.temperature),
-    moneyRange(singles.money),
-    defineRange(singles.pitch),
-  ]),
-);
-
 const SUPERSCRIPT_DIGITS = '⁰¹²³⁴⁵⁶⁷⁸⁹';
 /**
  * quanto prints huge numbers as powers of ten (`1.708×10⁴⁹`, `10¹⁰⁰`); the demo prefers e notation
@@ -122,20 +88,73 @@ const eNotation = (text: string): string =>
   text.replace(/(?:(\d+(?:[.,]\d+)?)×)?10(⁻?[⁰¹²³⁴⁵⁶⁷⁸⁹]+)/g, (_, factor: string | undefined, power: string) =>
     `${factor ?? '1'}e${[...power].map((c) => (c === '⁻' ? '-' : SUPERSCRIPT_DIGITS.indexOf(c))).join('')}`,
   );
-const anything: typeof merged = { ...merged, format: (value, ctx) => eNotation(merged.format(value, ctx)) };
-export const heroExamples = ['next fri', '$1.2k', '180 cm', 'October 3 to 5', 'about 6 ft', '9-5pm', '$10-20k', '~2-3h', '€12,50', '455hz', '2. Oktober'];
 
-type Anything = typeof anything extends Codec<infer T> ? T : never;
+/** The site's formats, by the codec that read the value; the rest print as `anything` prints them. */
+/**
+ * Coordinates to 3 decimal places (about 100 m), so a pair fits on one line: `40.713° N, 74.006° W`.
+ * The package's default keeps 6 (about 0.1 m), since its text becomes the field's when it's edited.
+ */
+const coordinatesFormat = ({ lat, lng }: Coordinates, ctx: ResolvedCtx): string => {
+  const part = (value: number, positive: string, negative: string): string => {
+    const text = formatNumber(Math.abs(value), ctx, { maxFractionDigits: 3 });
+    return `${text}° ${value >= 0 || text === '0' ? positive : negative}`;
+  };
+  return `${part(lat, 'N', 'S')}, ${part(lng, 'E', 'W')}`;
+};
+
+const formats: Readonly<Record<string, (value: never, ctx: ResolvedCtx) => string>> = {
+  length: lengthFormat,
+  coordinates: coordinatesFormat,
+  duration: hoursMinutes,
+  pitch: pitchFormat,
+};
+
+const make = (include: Codec<unknown>[]): Codec<AnythingValue> => {
+  const plain = anything({ names, include });
+  return anything({
+    names,
+    include,
+    format: (value, ctx) => {
+      const own = formats[value.value.codec];
+      return eNotation(own ? `${value.approximate ? '~' : ''}${own(value.value.value as never, ctx)}` : plain.format(value, { locale: ctx.locale.tag, music: ctx.music }));
+    },
+  });
+};
+
+/**
+ * Phone numbers bring libphonenumber-js's metadata (about 80 kB), so they load on their own, after the
+ * page, and the field's codec is rebuilt with them when they arrive. Started at once, so they're usually
+ * there by the first keystroke.
+ */
+const withoutPhone = make([]);
+const withPhone: Promise<Codec<AnythingValue>> = import('@quantojs/anything/phone').then(({ phoneNumber }) => make([phoneNumber()]));
+const heroExamples = ['next fri', '$1.2k', '180 cm', 'October 3 to 5', '24×36in', 'about 6 ft', '9-5pm', '(415) 555-2671', '$10-20k', '~2-3h', `40°42'46"N 74°0'22"W`, '€12,50', '455hz', '2. Oktober'];
 
 /**
  * The one issue worth showing. A merge reports every member's, and most only say the text wasn't theirs
  * (no unit they know, no currency), which misleads when another codec was meant. An issue from a codec
- * that did read the text is the real one.
+ * that did read the text is the real one. A single codec's first issue is its own.
  */
-function problem(issues: readonly Issue[]): string | undefined {
+function problem(issues: readonly Issue[], merged: boolean): string | undefined {
   if (issues.length === 0) return undefined;
+  if (!merged) return issues[0]!.message;
   const real = issues.find((issue) => issue.code === 'empty' || issue.code === 'excess_precision' || issue.code === 'invalid');
   return real?.message ?? 'No codec could read that.';
+}
+
+/** A value, as the codec that read it: `anything` tags it with that codec, inside `approx`. */
+interface Reading {
+  readonly codec: string;
+  readonly value: unknown;
+  readonly approximate?: boolean;
+  /** The field's value for another value read by the same codec, for a tool to pick. */
+  rewrap(value: unknown): unknown;
+}
+
+function readingOf(codec: Codec<any>, value: any): Reading {
+  if (codec.id !== 'anything') return { codec: codec.id, value, rewrap: (v) => v };
+  const { approximate, value: tagged } = value as AnythingValue;
+  return { codec: tagged.codec, value: tagged.value, approximate, rewrap: (v) => ({ ...value, value: { codec: tagged.codec, value: v } }) };
 }
 
 /** A value as a one-line JS literal, coloured by token. */
@@ -182,26 +201,29 @@ const sources: Readonly<Record<string, string>> = {
   date: 'tree/main/packages/datetime/src/date',
   time: 'tree/main/packages/datetime/src/time',
   dateTime: 'tree/main/packages/datetime/src/date-time',
-  length: 'tree/main/packages/quanto/src/codecs/length',
-  mass: 'tree/main/packages/quanto/src/codecs/mass',
-  duration: 'tree/main/packages/quanto/src/codecs/duration',
-  temperature: 'tree/main/packages/quanto/src/codecs/temperature',
-  money: 'tree/main/packages/quanto/src/money',
-  speed: 'tree/main/packages/quanto/src/codecs/speed',
-  power: 'tree/main/packages/quanto/src/codecs/power',
-  dataSize: 'tree/main/packages/quanto/src/codecs/data-size',
-  angle: 'tree/main/packages/quanto/src/codecs/angle',
+  money: 'tree/main/packages/common/src/money',
+  odds: 'tree/main/packages/common/src/odds',
+  dimensions: 'tree/main/packages/quanto/src/dimensions',
   pitch: 'tree/main/packages/music/src/pitch',
+  coordinates: 'tree/main/packages/geo/src/coordinates',
+  ringSize: 'tree/main/packages/sizes/src/ring-size',
+  shoeSize: 'tree/main/packages/sizes/src/shoe-size',
+  phoneNumber: 'tree/main/packages/libphonenumber/src/phone-number',
   'range(date)': 'blob/main/packages/datetime/src/range.ts',
   'range(time)': 'blob/main/packages/datetime/src/range.ts',
   'range(dateTime)': 'blob/main/packages/datetime/src/range.ts',
-  'range(money)': 'blob/main/packages/quanto/src/money/range.ts',
+  'range(money)': 'blob/main/packages/common/src/money/range.ts',
 };
+
+/** The rest are @quantojs/common's codecs, in a folder named for the id (`flowRate` in `flow-rate`), and the core's ranges. */
+const sourceOf = (id: string): string =>
+  sources[id] ??
+  (id.startsWith('range(') ? 'tree/main/packages/quanto/src/range' : `tree/main/packages/common/src/${id.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`);
 
 /** The codec's id, as a link to its source. Quantity ranges all come from the core's `range`. */
 function CodecLink({ id }: { id: string }) {
   return (
-    <a className="codec" href={`${github}/${sources[id] ?? 'tree/main/packages/quanto/src/range'}`} target="_blank" rel="noreferrer">
+    <a className="codec" href={`${github}/${sourceOf(id)}`} target="_blank" rel="noreferrer">
       {id}
     </a>
   );
@@ -211,20 +233,21 @@ function CodecLink({ id }: { id: string }) {
  * What the field makes of its text, a row per part. It follows the text as soon as it parses, and keeps
  * the last reading while it doesn't. An error waits for the commit, like the field's own.
  */
-function Status({ field }: { field: QuantoField<Anything> }) {
+function Status({ field, codec }: { field: QuantoField<any>; codec: Codec<any> }) {
   const last = useRef<(readonly [string, ReactNode])[]>([]);
   const { echo, value: committed } = field;
-  const error = problem(field.issues);
+  const error = problem(field.issues, codec.id === 'anything');
   if (error) {
     last.current = [['raw', <Code value={committed?.raw ?? ''} />], ['error', <span className="bad">{error}</span>]];
   } else if (echo) {
     // Unedited text echoes the committed value, whose raw is what was typed, not the formatted text on show.
     const settled = committed && 'value' in committed && committed.value === echo.value;
+    const read = readingOf(codec, echo.value);
     last.current = [
       ['raw', <Code value={settled ? committed.raw : field.inputProps.value} />],
-      ['codec', <CodecLink id={echo.value.value.codec} />],
-      ['value', <Code value={echo.value.value.value} />],
-      ['approximate', <Code value={echo.value.approximate} />],
+      ['codec', <CodecLink id={read.codec} />],
+      ['value', <Code value={read.value} />],
+      ...(read.approximate === undefined ? [] : [['approximate', <Code value={read.approximate} />] as const]),
     ];
   }
   const rows = last.current;
@@ -250,9 +273,15 @@ function Status({ field }: { field: QuantoField<Anything> }) {
 /**
  * The value, or for `ms` after it goes away, the last one it had. A new value shows at once; only its
  * going waits, so text that stops parsing for a keystroke on its way to parsing again doesn't flicker.
+ * A change of `reset` drops the last one at once.
  */
-function useLinger<T>(value: T | undefined, ms: number): T | undefined {
+function useLinger<T>(value: T | undefined, ms: number, reset?: unknown): T | undefined {
   const [last, setLast] = useState(value);
+  const [epoch, setEpoch] = useState(reset);
+  if (reset !== epoch) {
+    setEpoch(reset);
+    setLast(value);
+  }
   useEffect(() => {
     if (value !== undefined) {
       setLast(value);
@@ -270,6 +299,12 @@ export interface OmniHandle {
 }
 
 export function Omni(props: {
+  /** What it reads with. By default, `anything` with the site's own formats. */
+  codec?: Codec<any>;
+  /** Text to start with, instead of typing the examples. */
+  initial?: string | undefined;
+  /** Shown under the field in place of the status, given its text and whether it's typing an example. */
+  inspect?: (text: string, typing: boolean) => ReactNode;
   display?: Display;
   restoreOnEdit?: boolean;
   /** What it types and offers as chips. */
@@ -279,22 +314,37 @@ export function Omni(props: {
   handle?: Ref<OmniHandle>;
   onExample?: () => void;
 }) {
-  const { display = 'raw', restoreOnEdit = false, examples = heroExamples, labels, handle, onExample } = props;
+  const { display = 'raw', restoreOnEdit = false, examples = heroExamples, labels, handle, onExample, initial, inspect } = props;
   // The key the pitch tool picks. It's ctx, not part of the value: it only changes how notes are spelled.
   const [key, setKey] = useState('');
   const providerCtx = useQuantoCtx();
-  const field = useQuanto(anything, { display, restoreOnEdit, ctx: key ? { ...providerCtx, music: { key } } : providerCtx });
+  const [site, setSite] = useState(() => withoutPhone);
+  useEffect(() => void withPhone.then((codec) => setSite(() => codec)), []);
+  const codec = props.codec ?? site;
+  const field = useQuanto(codec, { display, restoreOnEdit, ctx: key ? { ...providerCtx, music: { key } } : providerCtx });
   const ref = useRef<HTMLInputElement>(null);
   // The field types its own examples until someone takes it over. `skip` restarts it on the next one.
-  const [auto, setAuto] = useState(true);
+  const [auto, setAuto] = useState(initial === undefined);
+  useEffect(() => {
+    if (initial !== undefined && ref.current) setText(ref.current, initial);
+  }, []);
   const [skip, setSkip] = useState(0);
   const example = useRef(0);
+  // After `next`, when the first character is due (300ms after the click, however long React takes to
+  // get to the typing), once.
+  const due = useRef<number | undefined>(undefined);
   const advance = () => {
     example.current = (example.current + 1) % examples.length;
     onExample?.();
   };
   useImperativeHandle(handle, () => ({
     next() {
+      // The field clears at once; the typing starts a beat later.
+      if (ref.current) {
+        stop(ref.current);
+        setText(ref.current, '');
+      }
+      due.current = performance.now() + 300;
       advance();
       setAuto(true);
       setSkip((s) => s + 1);
@@ -305,7 +355,10 @@ export function Omni(props: {
     if (!auto || !input) return;
     let on = true;
     void (async () => {
-      while (on && (await type(input, examples[example.current]!))) {
+      while (on) {
+        const pause = due.current === undefined ? undefined : Math.max(0, due.current - performance.now());
+        due.current = undefined;
+        if (!(await type(input, examples[example.current]!, { delay: pause }))) return;
         if (still) return;
         await wait(4500);
         if (!on) return;
@@ -336,18 +389,19 @@ export function Omni(props: {
   // on blur, so until then the reading waits inside the field.
   const beside = display === 'raw';
   const labelled = beside && labels !== undefined;
-  const error = problem(field.issues);
+  const error = problem(field.issues, codec.id === 'anything');
   const echo = error ? undefined : field.echo;
   const ghost = echo && echo.text !== field.inputProps.value.trim() ? echo.text : undefined;
   // Once the text reads as a date or a pitch, a tool for it sits in the field: the OS's date picker, or
   // the key that spells the notes.
-  const current = echo?.value;
-  const tool = current?.value.codec === 'date' ? 'date' : current?.value.codec === 'pitch' ? 'pitch' : undefined;
+  const current = echo && readingOf(codec, echo.value);
+  const tool = current?.codec === 'date' ? 'date' : current?.codec === 'pitch' ? 'pitch' : undefined;
   // Beside the field, the reading holds on briefly when the text stops parsing. An issue replaces it at once.
-  const lingering = useLinger(echo?.text, 150);
+  // Moving on to the next example clears it with the field, without the wait.
+  const lingering = useLinger(echo?.text, 150, skip);
   const reading = error ? undefined : lingering;
   // Under a labelled reading, the value it stands for, as plain JSON: what the app is handed.
-  const lingeringJson = useLinger(echo && JSON.stringify(echo.value.value.value), 150);
+  const lingeringJson = useLinger(current && JSON.stringify(current.value), 150, skip);
   const json = error ? undefined : lingeringJson;
   // The reading and an issue share one place: whichever the field has to say about the text.
   const said = (
@@ -373,8 +427,7 @@ export function Omni(props: {
             ref={ref}
             id="hero"
             className="text-field"
-            aria-label="Type a date, a time, an amount or a measurement, or a range of them"
-            placeholder="next fri, $10-20k, about 6 ft…"
+            aria-label={props.codec ? `Text for ${codec.id} to parse` : 'Type a date, a time, an amount or a measurement, or a range of them'}
             autoComplete="off"
             autoCapitalize="off"
             spellCheck={false}
@@ -389,8 +442,8 @@ export function Omni(props: {
             <span className="hero-tool" onPointerDown={hold}>
               {current && tool === 'date' ? (
                 <DatePicker
-                  value={current.value.value as string}
-                  onChange={(iso) => field.pick({ ...current, value: { codec: 'date', value: iso } } as Anything)}
+                  value={current.value as string}
+                  onChange={(iso) => field.pick(current.rewrap(iso))}
                   focused={field.focused}
                 />
               ) : (
@@ -417,8 +470,8 @@ export function Omni(props: {
           </div>
         )}
       </div>
-      <Try field="hero" codec={anything} texts={examples} onRun={() => setAuto(false)} />
-      <Status field={field} />
+      <Try field="hero" codec={codec} texts={examples} onRun={() => setAuto(false)} />
+      {inspect ? inspect(field.inputProps.value, auto) : <Status field={field} codec={codec} />}
     </>
   );
 }

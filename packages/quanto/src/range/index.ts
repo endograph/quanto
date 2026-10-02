@@ -1,5 +1,5 @@
-import type { NumberSyntax, QuantityCodec } from '../codecs/quantity';
-import { toBaseValue } from '../codecs/quantity/convert';
+import type { NumberSyntax, QuantityCodec } from '../quantity/codec';
+import { sameScale, toBaseValue } from '../quantity/convert';
 import type { Codec, Quantity, ResolvedCtx } from '../core/types';
 import { defineRange, type OpenRange, type Range, type RangeOptions, type RangeProposal, type RangeRules } from './define-range';
 
@@ -64,6 +64,12 @@ function quantityRules<U extends string, C extends U>(codec: QuantityCodec<U, C>
       }
       if (lt !== l.tail || rt !== r.tail) proposals.push({ sides: [l.head + l.magnitude + lt, r.head + r.magnitude + rt] });
       return proposals;
+    },
+    incompatible(start, end) {
+      // The two ends of a range are on one scale: "80 dB-90 dBA" isn't a range.
+      const [ds, de] = [codec.units[start.unit], codec.units[end.unit]];
+      if (!ds || !de || sameScale(ds, de)) return undefined;
+      return { code: 'incompatible_unit', message: `${ds.aliases[0]} and ${de.aliases[0]} are on different scales, so they can't be the ends of one range.` };
     },
     inOrder(start, end) {
       const a = base(start);

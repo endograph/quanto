@@ -108,6 +108,11 @@ export interface RangeRules<T> {
   /** Whether `start <= end`; undefined when it can't be told. Only used to choose between completions. */
   inOrder?(start: T, end: T): boolean | undefined;
   /**
+   * Why two values can't be the ends of one range, or undefined if they can: quantities on different
+   * scales (`80 dB-90 dBA`). Such a pair is rejected when parsed, and fails the structural check.
+   */
+  incompatible?(start: T, end: T): Issue | undefined;
+  /**
    * A shorter text for a range with both sides, sharing what they have in common (`Oct 3–5, 2026`), or
    * undefined for the default `start – end`. It must read back through `propose` to the same range.
    */
@@ -189,6 +194,11 @@ export function defineRange<T>(codec: Codec<T>, rules?: RangeRules<T>, options?:
           firstIssues ??= b.issues;
           continue;
         }
+        const conflict = rules?.incompatible?.(a.value, b.value);
+        if (conflict) {
+          firstIssues ??= [conflict];
+          continue;
+        }
         parsed.push({ a, b, adjustEnd });
       }
       if (parsed.length === 0) continue;
@@ -258,6 +268,8 @@ export function defineRange<T>(codec: Codec<T>, rules?: RangeRules<T>, options?:
     if (problem) throw new InvalidValueError(id, [{ message: problem }]);
     const start = value.start === null ? undefined : formatSide(value.start, 'start', ctx);
     const end = value.end === null ? undefined : formatSide(value.end, 'end', ctx);
+    const conflict = value.start !== null && value.end !== null ? rules?.incompatible?.(value.start, value.end) : undefined;
+    if (conflict) throw new InvalidValueError(id, [{ message: conflict.message }]);
     if (userFormat) return userFormat(value, startSession(ctx).ctx);
     if (start === undefined) return `${value.endExclusive ? '<' : '≤'} ${end}`;
     if (end === undefined) return `${value.startExclusive ? '>' : '≥'} ${start}`;
@@ -291,6 +303,8 @@ export function defineRange<T>(codec: Codec<T>, rules?: RangeRules<T>, options?:
           ...(value.startExclusive ? { startExclusive: true } : {}),
           ...(value.endExclusive ? { endExclusive: true } : {}),
         };
+        const conflict = sides.start !== null && sides.end !== null ? rules?.incompatible?.(sides.start, sides.end) : undefined;
+        if (conflict) return { issues: [{ message: conflict.message, code: 'invalid' } as Issue] };
         if (!userSchema) return { value: sides };
         const validated = runUserSchema(userSchema, sides, id);
         return validated.ok ? { value: validated.value } : { issues: validated.issues };

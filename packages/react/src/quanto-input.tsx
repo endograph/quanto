@@ -1,6 +1,5 @@
 import type { ComponentType, InputHTMLAttributes, ReactNode, Ref } from 'react';
-import { isExternalCodec, type Codec, type ExternalCodec } from 'quanto';
-import { text } from 'quanto/codecs';
+import { defineCodec, isExternalCodec, type Codec, type ExternalCodec } from 'quanto';
 import { useExternalQuanto, type ExternalQuantoInputProps } from './use-external-quanto';
 import { useQuanto, type UseQuantoOptions } from './use-quanto';
 
@@ -15,8 +14,7 @@ export interface QuantoInputComponentProps<T = string>
   extends UseQuantoOptions<T>,
     Omit<InputHTMLAttributes<HTMLInputElement>, keyof ExternalQuantoInputProps | 'defaultValue' | 'type'> {
   /**
-   * The codec, sync or external. Without one, the field is plain text: `text()`, the trimmed string as
-   * typed. An external codec parses on commit only, through its service, and has no echo.
+   * The codec, sync or external. Without one, the field is plain text: the trimmed string as typed. An external codec parses on commit only, through its service, and has no echo.
    */
   readonly codec?: Codec<T> | ExternalCodec<T> | undefined;
   /** Rendered after the input, e.g. a calendar button that opens a picker. Text entry stays available. */
@@ -28,7 +26,13 @@ export interface QuantoInputComponentProps<T = string>
   readonly ref?: Ref<HTMLInputElement> | undefined;
 }
 
-const PLAIN_TEXT = text();
+/** The codec of a field without one: the trimmed text as typed, like @quantojs/common's `text()`. */
+const PLAIN_TEXT: Codec<string> = defineCodec<string>({
+  id: 'text',
+  parse: (value) => ({ ok: true, value }),
+  format: (value) => value,
+  check: (value) => (typeof value === 'string' && value.trim() === value && value !== '' ? [] : [{ message: 'Expected non-empty text with no surrounding spaces.' }]),
+});
 
 /**
  * A text input for any codec. It parses on blur or Enter and calls `onChange` with `{ raw, value }`,

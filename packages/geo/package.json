@@ -1,0 +1,55 @@
+{
+  "name": "@quantojs/geo",
+  "version": "0.2.0",
+  "description": "Geographic coordinates for quanto: parse \"40.7128, -74.0060\", degrees, minutes and seconds, plus codes and geohashes into { lat, lng }, and format them back.",
+  "license": "MIT",
+  "author": "rt2zz",
+  "homepage": "https://github.com/endograph/quanto/tree/main/packages/geo#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/endograph/quanto.git",
+    "directory": "packages/geo"
+  },
+  "bugs": {
+    "url": "https://github.com/endograph/quanto/issues"
+  },
+  "keywords": [
+    "quanto",
+    "geo",
+    "coordinates",
+    "latitude",
+    "longitude",
+    "dms",
+    "plus-code",
+    "open-location-code",
+    "geohash",
+    "parse",
+    "locale",
+    "forms"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "quanto": "workspace:^"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "quanto": "workspace:*"
+  }
+}

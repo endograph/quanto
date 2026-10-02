@@ -221,9 +221,11 @@ export type IssueCode =
   | 'unparseable' //      text could not be understood at all
   | 'missing_unit' //     a bare number, and the codec has no default unit
   | 'unknown_unit' //     a unit was written but isn't in the codec's unit table
+  | 'incompatible_unit' // a unit on another scale, which doesn't convert to the one required ("85 dB" where dBA is)
   | 'missing_currency' // a bare number, and the codec has no default currency
   | 'unknown_currency' // a currency was written but isn't known
   | 'excess_precision' // more decimals than the value allows ("$3.459")
+  | 'wrong_count' //      a list with more or fewer parts than allowed ("24 × 36 × 10" where two are)
   | 'ambiguous' //        the text reads several ways and the codec won't choose; see `alternatives`
   | 'invalid'; //         the user's schema rejected the value (or, server-side, the structural check did)
 

@@ -1,0 +1,27 @@
+[
+  {"parse": "800 lm", "value": {"value": 800, "unit": "lm"}},
+  {"parse": "800lm", "value": {"value": 800, "unit": "lm"}},
+  {"parse": "800 LM", "value": {"value": 800, "unit": "lm"}},
+  {"parse": "800 lumens", "value": {"value": 800, "unit": "lm"}},
+  {"parse": "1 lumen", "value": {"value": 1, "unit": "lm"}},
+  {"parse": "3000 ANSI lumens", "value": {"value": 3000, "unit": "lm"}},
+  {"parse": "3000 ansi lumens", "value": {"value": 3000, "unit": "lm"}},
+  {"parse": "1.600 lm", "ctx": {"locale": "de-DE"}, "value": {"value": 1600, "unit": "lm"}},
+  {"parse": "2.5 klm", "value": {"value": 2.5, "unit": "klm"}},
+  {"parse": "2.5 kilolumens", "value": {"value": 2.5, "unit": "klm"}},
+
+  {"parse": "2.5 klm", "options": {"canonicalUnit": "lm"}, "value": {"value": 2500, "unit": "lm"}},
+  {"parse": "800 lm", "options": {"canonicalUnit": "klm"}, "value": {"value": 0.8, "unit": "klm"}},
+
+  {"parse": "800 W", "issues": ["unknown_unit"]},
+  {"parse": "800 lx", "issues": ["unknown_unit"]},
+  {"parse": "800 cd", "issues": ["unknown_unit"]},
+  {"parse": "800", "issues": ["missing_unit"]},
+  {"parse": "800", "options": {"defaultUnit": "lm"}, "value": {"value": 800, "unit": "lm"}},
+  {"parse": "lots", "issues": ["unparseable"]},
+  {"parse": "", "issues": ["empty"]},
+
+  {"format": {"value": 800, "unit": "lm"}, "text": "800 lm"},
+  {"format": {"value": 1600, "unit": "lm"}, "ctx": {"locale": "de-DE"}, "text": "1.600 lm"},
+  {"format": {"value": 2.5, "unit": "klm"}, "text": "2.5 klm"}
+]

@@ -1,0 +1,32 @@
+[
+  {"parse": "2 Gy", "value": {"value": 2, "unit": "Gy"}},
+  {"parse": "2Gy", "value": {"value": 2, "unit": "Gy"}},
+  {"parse": "2 gy", "value": {"value": 2, "unit": "Gy"}},
+  {"parse": "2 grays", "value": {"value": 2, "unit": "Gy"}},
+  {"parse": "1 gray", "value": {"value": 1, "unit": "Gy"}},
+  {"parse": "1,8 Gy", "ctx": {"locale": "de-DE"}, "value": {"value": 1.8, "unit": "Gy"}},
+  {"parse": "180 cGy", "value": {"value": 180, "unit": "cGy"}},
+  {"parse": "180 centigray", "value": {"value": 180, "unit": "cGy"}},
+  {"parse": "20 mGy", "value": {"value": 20, "unit": "mGy"}},
+  {"parse": "20 milligrays", "value": {"value": 20, "unit": "mGy"}},
+  {"parse": "50 rad", "value": {"value": 50, "unit": "rad"}},
+  {"parse": "50 rads", "value": {"value": 50, "unit": "rad"}},
+
+  {"parse": "180 cGy", "options": {"canonicalUnit": "Gy"}, "value": {"value": 1.8, "unit": "Gy"}},
+  {"parse": "1 rad", "options": {"canonicalUnit": "cGy"}, "value": {"value": 1, "unit": "cGy"}},
+  {"parse": "2 Gy", "options": {"canonicalUnit": "rad"}, "value": {"value": 200, "unit": "rad"}},
+
+  {"parse": "2 Sv", "issues": ["unknown_unit"]},
+  {"parse": "2 mSv", "issues": ["unknown_unit"]},
+  {"parse": "2 J", "issues": ["unknown_unit"]},
+  {"parse": "2", "issues": ["missing_unit"]},
+  {"parse": "2", "options": {"defaultUnit": "Gy"}, "value": {"value": 2, "unit": "Gy"}},
+  {"parse": "lots", "issues": ["unparseable"]},
+  {"parse": "", "issues": ["empty"]},
+
+  {"format": {"value": 2, "unit": "Gy"}, "text": "2 Gy"},
+  {"format": {"value": 1.8, "unit": "Gy"}, "ctx": {"locale": "de-DE"}, "text": "1,8 Gy"},
+  {"format": {"value": 180, "unit": "cGy"}, "text": "180 cGy"},
+  {"format": {"value": 20, "unit": "mGy"}, "text": "20 mGy"},
+  {"format": {"value": 50, "unit": "rad"}, "text": "50 rad"}
+]

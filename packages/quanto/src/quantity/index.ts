@@ -3,8 +3,8 @@
 // Arithmetic is left to apps, which know whether adding two values means anything in their domain:
 //   { value: a.value + convert(len, b, a.unit).value, unit: a.unit }
 
-import { convertValue, toBaseValue } from '../codecs/quantity/convert';
-import type { UnitDefinition } from '../codecs/quantity';
+import { convertValue, sameScale, toBaseValue } from './convert';
+import type { UnitDefinition } from './codec';
 import type { Quantity } from '../core/types';
 
 /** What operations need from a quantity codec: its id (for messages) and its unit table. */
@@ -29,10 +29,21 @@ function unitOf<U extends string>(codec: QuantityTable<U>, q: Quantity<string>, 
   return def;
 }
 
-/** Converts a quantity to another unit of the same table. */
+/** The scale's name, for messages. */
+const scaleName = (def: UnitDefinition): string => (def.scale === undefined ? 'the default scale' : `scale "${def.scale}"`);
+
+function assertSameScale(codec: QuantityTable<string>, a: Quantity<string>, da: UnitDefinition, b: Quantity<string>, db: UnitDefinition, operation: string): void {
+  if (sameScale(da, db)) return;
+  throw new Error(
+    `quanto: ${operation} got "${a.unit}" (${scaleName(da)}) and "${b.unit}" (${scaleName(db)}) in codec "${codec.id}". ${operation === 'convert' ? "Units on different scales don't convert." : "Units on different scales can't be compared."}`,
+  );
+}
+
+/** Converts a quantity to another unit of the same table. Throws for a unit on another scale. */
 export function convert<U extends string, T extends U>(codec: QuantityTable<U>, q: Quantity<U>, to: T): Quantity<T> {
   const from = unitOf(codec, q, 'convert');
   const target = unitOf(codec, { value: 0, unit: to }, 'convert');
+  assertSameScale(codec, q, from, { value: 0, unit: to }, target, 'convert');
   const value = q.unit === to ? q.value : convertValue(q.value, from, target);
   if (!Number.isFinite(value)) {
     throw new Error(`quanto: convert of ${q.value} ${q.unit} to "${to}" in codec "${codec.id}" has no finite result (like 0 mpg in L/100km).`);
@@ -42,11 +53,12 @@ export function convert<U extends string, T extends U>(codec: QuantityTable<U>, 
 
 /**
  * Compares two quantities: -1, 0 or 1. Uses a relative tolerance of 1e-9 on base-unit values, so
- * five feet and sixty inches compare equal despite conversion drift.
+ * five feet and sixty inches compare equal despite conversion drift. Throws for units on different scales.
  */
 export function compare<U extends string>(codec: QuantityTable<U>, a: Quantity<U>, b: Quantity<U>): -1 | 0 | 1 {
   const da = unitOf(codec, a, 'compare');
   const db = unitOf(codec, b, 'compare');
+  assertSameScale(codec, a, da, b, db, 'compare');
   const x = toBaseValue(a.value, da);
   const y = toBaseValue(b.value, db);
   // An infinite base value would compare equal to everything (0 L/100km is infinitely efficient).

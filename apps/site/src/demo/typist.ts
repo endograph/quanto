@@ -21,9 +21,10 @@ export function stop(input: HTMLInputElement): void {
 
 /**
  * Types `text` into the input a character at a time, then commits it the way leaving the field would,
- * so a formatted-on-blur field tidies it. Resolves false if something else took over the input.
+ * so a formatted-on-blur field tidies it. `delay` replaces the pause between clearing the field and the
+ * first character. Resolves false if something else took over the input.
  */
-export async function type(input: HTMLInputElement, text: string): Promise<boolean> {
+export async function type(input: HTMLInputElement, text: string, { delay }: { readonly delay?: number | undefined } = {}): Promise<boolean> {
   stop(input);
   const run = runs.get(input);
   const live = (): boolean => runs.get(input) === run;
@@ -31,7 +32,7 @@ export async function type(input: HTMLInputElement, text: string): Promise<boole
   else
     for (let i = 0; i <= text.length; i++) {
       setText(input, text.slice(0, i));
-      await wait(40 + Math.random() * 50);
+      await wait(i === 0 && delay !== undefined ? delay : 40 + Math.random() * 50);
       if (!live()) return false;
     }
   await wait(still ? 0 : 280);
