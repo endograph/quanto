@@ -1,6 +1,6 @@
 {
   "name": "@quantojs/datetime",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Dates and times for quanto: parse \"tomorrow 3pm\", \"Oct 2\" and \"03/04/2026\" into ISO strings, with ranges.",
   "license": "MIT",
   "author": "rt2zz",
