@@ -15,6 +15,8 @@ export { capacitance, capacitanceUnits } from './capacitance';
 export type { CapacitanceUnit } from './capacitance';
 export { charge, chargeUnits } from './charge';
 export type { ChargeUnit } from './charge';
+export { colorTemperature, colorTemperatureUnits } from './color-temperature';
+export type { ColorTemperatureUnit } from './color-temperature';
 export { compute, computeUnits } from './compute';
 export type { ComputeUnit } from './compute';
 export { computeRate, computeRateUnits } from './compute-rate';

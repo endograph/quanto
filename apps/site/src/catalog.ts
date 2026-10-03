@@ -4,6 +4,7 @@ import type { Codec } from 'quanto';
 import { anything } from '@quantojs/anything';
 import * as q from '@quantojs/common';
 import { feetInches, hoursMinutes, intlUnit, poundsOunces, stonesPounds } from '@quantojs/common/formats';
+import { cssColor } from '@quantojs/common/css-color';
 import { money } from '@quantojs/common/money';
 import { odds } from '@quantojs/common/odds';
 import { date, dateRange, dateTime, time } from '@quantojs/datetime';
@@ -93,6 +94,7 @@ const leaves: Entry[] = [
   quantity('luminousFlux', ['800 lm', '3000 lumens']),
   quantity('illuminance', ['500 lux', '50 fc']),
   quantity('luminance', ['1000 nits', '500 cd/m²']),
+  quantity('colorTemperature', ['2700 K', '6500 kelvin', '153 mired']),
   quantity('radiationDose', ['2.4 mSv', '500 mrem']),
   quantity('absorbedDose', ['2 Gy', '180 cGy']),
   quantity('soundLevel', ['85 dB', '70 dBA']),
@@ -161,6 +163,13 @@ const leaves: Entry[] = [
     call: 'shoeSize()',
     imports: { '@quantojs/sizes': ['shoeSize'] },
     examples: ["men's 10", 'UK 9', 'EU 44', 'US 10'],
+  },
+  {
+    id: 'cssColor',
+    codec: cssColor(),
+    call: 'cssColor()',
+    imports: { '@quantojs/common/css-color': ['cssColor'] },
+    examples: ['#00aaff', 'rebeccapurple', 'rgb(0 170 255 / 50%)', 'hsl(200 100% 50%)', 'oklch(0.7 0.15 230)', 'color(display-p3 1 0 0)', 'currentcolor'],
   },
   {
     id: 'date',

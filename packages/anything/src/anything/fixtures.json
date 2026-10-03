@@ -58,6 +58,8 @@
   {"parse": "800 lm", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "luminousFlux", "value": {"value": 800, "unit": "lm"}}, "approximate": false}},
   {"parse": "500 lux", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "illuminance", "value": {"value": 500, "unit": "lx"}}, "approximate": false}},
   {"parse": "1000 nits", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "luminance", "value": {"value": 1000, "unit": "nit"}}, "approximate": false}},
+  {"parse": "2700 K", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "temperature", "value": {"value": 2700, "unit": "K"}}, "approximate": false}, "alternatives": [{"value": {"codec": "colorTemperature", "value": {"value": 2700, "unit": "K"}}, "approximate": false}]},
+  {"parse": "153 mired", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "colorTemperature", "value": {"value": 153, "unit": "mired"}}, "approximate": false}},
   {"parse": "85 dBA", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "soundLevel", "value": {"value": 85, "unit": "dBA"}}, "approximate": false}},
   {"parse": "2.4 mSv", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "radiationDose", "value": {"value": 2.4, "unit": "mSv"}}, "approximate": false}},
   {"parse": "2 Gy", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "absorbedDose", "value": {"value": 2, "unit": "Gy"}}, "approximate": false}},
@@ -71,6 +73,12 @@
   {"parse": "N½", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "ringSize", "value": {"value": 14.5, "unit": "uk"}}, "approximate": false}},
   {"parse": "US 10", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "ringSize", "value": {"value": 10, "unit": "us"}}, "approximate": false}, "alternatives": [{"value": {"codec": "shoeSize", "value": {"value": 10, "unit": "usMen"}}, "approximate": false}, {"value": {"codec": "shoeSize", "value": {"value": 10, "unit": "usWomen"}}, "approximate": false}]},
   {"parse": "men's 10", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "shoeSize", "value": {"value": 10, "unit": "usMen"}}, "approximate": false}},
+  {"parse": "#00aaff", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "cssColor", "value": {"space": "srgb", "coords": [0, 0.6666666666666666, 1], "alpha": 1}}, "approximate": false}},
+  {"parse": "rebeccapurple", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "cssColor", "value": {"space": "srgb", "coords": [0.4, 0.2, 0.6], "alpha": 1}}, "approximate": false}},
+  {"parse": "rgb(0 170 255 / 50%)", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "cssColor", "value": {"space": "srgb", "coords": [0, 0.6666666666666666, 1], "alpha": 0.5}}, "approximate": false}},
+  {"parse": "oklch(0.7 0.15 230)", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "cssColor", "value": {"space": "oklch", "coords": [0.7, 0.15, 230], "alpha": 1}}, "approximate": false}},
+  {"parse": "about #fff", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "cssColor", "value": {"space": "srgb", "coords": [1, 1, 1], "alpha": 1}}, "approximate": true}},
+  {"parse": "bad", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "issues": ["unparseable"]},
 
   {"parse": "70", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "number", "value": 70}, "approximate": false}, "alternatives": [{"value": {"codec": "odds", "value": {"kind": "decimal", "value": 70}}, "approximate": false}]},
   {"parse": "1,234.5", "ctx": {"now": "2026-10-01T12:00:00-04:00"}, "value": {"value": {"codec": "number", "value": 1234.5}, "approximate": false}, "alternatives": [{"value": {"codec": "odds", "value": {"kind": "decimal", "value": 1234.5}}, "approximate": false}]},
@@ -104,6 +112,7 @@
   {"format": {"value": {"codec": "date", "value": "2026-10-02"}, "approximate": false}, "text": "Oct 2, 2026"},
   {"format": {"value": {"codec": "money", "value": {"minorUnits": 1200, "currency": "USD"}}, "approximate": false}, "text": "$12.00"},
   {"format": {"value": {"codec": "coordinates", "value": {"lat": 40.7128, "lng": -74.006}}, "approximate": false}, "text": "40.7128° N, 74.006° W"},
+  {"format": {"value": {"codec": "cssColor", "value": {"space": "srgb", "coords": [0, 0.6666666666666666, 1], "alpha": 1}}, "approximate": false}, "text": "#00aaff"},
   {"format": {"value": {"codec": "range(length)", "value": {"start": {"value": 5, "unit": "ft"}, "end": {"value": 7, "unit": "ft"}}}, "approximate": false}, "text": "5 ft – 7 ft"},
   {"format": {"value": {"codec": "number", "value": 1234.5}, "approximate": false}, "text": "1,234.5"}
 ]
