@@ -2,7 +2,7 @@
 // and read back, in other locales, by other formatters and in every unit, the other readings, and the
 // code that does it in an app.
 import { Fragment, type ReactNode } from 'react';
-import type { Codec, ParseResult, Quantity } from 'quanto';
+import { isInfinite, type Codec, type ParseResult, type Quantity } from 'quanto';
 import { convert } from 'quanto/quantity';
 import { leafById, locales, type Entry } from '../catalog';
 
@@ -136,7 +136,9 @@ function Value({ choice, result, locale }: { choice: Choice; result: ParseResult
   const tagged = choice.id === 'any' ? result.value.value : undefined;
   const leaf: Choice | undefined = tagged ? leafById[tagged.codec] : choice;
   const value = tagged ? tagged.value : result.value;
-  const units = (leaf?.codec as { units?: Record<string, unknown> } | undefined)?.units;
+  // An infinity (`∞ ft`) is the same in every unit, and the formatters are for numbers.
+  const infinity = isInfinite(value);
+  const units = infinity ? undefined : (leaf?.codec as { units?: Record<string, unknown> } | undefined)?.units;
   return (
     <>
       <p className="overline">
@@ -150,7 +152,7 @@ function Value({ choice, result, locale }: { choice: Choice; result: ParseResult
           .slice(0, 5)
           .map((l) => [l, tryFormat(codec, result.value, l)] as const)}
       />
-      {leaf?.formatters && (
+      {leaf?.formatters && !infinity && (
         <>
           <p className="overline">formatters</p>
           <List rows={leaf.formatters.map((f) => [f.call, tryFormat(f.codec, value, locale)] as const)} />

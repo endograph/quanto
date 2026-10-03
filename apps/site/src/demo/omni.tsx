@@ -2,7 +2,7 @@
 // them as chips, and shows what it makes of the text. The landing page shows it as it comes; the
 // playground gives it the codec picked there, and its own inspector in place of the status.
 import { Fragment, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
-import { formatNumber, type Codec, type Issue, type Quantity, type ResolvedCtx } from 'quanto';
+import { formatNumber, isInfinite, type Codec, type Issue, type Quantity, type ResolvedCtx } from 'quanto';
 import { convert } from 'quanto/quantity';
 import { length, type LengthUnit } from '@quantojs/common';
 import { feetInches, hoursMinutes } from '@quantojs/common/formats';
@@ -115,7 +115,8 @@ const make = (include: Codec<unknown>[]): Codec<AnythingValue> => {
     names,
     include,
     format: (value, ctx) => {
-      const own = formats[value.value.codec];
+      // The site's formats are for numbers; an infinity (`∞ ft`) prints as `anything` prints it.
+      const own = isInfinite(value.value.value) ? undefined : formats[value.value.codec];
       return eNotation(own ? `${value.approximate ? '~' : ''}${own(value.value.value as never, ctx)}` : plain.format(value, { locale: ctx.locale.tag, music: ctx.music }));
     },
   });
