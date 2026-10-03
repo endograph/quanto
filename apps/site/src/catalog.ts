@@ -66,6 +66,7 @@ const leaves: Entry[] = [
     featured: true,
     formatters: [withFormat('duration', 'hoursMinutes', hoursMinutes)],
   }),
+  quantity('approximateDuration', ['3 months', '1.5 years', '1 year 6 months', 'about 3 days', '90 min']),
   quantity('temperature', ['72°F', '22 °C', '-40F', '295.15 K', 'hot'], { featured: true }),
   quantity('volume', ['2 cups', '1.5 L', '12 fl oz', '1 gal']),
   quantity('area', ['1200 sq ft', '3 acres', '50 m²']),

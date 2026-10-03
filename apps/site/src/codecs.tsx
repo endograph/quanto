@@ -106,6 +106,17 @@ const docs: readonly Doc[] = [
     ),
     options: [['clock', <>What two-part clock notation with no unit means: <code>'h:mm'</code> (the default) or <code>'m:ss'</code>.</>]],
   }),
+  quantity('approximateDuration', 'Rough durations, in months and years too', ['3 months', '1.5 years', '1 year 6 months', 'about 3 days', '90 min'], { ref: 'd' }, {
+    about: (
+      <>
+        <code>duration</code> plus months and years at their average length (a year is 365.2425 days, a month a twelfth of
+        that), as <code>{'{ value, approximate }'}</code>. Months and years are always approximate; other units are approximate
+        when marked, like <code>about 3 days</code>. For estimates, not calendar arithmetic: an offset from a date is{' '}
+        <code>dateOffset</code>.
+      </>
+    ),
+    options: [['clock', <>As for <code>duration</code>.</>]],
+  }),
   quantity('temperature', 'Weather, cooking, body temperature', ['72°F', '22 °C', '-40 degrees fahrenheit', '295.15 K', '20°', 'hot'], {
     ref: 'C',
     equals: { F: '(x − 32) × 5⁄9 °C', K: 'x − 273.15 °C' },
