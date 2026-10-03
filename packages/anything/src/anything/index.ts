@@ -1,4 +1,7 @@
-import { approx, defineRange, dimensions, merge, range, type Approx, type Codec, type CodecOptions, type MergedCodec, type QuantityCodec, type Tagged } from 'quanto';
+import {
+  approx, defineRange, dimensions, infinite, isInfinite, merge, range,
+  type Approx, type Codec, type CodecOptions, type Infinite, type MergedCodec, type QuantityCodec, type StandardSchemaV1, type Tagged,
+} from 'quanto';
 import {
   absorbedDose, acceleration, angle, area, capacitance, charge, colorTemperature, compute, computeRate, current, dataRate, dataSize, density, duration, energy,
   flowRate, force, frequency, fuelEconomy, illuminance, length, luminance, luminousFlux, mass, number, pace, power, pressure, proportion,
@@ -102,7 +105,9 @@ function members(options: AnythingOptions | undefined) {
 
 /**
  * The value of `anything()`: a member's value, tagged with the id of the codec that read it, and whether
- * it was marked approximate. Switch on `value.codec` to know what `value.value` is.
+ * it was marked approximate. Switch on `value.codec` to know what `value.value` is. An infinity is tagged
+ * with the member its unit or kind names (`∞ GB` is `{ codec: 'dataSize', value: { infinite: 1, unit: 'GB' } }`),
+ * and a bare one with `'infinite'`.
  */
 export type AnythingValue = Approx<Tagged<unknown>>;
 
@@ -111,10 +116,48 @@ const build = (options: AnythingOptions | undefined): MergedCodec<unknown> => {
   return merge([...singles, ...include, ...catchAlls, ...ranges]);
 };
 
+/** The tag of an infinity that names no member (a bare `∞`), so every value of `anything` is tagged. */
+const BARE = 'infinite';
+
+/**
+ * The merge, in `infinite`: an infinity with a unit or a kind comes back tagged with its member, and a
+ * bare one is tagged here, with `'infinite'`.
+ */
+function withInfinity(merged: MergedCodec<unknown>): Codec<Tagged<unknown>> {
+  const inner = infinite(merged);
+  const isBare = (value: Tagged<unknown>): boolean => value.codec === BARE && isInfinite(value.value);
+  const tag = (value: Tagged<unknown> | Infinite): Tagged<unknown> => (isInfinite(value) ? { codec: BARE, value } : value);
+  const untag = (value: Tagged<unknown>) => (isBare(value) ? (value.value as Infinite) : value) as Parameters<typeof inner.format>[0];
+  const schema: StandardSchemaV1<Tagged<unknown>, Tagged<unknown>> = {
+    '~standard': {
+      version: 1,
+      vendor: 'quanto',
+      validate(input: unknown) {
+        const value = typeof input === 'object' && input !== null && isBare(input as Tagged<unknown>) ? (input as Tagged<unknown>).value : input;
+        const result = inner.schema['~standard'].validate(value) as StandardSchemaV1.Result<Tagged<unknown> | Infinite>;
+        return result.issues ? result : { value: tag(result.value) };
+      },
+    },
+  };
+  return {
+    id: inner.id,
+    parse(text, ctx) {
+      const result = inner.parse(text, ctx);
+      const alternatives = result.alternatives?.map(tag);
+      if (!result.ok) return alternatives ? { ok: false, issues: result.issues, alternatives } : { ok: false, issues: result.issues };
+      const value = tag(result.value);
+      return alternatives ? { ok: true, value, context: result.context, alternatives } : { ok: true, value, context: result.context };
+    },
+    format: (value, ctx) => inner.format(untag(value), ctx),
+    schema,
+  };
+}
+
 /**
  * One codec that reads anything quanto can: dates and times, money, every quantity, dimensions,
  * coordinates, ring and shoe sizes, CSS colors, pitches, then plain numbers, ratios and odds, each quantity, date and
- * amount of money also as a range, and all of it optionally approximate (`about 6 ft`). The first codec
+ * amount of money also as a range, infinities (`unlimited GB`, `-∞`), and all of it optionally approximate
+ * (`about 6 ft`). The first codec
  * that reads the text wins and the others' readings are its alternatives, so the order settles every
  * conflict: see the package README. The value is tagged with the id of the codec that read it:
  * `{ value: { codec: 'length', value: { value: 180, unit: 'cm' } }, approximate: false }`. When nothing
@@ -122,7 +165,7 @@ const build = (options: AnythingOptions | undefined): MergedCodec<unknown> => {
  * `ambiguous`, …), or else one `unparseable`.
  */
 export function anything(options?: AnythingOptions): Codec<AnythingValue> {
-  const codec = approx(build(options), { schema: options?.schema, format: options?.format });
+  const codec = approx(withInfinity(build(options)), { schema: options?.schema, format: options?.format });
   return {
     ...codec,
     id: 'anything',
