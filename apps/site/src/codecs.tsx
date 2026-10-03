@@ -13,7 +13,7 @@ import { feetInches, hoursMinutes, intlUnit, poundsOunces, stonesPounds } from '
 import { cssColor } from '@quantojs/common/css-color';
 import { money, moneyRange } from '@quantojs/common/money';
 import { odds } from '@quantojs/common/odds';
-import { date, dateRange, dateTime, localDateTime, time } from '@quantojs/datetime';
+import { date, dateOffset, dateRange, dateTime, localDateTime, time } from '@quantojs/datetime';
 import { de, es, fr, it, nl, pt } from '@quantojs/datetime/names';
 import { coordinates, degreesMinutesSeconds } from '@quantojs/geo';
 import { anything } from '@quantojs/anything';
@@ -372,6 +372,24 @@ const docs: readonly Doc[] = [
       </>
     ),
     options: [['open', <>Accept a single bound.</>]],
+  },
+  {
+    id: 'dateOffset',
+    group: 'Dates and times',
+    summary: 'Offsets from a date, as ISO 8601 durations',
+    from: '@quantojs/datetime',
+    name: 'dateOffset',
+    call: 'dateOffset()',
+    codec: dateOffset(),
+    examples: ['3 days', '2 weeks before', 'in 6 months', '1 year and 6 months ago', 'the day before', 'P1M', '3 hours', 'next fri'],
+    play: 'dateOffset',
+    about: (
+      <>
+        For fields that are relative on purpose: remind me <em>n</em> before, expires <em>n</em> after signup. Stores a signed ISO
+        8601 duration (<code>-P2W</code>) and never reads <code>now</code>; apply it with Temporal,{' '}
+        <code>Temporal.PlainDate.from(due).add(offset)</code>. Days, weeks, months and years, in whole numbers.
+      </>
+    ),
   },
   {
     id: 'pitch',

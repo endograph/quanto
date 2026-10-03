@@ -7,7 +7,7 @@ import { feetInches, hoursMinutes, intlUnit, poundsOunces, stonesPounds } from '
 import { cssColor } from '@quantojs/common/css-color';
 import { money } from '@quantojs/common/money';
 import { odds } from '@quantojs/common/odds';
-import { date, dateRange, dateTime, time } from '@quantojs/datetime';
+import { date, dateOffset, dateRange, dateTime, time } from '@quantojs/datetime';
 import { de, es, fr, it, nl, pt } from '@quantojs/datetime/names';
 import { coordinates } from '@quantojs/geo';
 import { phoneNumber } from '@quantojs/libphonenumber';
@@ -193,6 +193,13 @@ const leaves: Entry[] = [
     call: `dateTime(${namesCall})`,
     imports: { '@quantojs/datetime': ['dateTime'], ...namesImport },
     examples: ['tomorrow 3pm', 'Oct 2 9am', 'next fri noon', '2026-10-02T15:00Z'],
+  },
+  {
+    id: 'dateOffset',
+    codec: dateOffset(),
+    call: 'dateOffset()',
+    imports: { '@quantojs/datetime': ['dateOffset'] },
+    examples: ['3 days', '2 weeks before', 'in 6 months', '1 year and 6 months ago', 'P1M', '3 hours'],
   },
 ];
 

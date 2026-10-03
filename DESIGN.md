@@ -571,13 +571,28 @@ The four codecs share one grammar, built for the common case. Anything it doesn'
 
 Write a custom codec for any of these:
 
-- Month and year arithmetic (`in 2 months`, `next year`) and week or month references (`next week`, `end of month`): they have no single common-sense answer.
+- Month and year arithmetic (`in 2 months`, `next year`) and week or month references (`next week`, `end of month`): they have no single common-sense answer. Kept as an offset rather than resolved to a date, `in 2 months` is `dateOffset` (below).
 - `next fri` meaning Friday of next week.
 - Time zone names and abbreviations (`EST`, `Europe/Paris`), and DST: an input without an offset takes `now`'s offset, even for a date on the other side of a DST change.
 - Clock forms like `15h30`, `3.30pm` and `1500`, and fractional seconds in stored values.
 - Month-and-year without a day (`Oct 2026`), week numbers, ordinal dates, and non-Gregorian calendars.
 - Numbers written as words (`three pm`), except `a`/`an`/`one` in `in a day`.
 - Checking a written weekday against the date (`Mon, Oct 2`).
+
+### Date offsets
+
+`dateOffset()` reads an offset in calendar units from a date the app supplies: `3 days`, `2 weeks before`, `in 6 months`, `1 year and 6 months ago`. It's for fields whose meaning is relative (remind me *n* before the due date, expires *n* after signup, repeat every *n*), as opposed to `date()`, where `in 3 days` is a quick way to type an absolute date. The field decides which: the same text means a resolved date in a `date()` field and an offset in a `dateOffset()` field, and nobody has to guess what the person meant.
+
+- **The value is a signed ISO 8601 duration** in years, months, weeks and days: `P3D`, `-P2W`, `P1Y6M`, `P1W2D`. Zero is `P0D`. The string is canonical, so equal offsets as written are equal strings: zero parts are dropped and only a non-zero offset has a sign. Weeks combine with other parts (`P1W2D`), as ISO 8601-2 and Temporal allow. Each part is below 2³², Temporal's limit.
+- **Applying it is Temporal's job:** `Temporal.PlainDate.from(due).add(offset)`. quanto does no date math (see Non-goals), and month arithmetic (Jan 31 plus one month) is exactly what Temporal settles. That's why the value is a string Temporal reads as it is, rather than an object.
+- **`now` is never read.** `in 3 days` stays `P3D`, three days from whatever it's applied to, so a stored offset is stable without a context.
+- **Units are kept as written**, like a quantity's: `2 weeks` is `P2W`, not `P14D`. Compound input goes from larger to smaller parts without repeats (`1y 6mo 2w 3d`), joined by spaces, `,`, `and` or `&`. Units: `d`/`day(s)`, `w`/`wk(s)`/`week(s)`, `mo`/`mos`/`mth(s)`/`month(s)` and `y`/`yr(s)`/`year(s)`. `m` isn't a unit: it's minutes in a duration field. Hours and minutes are `unknown_unit`: an offset between dates has no time of day.
+- **Whole numbers only**, in digits or words (`three months`, `a week`): ISO 8601 and Temporal allow no fraction in a calendar part, and `1.5 months` has no single answer. A bare number is `missing_unit`.
+- **Direction:** a bare amount is forward. Backward is `-`, `ago`, `before`, `earlier` or `prior`; forward can be said with `+`, `in`, `after`, `later` or `from now`. One way per offset: `in 3 days ago` and `-3 days before` are unparseable. A sign or direction word applies to the whole offset, and only the first part may carry a sign.
+- **Phrases:** `today`, `same day` and `the same day` are `P0D`, `tomorrow` is `P1D`, `yesterday` is `-P1D`, and `the day/week/month/year before/after` is one of that unit. ISO input (`P3D`, `-P1M`) reads too, in either case.
+- **Rules aren't offsets:** `next fri`, `next week` and `end of month` are unparseable, since storing them means storing a rule, which is a scheduling concern.
+- **Formatting** is English and neutral about the anchor, since the field's label names it: `3 days`, `1 year 6 months`, and `3 days before` for a negative offset; `0 days` for zero. Numbers use the locale's grouping (`1.000 days` in de-DE). A different phrasing (`in 3 days`, `3 days ago`) is a `format` option.
+- **Not in `@quantojs/anything`:** `3 days` is already a duration there, and offsets are only meaningful in a field that says what they're from.
 
 ## Addresses
 
@@ -1118,7 +1133,6 @@ An external service isn't part of the codec's code and may not be deterministic,
 Decided in principle, not in v1:
 
 - **Sub-minor-unit money** (`$3.459`): an optional `precision` option on the money codec.
-- **Calendar durations** (`2 months`): a separate codec with an ISO 8601 duration value (`P2M`).
 - **Grammars for other languages**: a separate package, since they're incomplete and will change, starting with the languages dates have names for (`es`, `fr`, `de`, `it`, `pt`, `nl`). Month and weekday names could later become a grammar part too, replacing the `names` option.
 - **Ranges over a merge** (`5-7 kg` against `merge([length(), mass()])`): `range()` takes a quantity codec, and a merged codec has no single unit table. Dropped on purpose when `range()` became quantity-only; `defineRange(merged, rules)` with custom rules covers it if needed.
 - **Gas mark** (`gas mark 4`): the number follows the unit, and only a few discrete marks exist, so it's a custom codec rather than a function unit.

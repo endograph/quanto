@@ -22,6 +22,12 @@ dateRange(date()).parse('Oct 3-5', { now: '2026-09-30T14:02:11-04:00' });
   date({ names: [de] }).format('2026-10-02', { locale: 'de-DE' });   // '2 Okt 2026'
   ```
 - **`dateRange`** works with all four codecs: `Oct 3-5`, `Dec 30 - Jan 2`, `9-5pm`, `Oct 3 10pm-1am`.
+- **`dateOffset`** is for fields whose meaning is relative, like "remind me ___ before" or "expires ___ after signup". `3 days`, `2 weeks before` and `in 1 year and 6 months` store as signed ISO 8601 durations (`P3D`, `-P2W`, `P1Y6M`), never resolved against `now`. Apply one with Temporal:
+
+  ```ts
+  const offset = dateOffset().parse('2 weeks before');   // '-P2W'
+  Temporal.PlainDate.from('2026-10-30').add('-P2W');      // 2026-10-16
+  ```
 - **`intlDate`, `intlTime`, `intlDateTime`**: opt-in, display-only `Intl` formatters.
 
 `quanto` is a peer dependency. In a browser, omit `ctx.now`; on a server parsing for a user, pass their `now`.
