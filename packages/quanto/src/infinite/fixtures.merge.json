@@ -1,0 +1,24 @@
+[
+  { "parse": "unlimited GB", "value": { "codec": "dataSize", "value": { "infinite": 1, "unit": "GB" } }, "context": { "locale": "en-US" } },
+  { "parse": "∞ TB", "value": { "codec": "dataSize", "value": { "infinite": 1, "unit": "TB" } } },
+  { "parse": "-∞ MiB", "value": { "codec": "dataSize", "value": { "infinite": -1, "unit": "MiB" } } },
+  { "parse": "∞ ft", "value": { "codec": "length", "value": { "infinite": 1, "unit": "ft" } } },
+  { "parse": "infinite feet", "value": { "codec": "length", "value": { "infinite": 1, "unit": "ft" } } },
+  { "parse": "infinite length", "value": { "codec": "length", "value": { "infinite": 1 } } },
+  { "parse": "∞ data size", "value": { "codec": "dataSize", "value": { "infinite": 1 } } },
+  { "parse": "unlimited Data Size", "value": { "codec": "dataSize", "value": { "infinite": 1 } } },
+  { "parse": "∞", "value": { "infinite": 1 }, "context": { "locale": "en-US" } },
+  { "parse": "-infinity", "value": { "infinite": -1 } },
+  { "parse": "∞ kg", "issues": ["unknown_unit", "unknown_unit"] },
+  { "parse": "infinite mass", "issues": ["unknown_unit", "unknown_unit"] },
+
+  { "parse": "5 ft", "value": { "codec": "length", "value": { "value": 5, "unit": "ft" } } },
+  { "parse": "500 GB", "value": { "codec": "dataSize", "value": { "value": 500, "unit": "GB" } } },
+
+  { "format": { "codec": "dataSize", "value": { "infinite": 1, "unit": "GB" } }, "text": "∞ GB" },
+  { "format": { "codec": "length", "value": { "infinite": -1, "unit": "ft" } }, "text": "-∞ ft" },
+  { "format": { "codec": "length", "value": { "infinite": 1 } }, "text": "∞ length" },
+  { "format": { "codec": "dataSize", "value": { "infinite": 1 } }, "text": "∞ data size" },
+  { "format": { "infinite": 1 }, "text": "∞" },
+  { "format": { "codec": "dataSize", "value": { "value": 500, "unit": "GB" } }, "text": "500 GB" }
+]

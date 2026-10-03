@@ -10,7 +10,7 @@ Think of it as a universal moment.js, generalized beyond dates, or as "what if Z
 
 It ships as a core with no codecs, plus codec packages built on the core's public API (see [Packaging](#packaging)):
 
-- **`quanto` is the protocol**: the codec contract, the definition helpers (`defineCodec`, `defineExternalCodec`, `quantity`, `defineRange`), context, issues, composition (`merge`, `optional`, `approx`, `range`, `dimensions`) and the shared parsing primitives. It holds strong opinions, and every codec is expected to conform to them.
+- **`quanto` is the protocol**: the codec contract, the definition helpers (`defineCodec`, `defineExternalCodec`, `quantity`, `defineRange`), context, issues, composition (`merge`, `optional`, `approx`, `infinite`, `range`, `dimensions`) and the shared parsing primitives. It holds strong opinions, and every codec is expected to conform to them.
 - **The codecs are a bootstrap**: `@quantojs/common` has the settled common ones (quantities, numbers, money, odds, text), and dedicated packages have domains that are incomplete or still evolving, like dates (`@quantojs/datetime`). Use them as they are, copy and modify one, or write your own: a codec of yours is no different from theirs.
 
 The input component (`<QuantoInput />`) is one consumer of this core, shipped as a separate package. It is not the core, and nothing UI-specific lives in the core.
@@ -270,6 +270,34 @@ height.parse('6 ft');         // approximate: false
 - Text without a marker parses as `approximate: false`. Formatting prefixes `~` when approximate (`~5 ft`). The id is `approx(<inner id>)`; the inner codec's alternatives are wrapped too.
 - It composes over ranges: `approx(range(length()))` reads `about 5-7 ft`. `5+` isn't an approximation: it's an open range.
 
+### Infinite values
+
+```ts
+const quota = infinite(dataSize());
+quota.parse('unlimited');   // { ok: true, value: { infinite: 1 } }
+quota.parse('-∞');          // { ok: true, value: { infinite: -1 } }
+quota.parse('500 GB');      // { ok: true, value: { value: 500, unit: 'GB' } }
+quota.parse('∞ TB');        // { ok: true, value: { infinite: 1, unit: 'TB' } }
+
+const limit = infinite(merge([length(), dataSize()]));
+limit.parse('unlimited GB');     // { codec: 'dataSize', value: { infinite: 1, unit: 'GB' } }
+limit.parse('infinite length');  // { codec: 'length', value: { infinite: 1 } }
+limit.parse('∞');                // { infinite: 1 }
+```
+
+- `infinite(codec, options?)` is a wrapper whose value is `T | Infinite`, where `Infinite` is `{ infinite: 1 | -1, unit? }`. Infinity is the natural model for "unlimited" and "never", and a wrapper keeps it out of every value type that doesn't want it, as `optional` and `approx` do.
+- **Plain data, not `Infinity`.** `JSON.stringify` turns `Infinity` into `null` and drops symbols, so the marker is an object. It's an object rather than a string like `'infinity'` so it can't collide with a string-valued codec (`infinite(text())`). The sign is `1` or `-1`, like `Math.sign` and `compare`, so `v.infinite * Infinity` is the number when an app wants one. `isInfinite(v)` tells the two apart.
+- **Words:** `∞`, `inf` and `infinity`, each with an optional `+` or `-` (`-∞`, `- inf`), are always read. Besides those, `infinite`, `unlimited`, `no limit` and `unbounded` mean positive infinity, and `negative infinity` and `minus infinity` mean negative. Matching ignores case. The words are checked before the inner codec, so they win even over one that reads any text. A sign goes only on the symbols: `-unlimited` is unparseable.
+- **Units are kept on a best-effort basis.** Infinity is the same in every unit, but the unit says what kind of value was meant, which a merge needs to pick a member, and it lets a field show `∞ GB` after blur rather than drop it. After an infinity, `∞ ft`, `∞ft`, `infinite feet` or `-∞ in` keeps the unit: the wrapper asks the inner codec to parse `1 <unit>` (or `1<unit>`, for `∞'`) and takes the unit from its value, so the inner codec's aliases, case rules, `canonicalUnit` (`∞ ft` in a field canonical in inches is `{ infinite: 1, unit: 'in' }`) and a merge's member order all apply, and its issues are reported as they are (`∞ kg` in a length field is `unknown_unit`). Only values with a `unit` keep one: quantities, not money or dates, where text after the infinity is unparseable. A number or a sign after it is unparseable too (`∞ 5 ft`, `∞ ft 6 in`).
+- **Kinds:** a codec's id, as words (`length`, `data size`), names its kind: `infinite length`, `∞ data size`. Over a merge it picks the member; on a single codec it's the codec's own kind and changes nothing.
+- **Over a merge,** an infinity with a unit or a kind is tagged like any merged value (`{ codec: 'dataSize', value: { infinite: 1, unit: 'GB' } }`), so apps switch on `value.codec` as usual and test `value.value`. A bare `∞` names no kind, so it's untagged (`{ infinite: 1 }`). The type is `WithInfinite<T>`.
+- **`words`** replaces the extra words for a field's own vocabulary: `infinite(date(), { words: { positive: ['never'] } })` for an expiry. `positive` and `negative` are replaced separately, and the symbols stay. It's the wrapper's one option besides `schema` and `format`, for the same reason the date codecs take `names`: the vocabulary is data.
+- **Formatting** prints `∞` and `-∞`, or the first word of the matching list when one was passed (`never`), then the unit's first alias with quantity formatting's spacing (`∞ GB`, `-∞ ft`), or the kind (`∞ length`). Other values use the inner codec's format. It round-trips.
+- **The structural check** accepts an infinity whose unit is in the codec's unit table (a merge member's, for a tagged one) and whose tag names a member, and checks other values with the inner codec's schema.
+- Both signs are always read. A field where one makes no sense (a negative quota) rejects it with its `schema`, as with any other out-of-range value.
+- The id is `infinite(<inner id>)`. The inner codec's alternatives pass through, and an infinite parse reports a context with the locale only. It takes sync codecs only, like `approx`. It isn't a quantity codec, so `range()` doesn't take it; a range with an infinite end is an open range (`5+`), whose missing side is `null`.
+- `@quantojs/anything` wraps its merge in it (see [Anything](#anything)), tagging a bare infinity itself so its values stay tagged.
+
 ### Alternatives
 
 An **alternative** is another reading of the text as typed: a whole value, not a guess at what the text might grow into (that's a completion; see [Completions](#completions)). Any codec can report them, on either branch:
@@ -287,7 +315,7 @@ postalCode().parse('90210');
 - Alternatives are values, so they go through the codec's `check` and schema like the value (see [Defining a codec](#defining-a-codec)), and they are a parse-time hint: never stored. A failed commit stores `{ raw, issues }`; choosing an alternative afterwards stores `{ raw, value }`.
 - Alternatives are plain `T`s, JSON-safe and compared by fixtures. Candidates that are only labels until fetched are completions, which only external codecs have.
 - A value the user's schema rejects comes back as `invalid` issues, still with the alternatives that passed.
-- **Wrappers:** `merge` tags them (below); `approx` and `optional` wrap them; `range` and `defineRange` don't report their sides' alternatives, since a range already chooses between readings by its completion rules.
+- **Wrappers:** `merge` tags them (below); `approx`, `infinite` and `optional` wrap them; `range` and `defineRange` don't report their sides' alternatives, since a range already chooses between readings by its completion rules.
 
 ### Merging codecs
 
@@ -901,7 +929,7 @@ import { length } from '@quantojs/common';
 - No runtime dependencies. The Standard Schema interface is vendored into `src/` (types only), as the Standard Schema spec recommends, so there is no dependency on `@standard-schema/spec`.
 - **Protocol and codecs.** `quanto` is the protocol: what every codec must do and the helpers to do it, held to strong opinions and expected conformity. It ships no codecs. The codecs are a bootstrap, in `@quantojs/common` and the dedicated packages: use them, copy and modify them, or write your own. The line isn't size; `quantity()` and the compound formatter builder are in the core because they're how codecs are defined, not codecs themselves.
 - `quanto`'s subpath exports:
-  - `quanto`: the protocol. `defineCodec`; `defineExternalCodec`, `isExternalCodec` and `parseFromCompletions`; `formatWithFallback` and `isInvalidValueError`; `quantity`; the primitives `normalize`, `readNumber`, `formatNumber`, `readNumberToken`, `readWordToken`, `formatDecimalParts`, `numberSpan` and `lookupRegional`; `merge`, `optional`, `approx`, `range`, `defineRange` and `dimensions`; and the types `Codec`, `ExternalCodec`, `ExternalCodecDefinition`, `CodecOptions`, `Ctx`, `CtxExtensions`, `Signal`, `ResolvedCtx`, `Locale`, `ParseResult`, `ParseOutcome`, `ParseContext`, `Issue`, `IssueCode`, `Grammar`, `NumberGrammar`, `QuantoValue`, `Quantity`, `Approx`, `Range`, `OpenRange`, `RangeOptions`, `RangeRules`, `RangeProposal`, `QuantityCodec`, `QuantityOptions`, `QuantityDefinition`, `UnitTable`, `UnitDefinition`, `DefaultUnit`, `NumberSyntax` and `NumberToken`.
+  - `quanto`: the protocol. `defineCodec`; `defineExternalCodec`, `isExternalCodec` and `parseFromCompletions`; `formatWithFallback` and `isInvalidValueError`; `quantity`; the primitives `normalize`, `readNumber`, `formatNumber`, `readNumberToken`, `readWordToken`, `formatDecimalParts`, `numberSpan` and `lookupRegional`; `merge`, `optional`, `approx`, `infinite`, `isInfinite`, `range`, `defineRange` and `dimensions`; and the types `Codec`, `ExternalCodec`, `ExternalCodecDefinition`, `CodecOptions`, `Ctx`, `CtxExtensions`, `Signal`, `ResolvedCtx`, `Locale`, `ParseResult`, `ParseOutcome`, `ParseContext`, `Issue`, `IssueCode`, `Grammar`, `NumberGrammar`, `QuantoValue`, `Quantity`, `Approx`, `Infinite`, `InfiniteOptions`, `WithInfinite`, `Range`, `OpenRange`, `RangeOptions`, `RangeRules`, `RangeProposal`, `QuantityCodec`, `QuantityOptions`, `QuantityDefinition`, `UnitTable`, `UnitDefinition`, `DefaultUnit`, `NumberSyntax` and `NumberToken`.
   - `quanto/quantity`: quantity operations (`convert`, `compare`).
   - `quanto/formats`: the `Formatter<T>` type and `compoundFormatter`.
   - `quanto/testing`: `roundTrip`, `quantityWithin` (its rounding allowance for quantities) and `runFixtures`, the generic fixture runner.
@@ -964,7 +992,7 @@ Every codec, first-party or custom, ships fixtures, and CI enforces it. Fixtures
 - A **complete fixture** is `{ complete, ctx?, options?, completions }`, for external codecs with completions. Each expected completion is `{ label, value }`: the runner resolves lazy ones through the stub before comparing, so the file stays JSON.
 - A **format fixture** is `{ format, ctx?, options?, text }`.
 - `options` are passed to the codec factory, so one file covers the factory's JSON-expressible options (`defaultUnit`, `canonicalUnit`, `defaultCurrency`…).
-- A codec can have several fixture files (`fixtures.json`, `fixtures.<variant>.json`). Wrappers (`merge`, `range`, `optional`, `approx`) have fixtures too, one file per inner-codec combination worth pinning down: `range` over `date` for completion, `merge` over `length` and `duration` for alternatives.
+- A codec can have several fixture files (`fixtures.json`, `fixtures.<variant>.json`). Wrappers (`merge`, `range`, `optional`, `approx`, `infinite`) have fixtures too, one file per inner-codec combination worth pinning down: `range` over `date` for completion, `merge` over `length` and `duration` for alternatives.
 - **`runFixtures(factory, fixtures, { test })`** in `quanto/testing` runs a file. It takes the test function (vitest's `test`, `node:test`…) rather than importing a framework. Each case is named after its input and context, so a failure reads as input, expected and actual.
 - Fixtures must not depend on the machine. The runner fails any fixture whose result `context` has a `now` the fixture didn't pass; time-dependent fixtures pass `ctx.now`.
 - An LLM adding a codec writes the fixtures **first**, then the parser.
@@ -1057,7 +1085,7 @@ type Completion<T> =
 ### Wrappers
 
 - **`optional`** accepts an external codec: it maps empty text to `null` without calling the inner codec, so it adds no parsing, and passes `complete`, completions and alternatives through. Its return type follows its argument: `optional(external)` is an `ExternalCodec<T | null>`. That takes two overloads, sync and external, an exception to Principle 2 (as `range`'s `open` is), because a conditional type over the codec would change the type parameter from the value to the codec and break existing `optional<T>(codec)` calls.
-- **`merge`, `range`, `defineRange`, `approx` and `dimensions`** accept sync codecs only, per the rule above.
+- **`merge`, `range`, `defineRange`, `approx`, `infinite` and `dimensions`** accept sync codecs only, per the rule above.
 
 ### The input component
 

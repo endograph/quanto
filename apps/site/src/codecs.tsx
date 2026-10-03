@@ -6,7 +6,7 @@
 // imported under its own name.
 import { Fragment as Keyed, useEffect, useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { approx, dimensions, merge, optional, range, type Codec, type Ctx, type QuantityCodec, type UnitDefinition } from 'quanto';
+import { approx, dimensions, infinite, merge, optional, range, type Codec, type Ctx, type QuantityCodec, type UnitDefinition } from 'quanto';
 import { convert } from 'quanto/quantity';
 import * as q from '@quantojs/common';
 import { feetInches, hoursMinutes, intlUnit, poundsOunces, stonesPounds } from '@quantojs/common/formats';
@@ -679,6 +679,25 @@ const docs: readonly Doc[] = [
     codec: approx(q.length()),
     examples: ['~5 ft', 'about 180 cm', '5 ft or so', '5-ish ft', '5 ft'],
     about: <>Wraps any codec, ranges included: <code>approx(range(length()))</code> reads <code>about 5-7 ft</code>.</>,
+  },
+  {
+    id: 'infinite',
+    group: 'Wrappers',
+    summary: 'Allows infinity, positive or negative',
+    from: 'quanto',
+    name: 'infinite',
+    call: 'infinite(merge([length(), dataSize()]))',
+    imports: { '@quantojs/common': ['length', 'dataSize'] },
+    codec: infinite(merge([q.length(), q.dataSize()])),
+    examples: ['unlimited GB', 'infinite feet', '-∞ in', 'infinite length', '∞', '500 GB'],
+    about: (
+      <>
+        Infinity as plain data: <code>{"{ infinite: 1, unit: 'GB' }"}</code>, with the unit kept when the inner codec reads one,
+        and over a merge tagged with the member it names. Wraps any codec, for quotas that may be unlimited or expiry dates that may
+        be never: <code>{"infinite(date(), { words: { positive: ['never'] } })"}</code>.
+      </>
+    ),
+    options: [['words', <>Replace the extra words (<code>unlimited</code>, <code>negative infinity</code>, …) with <code>positive</code> and <code>negative</code> lists. The first of each is how it formats.</>]],
   },
   {
     id: 'range',

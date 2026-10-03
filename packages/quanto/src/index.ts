@@ -42,6 +42,8 @@ export type { FormatNumberOptions, LocaleCtx, NumberMatch, NumberToken, ReadNumb
 export { optional } from './optional';
 export { approx } from './approx';
 export type { Approx } from './approx';
+export { infinite, isInfinite } from './infinite';
+export type { Infinite, InfiniteOptions, WithInfinite } from './infinite';
 export { merge } from './merge';
 export type { LeafValue, MergedCodec, Tagged } from './merge';
 export { dimensions } from './dimensions';

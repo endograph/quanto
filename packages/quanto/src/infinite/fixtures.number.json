@@ -1,0 +1,21 @@
+[
+  { "parse": "∞", "value": { "infinite": 1 } },
+  { "parse": "-∞", "value": { "infinite": -1 } },
+  { "parse": "12", "value": 12 },
+  { "parse": "-12", "value": -12 },
+  { "parse": "twelve", "value": 12 },
+
+  { "parse": "never", "options": { "words": { "positive": ["never", "forever"] } }, "value": { "infinite": 1 } },
+  { "parse": "Forever", "options": { "words": { "positive": ["never", "forever"] } }, "value": { "infinite": 1 } },
+  { "parse": "∞", "options": { "words": { "positive": ["never"] } }, "value": { "infinite": 1 } },
+  { "parse": "-∞", "options": { "words": { "positive": ["never"] } }, "value": { "infinite": -1 } },
+  { "parse": "infinity", "options": { "words": { "positive": ["never"] } }, "value": { "infinite": 1 } },
+  { "parse": "unlimited", "options": { "words": { "positive": ["never"] } }, "issues": ["unparseable"] },
+  { "parse": "always", "options": { "words": { "negative": ["always"] } }, "value": { "infinite": -1 } },
+  { "parse": "unlimited", "options": { "words": { "negative": ["always"] } }, "value": { "infinite": 1 } },
+  { "parse": "negative infinity", "options": { "words": { "negative": ["always"] } }, "issues": ["unparseable"] },
+  { "format": { "infinite": 1 }, "options": { "words": { "positive": ["never", "forever"] } }, "text": "never" },
+  { "format": { "infinite": -1 }, "options": { "words": { "positive": ["never"] } }, "text": "-∞" },
+  { "format": { "infinite": -1 }, "options": { "words": { "negative": ["always"] } }, "text": "always" },
+  { "format": 12, "text": "12" }
+]

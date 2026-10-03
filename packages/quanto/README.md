@@ -50,7 +50,7 @@ An external codec (`defineExternalCodec`) parses through a service: a model, a s
 
 - **Bad input resolves with `issues`; a failed service rejects.** Don't store an outage as issues: keep the text and retry when it suits you.
 - **Pass `ctx.signal`** to cancel a parse in flight. It rejects with `signal.reason`.
-- **It owns its whole parse.** `merge`, `range` and `approx` don't take one; `optional` does.
+- **It owns its whole parse.** `merge`, `range`, `approx` and `infinite` don't take one; `optional` does.
 - Store `{ raw, value }` exactly as above. In React, use `QuantoInput` or `useExternalQuanto` from `@quantojs/react`.
 
 ### Pass context on the server
