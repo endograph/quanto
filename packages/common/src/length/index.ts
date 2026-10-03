@@ -14,6 +14,13 @@ export const lengthUnits: {
   readonly nmi: UnitDefinition;
   readonly planck: UnitDefinition;
   readonly ly: UnitDefinition;
+  readonly angstrom: UnitDefinition;
+  readonly ftm: UnitDefinition;
+  readonly ch: UnitDefinition;
+  readonly fur: UnitDefinition;
+  readonly smoot: UnitDefinition;
+  readonly au: UnitDefinition;
+  readonly pc: UnitDefinition;
 } = {
   um: { toBase: 0.000001, aliases: ['µm', 'um', 'micrometer', 'micrometers', 'micrometre', 'micrometres', 'micron', 'microns'] },
   mm: { toBase: 0.001, aliases: ['mm', 'millimeter', 'millimeters', 'millimetre', 'millimetres'] },
@@ -30,6 +37,20 @@ export const lengthUnits: {
   planck: { toBase: 1.616255e-35, aliases: ['ℓₚ', 'ℓP', 'lP', 'l_P', 'planck length', 'planck lengths'] },
   // IAU: exactly 9,460,730,472,580,800 m.
   ly: { toBase: 9460730472580800, aliases: ['ly', 'light year', 'light years', 'light-year', 'light-years'] },
+  // Exactly 10⁻¹⁰ m. NFKC turns the angstrom sign (U+212B) into `Å`.
+  angstrom: { toBase: 1e-10, aliases: ['Å', 'ångström', 'ångströms', 'angstrom', 'angstroms'] },
+  // Six feet, exactly.
+  ftm: { toBase: 1.8288, aliases: ['ftm', 'fathom', 'fathoms'] },
+  // Gunter's chain: 66 feet, a tenth of a furlong.
+  ch: { toBase: 20.1168, aliases: ['ch', 'chain', 'chains'] },
+  // 660 feet, an eighth of a mile.
+  fur: { toBase: 201.168, aliases: ['fur', 'furlong', 'furlongs'] },
+  // Oliver Smoot's height when MIT students measured the Harvard Bridge with him in 1958: 5 ft 7 in.
+  smoot: { toBase: 1.7018, aliases: ['smoot', 'smoots'] },
+  // IAU 2012: exactly 149,597,870,700 m.
+  au: { toBase: 149597870700, aliases: ['au', 'astronomical unit', 'astronomical units'] },
+  // IAU 2015: 648,000/π au, so not an exact decimal. `pc` is the parsec here, not the typographic pica.
+  pc: { toBase: (648000 / Math.PI) * 149597870700, aliases: ['pc', 'parsec', 'parsecs'] },
 };
 
 export type LengthUnit = keyof typeof lengthUnits;

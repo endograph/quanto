@@ -29,7 +29,7 @@ test('a custom format displays a range its sides\' schemas now reject, and still
   const short = length({ schema: { '~standard': { version: 1, vendor: 'test', validate: (v) => ((v as { value: number }).value > 3 ? { issues: [{ message: 'Too long.' }] } : { value: v as never }) } } });
   const codec = range(short, { format: (r) => `${r.start.value}..${r.end.value}` });
   expect(codec.format({ start: { value: 5, unit: 'm' }, end: { value: 7, unit: 'm' } })).toBe('5..7');
-  expect(() => codec.format({ start: { value: 5, unit: 'm' }, end: { value: 7, unit: 'parsec' as LengthUnit } })).toThrow(/end/);
+  expect(() => codec.format({ start: { value: 5, unit: 'm' }, end: { value: 7, unit: 'cubit' as LengthUnit } })).toThrow(/end/);
 });
 
 test('range completion can\'t read the clock', () => {
