@@ -5,6 +5,7 @@ export default defineConfig({
     index: 'src/index.ts',
     'money/index': 'src/money/index.ts',
     'odds/index': 'src/odds/index.ts',
+    'css-color/index': 'src/css-color/index.ts',
     'formats/index': 'src/formats/index.ts',
   },
   format: 'esm',

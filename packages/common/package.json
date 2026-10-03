@@ -45,6 +45,10 @@
       "types": "./dist/odds/index.d.ts",
       "import": "./dist/odds/index.js"
     },
+    "./css-color": {
+      "types": "./dist/css-color/index.d.ts",
+      "import": "./dist/css-color/index.js"
+    },
     "./formats": {
       "types": "./dist/formats/index.d.ts",
       "import": "./dist/formats/index.js"

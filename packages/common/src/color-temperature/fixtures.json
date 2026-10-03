@@ -1,0 +1,35 @@
+[
+  {"parse": "2700 K", "value": {"value": 2700, "unit": "K"}},
+  {"parse": "2700K", "value": {"value": 2700, "unit": "K"}},
+  {"parse": "2700 k", "value": {"value": 2700, "unit": "K"}},
+  {"parse": "6500 kelvin", "value": {"value": 6500, "unit": "K"}},
+  {"parse": "6500 Kelvins", "value": {"value": 6500, "unit": "K"}},
+  {"parse": "2,700 K", "value": {"value": 2700, "unit": "K"}},
+  {"parse": "2.700 K", "ctx": {"locale": "de-DE"}, "value": {"value": 2700, "unit": "K"}},
+  {"parse": "5500,5 K", "ctx": {"locale": "de-DE"}, "value": {"value": 5500.5, "unit": "K"}},
+  {"parse": "2.7k K", "value": {"value": 2700, "unit": "K"}},
+  {"parse": "153 mired", "value": {"value": 153, "unit": "mired"}},
+  {"parse": "153 mireds", "value": {"value": 153, "unit": "mired"}},
+  {"parse": "153 MIRED", "value": {"value": 153, "unit": "mired"}},
+  {"parse": "153 mirek", "value": {"value": 153, "unit": "mired"}},
+  {"parse": "153 MK⁻¹", "value": {"value": 153, "unit": "mired"}},
+  {"parse": "153 MK^-1", "value": {"value": 153, "unit": "mired"}},
+
+  {"parse": "2500 K", "options": {"canonicalUnit": "mired"}, "value": {"value": 400, "unit": "mired"}},
+  {"parse": "6500 K", "options": {"canonicalUnit": "mired"}, "value": {"value": 153.84615384615384, "unit": "mired"}},
+  {"parse": "250 mired", "options": {"canonicalUnit": "K"}, "value": {"value": 4000, "unit": "K"}},
+  {"parse": "0 mired", "options": {"canonicalUnit": "K"}, "issues": ["unparseable"]},
+
+  {"parse": "2700", "issues": ["missing_unit"]},
+  {"parse": "2700", "options": {"defaultUnit": "K"}, "value": {"value": 2700, "unit": "K"}},
+  {"parse": "2.7k", "options": {"defaultUnit": "K"}, "value": {"value": 2.7, "unit": "K"}},
+  {"parse": "2700 °C", "issues": ["unparseable"]},
+  {"parse": "2700 lm", "issues": ["unknown_unit"]},
+  {"parse": "warm white", "issues": ["unparseable"]},
+  {"parse": "", "issues": ["empty"]},
+
+  {"format": {"value": 2700, "unit": "K"}, "text": "2,700 K"},
+  {"format": {"value": 2700, "unit": "K"}, "ctx": {"locale": "de-DE"}, "text": "2.700 K"},
+  {"format": {"value": 5500.5, "unit": "K"}, "ctx": {"locale": "de-DE"}, "text": "5.500,5 K"},
+  {"format": {"value": 153.84615384615384, "unit": "mired"}, "text": "153.85 mired"}
+]

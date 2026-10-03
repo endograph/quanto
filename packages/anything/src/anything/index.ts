@@ -1,9 +1,10 @@
 import { approx, defineRange, dimensions, merge, range, type Approx, type Codec, type CodecOptions, type MergedCodec, type QuantityCodec, type Tagged } from 'quanto';
 import {
-  absorbedDose, acceleration, angle, area, capacitance, charge, compute, computeRate, current, dataRate, dataSize, density, duration, energy,
+  absorbedDose, acceleration, angle, area, capacitance, charge, colorTemperature, compute, computeRate, current, dataRate, dataSize, density, duration, energy,
   flowRate, force, frequency, fuelEconomy, illuminance, length, luminance, luminousFlux, mass, number, pace, power, pressure, proportion,
   radiationDose, ratio, resistance, soundLevel, speed, temperature, torque, voltage, volume,
 } from '@quantojs/common';
+import { cssColor } from '@quantojs/common/css-color';
 import { money, moneyRange } from '@quantojs/common/money';
 import { odds } from '@quantojs/common/odds';
 import { date, dateRange, dateTime, time, type Names } from '@quantojs/datetime';
@@ -58,6 +59,7 @@ const quantities = () =>
     luminousFlux: luminousFlux(),
     illuminance: illuminance(),
     luminance: luminance(),
+    colorTemperature: colorTemperature(),
     soundLevel: soundLevel(),
     radiationDose: radiationDose(),
     absorbedDose: absorbedDose(),
@@ -89,6 +91,8 @@ function members(options: AnythingOptions | undefined) {
     coordinates(),
     ringSize(),
     shoeSize(),
+    // Without bare hex and channels: `bad` and `0 170 255` aren't colors here.
+    cssColor({ bare: false }),
   ] as const;
   // Last of the single values: they'd read too much (`70` as decimal odds, `+275` as a number).
   const catchAlls = [number(), ratio(), odds()] as const;
@@ -109,7 +113,7 @@ const build = (options: AnythingOptions | undefined): MergedCodec<unknown> => {
 
 /**
  * One codec that reads anything quanto can: dates and times, money, every quantity, dimensions,
- * coordinates, ring and shoe sizes, pitches, then plain numbers, ratios and odds, each quantity, date and
+ * coordinates, ring and shoe sizes, CSS colors, pitches, then plain numbers, ratios and odds, each quantity, date and
  * amount of money also as a range, and all of it optionally approximate (`about 6 ft`). The first codec
  * that reads the text wins and the others' readings are its alternatives, so the order settles every
  * conflict: see the package README. The value is tagged with the id of the codec that read it:

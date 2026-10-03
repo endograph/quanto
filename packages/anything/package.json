@@ -1,7 +1,7 @@
 {
   "name": "@quantojs/anything",
   "version": "0.4.0",
-  "description": "One quanto codec that reads anything: dates, money, every quantity, dimensions, coordinates, sizes, pitches, numbers, ratios and odds, with ranges and approximate values, in a curated order.",
+  "description": "One quanto codec that reads anything: dates, money, every quantity, dimensions, coordinates, sizes, CSS colors, pitches, numbers, ratios and odds, with ranges and approximate values, in a curated order.",
   "license": "MIT",
   "author": "rt2zz",
   "homepage": "https://github.com/endograph/quanto/tree/main/packages/anything#readme",

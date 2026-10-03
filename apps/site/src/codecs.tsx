@@ -10,6 +10,7 @@ import { approx, dimensions, merge, optional, range, type Codec, type Ctx, type 
 import { convert } from 'quanto/quantity';
 import * as q from '@quantojs/common';
 import { feetInches, hoursMinutes, intlUnit, poundsOunces, stonesPounds } from '@quantojs/common/formats';
+import { cssColor } from '@quantojs/common/css-color';
 import { money, moneyRange } from '@quantojs/common/money';
 import { odds } from '@quantojs/common/odds';
 import { date, dateRange, dateTime, localDateTime, time } from '@quantojs/datetime';
@@ -61,8 +62,8 @@ interface Doc {
   readonly keys?: readonly string[];
 }
 
-type Group = 'Quantities' | 'Money' | 'Dates and times' | 'Music' | 'Addresses' | 'Phone numbers' | 'Coordinates' | 'Sizes' | 'Text and numbers' | 'Wrappers';
-const groups: readonly Group[] = ['Quantities', 'Money', 'Dates and times', 'Music', 'Addresses', 'Phone numbers', 'Coordinates', 'Sizes', 'Text and numbers', 'Wrappers'];
+type Group = 'Quantities' | 'Money' | 'Dates and times' | 'Music' | 'Addresses' | 'Phone numbers' | 'Coordinates' | 'Sizes' | 'Colors' | 'Text and numbers' | 'Wrappers';
+const groups: readonly Group[] = ['Quantities', 'Money', 'Dates and times', 'Music', 'Addresses', 'Phone numbers', 'Coordinates', 'Sizes', 'Colors', 'Text and numbers', 'Wrappers'];
 
 /** A quantity codec's entry: the codec with its defaults, and its table. */
 function quantity(
@@ -236,6 +237,9 @@ const docs: readonly Doc[] = [
   }),
   quantity('illuminance', 'Rooms, plants, photography', ['500 lx', '50 fc', '100 klx'], { ref: 'lx' }),
   quantity('luminance', 'Screens, displays', ['1000 nits', '500 cd/m²', '14 fL'], { ref: 'nit' }),
+  quantity('colorTemperature', 'Bulbs, white balance, smart lights', ['2700 K', '6500 kelvin', '153 mired', '370 mirek'], { ref: 'K' }, {
+    about: <>A light's color temperature. Mireds are a million over the kelvin, as smart-light APIs take them. Heat is <code>temperature</code>.</>,
+  }),
   quantity('proportion', 'Rates, spreads, concentrations', ['25 bps', '5‰', '12.5%', '420 ppm', '12.5'], { ref: 'percent' }, {
     about: (
       <>
@@ -522,6 +526,28 @@ const docs: readonly Doc[] = [
     options: [
       ['fit', <><code>'mens'</code> or <code>'womens'</code>: what a plain <code>US 10</code> means.</>],
       ['defaultUnit', <>What a bare number means, one system or one per measurement system: <code>{"{ us: 'usMen', uk: 'uk', metric: 'eu' }"}</code>.</>],
+    ],
+  },
+  {
+    id: 'cssColor',
+    group: 'Colors',
+    summary: 'Every CSS color: hex, names, rgb(), hsl(), oklch(), color()',
+    from: '@quantojs/common/css-color',
+    name: 'cssColor',
+    call: 'cssColor()',
+    codec: cssColor(),
+    examples: ['#00aaff', '#0af8', 'rebeccapurple', 'rgb(0 170 255 / 50%)', 'rgba(0, 170, 255, 0.5)', 'hsl(200 100% 50%)', 'oklch(70% 0.15 230deg)', 'color(display-p3 1 0 0)', '0, 170, 255', 'currentcolor'],
+    play: 'cssColor',
+    about: (
+      <>
+        Stored as <code>{'{ space, coords, alpha }'}</code>, in the space it was written in: nothing is converted. Formats as hex when
+        the channels are whole bytes, and otherwise in the color's own function. Colors with no value of their own (
+        <code>currentcolor</code>, system colors, <code>light-dark()</code>) and computed ones (<code>color-mix()</code>, relative
+        colors) aren't read.
+      </>
+    ),
+    options: [
+      ['bare', <>Also read hex without <code>#</code> and three channels from 0 to 255 (<code>0, 170, 255</code>). On by default; turn it off where other values share the field.</>],
     ],
   },
   {
