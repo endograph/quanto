@@ -1,6 +1,6 @@
 {
   "name": "@quantojs/anything",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "One quanto codec that reads anything: dates, money, every quantity, dimensions, coordinates, sizes, CSS colors, pitches, numbers, ratios and odds, with ranges and approximate values, in a curated order.",
   "license": "MIT",
   "author": "rt2zz",

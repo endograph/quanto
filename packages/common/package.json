@@ -1,6 +1,6 @@
 {
   "name": "@quantojs/common",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "The common codecs for quanto: lengths, weights, durations, temperatures and thirty more quantities, numbers, percents, money, odds and text, with ready-made formatters.",
   "license": "MIT",
   "author": "rt2zz",
